@@ -39,8 +39,8 @@ uploads/
 local-uploads/
 **/uploads/
 **/local-uploads/
-manuscripts/
-samples/
+/manuscripts/
+/samples/
 
 # Supabase local runtime artifacts
 .supabase/

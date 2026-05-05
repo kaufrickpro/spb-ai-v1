@@ -169,6 +169,7 @@ describe("Manuscript routes", () => {
 
   it("allows the local signed upload URL to accept file bytes without auth headers", async () => {
     const app = buildApp({ config: testConfig });
+    const fileBytes = Buffer.from("hello world!");
 
     const signedUrlResponse = await app.inject({
       method: "POST",
@@ -178,7 +179,7 @@ describe("Manuscript routes", () => {
         manuscriptId: "10000000-0000-4000-8000-000000000001",
         fileName: "sample.txt",
         mimeType: "text/plain",
-        fileSizeBytes: 12,
+        fileSizeBytes: fileBytes.length,
       },
     });
 
@@ -188,12 +189,121 @@ describe("Manuscript routes", () => {
     const uploadResponse = await app.inject({
       method: "PUT",
       url: uploadPath,
-      payload: Buffer.from("hello world!"),
+      payload: fileBytes,
       headers: { "content-type": "text/plain" },
     });
 
     expect(uploadResponse.statusCode).toBe(200);
     expect(uploadResponse.json()).toEqual({ ok: true });
+  });
+
+  it("rejects a stale local upload token after the document is completed", async () => {
+    const app = buildApp({ config: testConfig });
+    const originalBytes = Buffer.from("original");
+
+    const signedUrlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "stale.txt",
+        mimeType: "text/plain",
+        fileSizeBytes: originalBytes.length,
+      },
+    });
+
+    const { documentId, uploadUrl } = signedUrlResponse.json() as {
+      documentId: string;
+      uploadUrl: string;
+    };
+    const uploadPath = localPathFromUrl(uploadUrl);
+
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: uploadPath,
+          payload: originalBytes,
+          headers: { "content-type": "text/plain" },
+        })
+      ).statusCode,
+    ).toBe(200);
+
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    const staleResponse = await app.inject({
+      method: "PUT",
+      url: uploadPath,
+      payload: Buffer.from("overwrite"),
+      headers: { "content-type": "text/plain" },
+    });
+
+    expect(staleResponse.statusCode).toBe(400);
+    expect(staleResponse.json()).toMatchObject({
+      error: { code: "upload_not_pending" },
+    });
+  });
+
+  it("rejects local upload bytes whose content type differs from the signed metadata", async () => {
+    const app = buildApp({ config: testConfig });
+    const fileBytes = Buffer.from("plain text");
+
+    const signedUrlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "mismatch.txt",
+        mimeType: "text/plain",
+        fileSizeBytes: fileBytes.length,
+      },
+    });
+
+    const response = await app.inject({
+      method: "PUT",
+      url: localPathFromUrl(signedUrlResponse.json().uploadUrl),
+      payload: fileBytes,
+      headers: { "content-type": "application/pdf" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: { code: "upload_content_type_mismatch" },
+    });
+  });
+
+  it("rejects local upload bytes whose size differs from the signed metadata", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const signedUrlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "wrong-size.txt",
+        mimeType: "text/plain",
+        fileSizeBytes: 5,
+      },
+    });
+
+    const response = await app.inject({
+      method: "PUT",
+      url: localPathFromUrl(signedUrlResponse.json().uploadUrl),
+      payload: Buffer.from("too long"),
+      headers: { "content-type": "text/plain" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: { code: "upload_size_mismatch" },
+    });
   });
 
   it("rejects unsupported MIME types", async () => {
@@ -246,7 +356,7 @@ describe("Manuscript routes", () => {
         manuscriptId: "10000000-0000-4000-8000-000000000001",
         fileName: "chapter1.pdf",
         mimeType: "application/pdf",
-        fileSizeBytes: 2 * 1024 * 1024,
+        fileSizeBytes: 8,
       },
     });
 
@@ -286,7 +396,7 @@ describe("Manuscript routes", () => {
         manuscriptId: "10000000-0000-4000-8000-000000000001",
         fileName: "missing.pdf",
         mimeType: "application/pdf",
-        fileSizeBytes: 1024,
+        fileSizeBytes: 10,
       },
     });
 
@@ -319,7 +429,7 @@ describe("Manuscript routes", () => {
         fileName: "sample.docx",
         mimeType:
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        fileSizeBytes: 512 * 1024,
+        fileSizeBytes: 10,
       },
     });
     const { documentId } = urlResponse.json() as { documentId: string };
@@ -416,7 +526,7 @@ describe("Manuscript routes", () => {
         manuscriptId: "10000000-0000-4000-8000-000000000001",
         fileName: "private.pdf",
         mimeType: "application/pdf",
-        fileSizeBytes: 1024,
+        fileSizeBytes: 7,
       },
     });
     const { documentId } = urlResponse.json() as { documentId: string };
@@ -485,7 +595,7 @@ describe("Manuscript routes", () => {
         manuscriptId: "10000000-0000-4000-8000-000000000001",
         fileName: "sample.pdf",
         mimeType: "application/pdf",
-        fileSizeBytes: 1024,
+        fileSizeBytes: 10,
       },
     });
     expect(signedUrlResponse.statusCode).toBe(403);
@@ -546,6 +656,67 @@ describe("Manuscript routes", () => {
     expect(downloadResponse.statusCode).toBe(404);
   });
 
+  it("keeps the active sample when a replacement signed URL is abandoned", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const firstUpload = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "first.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 5,
+      },
+    });
+    const first = firstUpload.json() as {
+      documentId: string;
+      uploadUrl: string;
+    };
+    await app.inject({
+      method: "PUT",
+      url: localPathFromUrl(first.uploadUrl),
+      payload: Buffer.from("first"),
+      headers: { "content-type": "application/pdf" },
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${first.documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    const abandonedReplacement = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "abandoned.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 9,
+      },
+    });
+    expect(abandonedReplacement.statusCode).toBe(201);
+
+    const oldDocumentResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${first.documentId}`,
+      headers: { authorization: "Bearer test-user" },
+    });
+    expect(oldDocumentResponse.statusCode).toBe(200);
+    expect(oldDocumentResponse.json().document.storageStatus).toBe("uploaded");
+
+    const manuscriptResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/manuscripts/10000000-0000-4000-8000-000000000001",
+      headers: { authorization: "Bearer test-user" },
+    });
+    expect(manuscriptResponse.json().manuscript.sampleDocumentId).toBe(
+      first.documentId,
+    );
+  });
+
   it("marks the prior active sample as pending_delete when a replacement upload is completed", async () => {
     const app = buildApp({ config: testConfig });
 
@@ -557,7 +728,7 @@ describe("Manuscript routes", () => {
         manuscriptId: "10000000-0000-4000-8000-000000000001",
         fileName: "first.pdf",
         mimeType: "application/pdf",
-        fileSizeBytes: 2048,
+        fileSizeBytes: 5,
       },
     });
     const first = firstUpload.json() as {
@@ -584,7 +755,7 @@ describe("Manuscript routes", () => {
         manuscriptId: "10000000-0000-4000-8000-000000000001",
         fileName: "second.pdf",
         mimeType: "application/pdf",
-        fileSizeBytes: 2048,
+        fileSizeBytes: 6,
       },
     });
     const second = secondUpload.json() as {
@@ -669,7 +840,7 @@ describe("Manuscript routes", () => {
         manuscriptId: "10000000-0000-4000-8000-000000000001",
         fileName: "moderation.pdf",
         mimeType: "application/pdf",
-        fileSizeBytes: 1024,
+        fileSizeBytes: 10,
       },
     });
 

@@ -111,7 +111,8 @@ Rules:
 - Only authors upload sample documents in v1.
 - `POST /api/v1/uploads/signed-url` creates a pending document record and returns a short-lived local fake signed upload URL in Step 8 local mode.
 - `PUT /api/v1/uploads/local/:uploadToken` is a public signed URL target and does not rely on a bearer token.
-- `POST /api/v1/documents/:id/complete-upload` returns a conflict when the pending upload is stale or the local file is missing.
+- The local signed upload target must accept bytes only while the document is still `pending_upload`, and must verify the request content type and exact byte length against the metadata validated by `POST /api/v1/uploads/signed-url` before writing local storage.
+- `POST /api/v1/documents/:id/complete-upload` returns a conflict when the pending upload is stale or the local file is missing. Replacement uploads keep the previous uploaded sample active until completion succeeds; completion atomically marks the previous uploaded sample `pending_delete` and attaches the new sample.
 - Signed download URLs require ownership, admin access, or accepted intro access.
 
 ### Matching

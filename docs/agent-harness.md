@@ -25,6 +25,45 @@ When a rule becomes important enough to repeat, promote it from chat into the ri
 - Keep provider setup instructions current and tied to official docs or local config examples.
 - Treat failed agent work as a harness signal: missing context, missing tool access, missing fixture, missing test, or missing guardrail.
 
+## Execution Discipline
+
+### Think Before Coding
+
+- Do not assume, and do not hide confusion. Surface tradeoffs before implementing.
+- State assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them instead of choosing silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop, name what is confusing, and ask.
+
+### Simplicity First
+
+- Write the minimum code that solves the problem. Do not add speculative features.
+- Do not create abstractions for single-use code.
+- Do not add flexibility or configurability that was not requested.
+- Do not add error handling for impossible scenarios.
+- If 200 lines could be 50, rewrite it.
+- Ask: would a senior engineer say this is overcomplicated? If yes, simplify.
+
+### Surgical Changes
+
+- Touch only what is required. Clean up only your own mess.
+- Do not improve adjacent code, comments, or formatting while editing existing code.
+- Do not refactor code that is not broken.
+- Match existing style, even if you would choose a different style.
+- If unrelated dead code is noticed, mention it instead of deleting it.
+- Remove imports, variables, or functions that your changes made unused.
+- Do not remove pre-existing dead code unless explicitly asked.
+- Every changed line should trace directly to the user's request.
+
+### Goal-Driven Execution
+
+- Define success criteria and loop until verified.
+- Transform tasks into verifiable goals, such as: add validation means write tests for invalid inputs, then make them pass.
+- Transform bug fixes into reproductions: write a test that reproduces the bug, then make it pass.
+- For refactors, ensure tests pass before and after.
+- For multi-step tasks, state a brief plan with each step and its verification check.
+- Strong success criteria allow independent progress. Weak criteria require clarification.
+
 ## Mechanical Guardrails To Grow
 
 The current repo has generic TypeScript linting and focused tests. Strengthen it incrementally with project-specific checks:
