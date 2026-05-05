@@ -37,6 +37,9 @@ export const AdminAccessStatusSchema = z.enum([
 
 export const AdminRiskLevelSchema = z.enum(["low", "medium", "high"]);
 
+export const ADMIN_REVIEW_QUEUE_DEFAULT_LIMIT = 50;
+export const ADMIN_REVIEW_QUEUE_MAX_LIMIT = 100;
+
 export const AdminReviewQueueItemSchema = z.object({
   id: UuidSchema,
   entityType: AdminEntityTypeSchema,
@@ -125,6 +128,8 @@ export const AdminPendingProfilesResponseSchema = z.object({
 
 export const AdminProfileDecisionRequestSchema = z.object({
   decision: z.enum(["approved", "rejected"]),
+  internalNote: z.string().trim().min(5).max(1000).optional(),
+  rejectionNote: z.string().trim().min(5).max(1000).optional(),
 });
 
 export const AdminProfileDecisionResponseSchema = ProfileResponseSchema;
@@ -140,6 +145,12 @@ export const AdminReviewQueueQuerySchema = z.object({
   exceptionQueue: AdminExceptionQueueSchema.optional(),
   eligibilityStatus: EligibilityStatusSchema.optional(),
   reviewOutcome: ReviewOutcomeSchema.optional(),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(ADMIN_REVIEW_QUEUE_MAX_LIMIT)
+    .default(ADMIN_REVIEW_QUEUE_DEFAULT_LIMIT),
 });
 
 export const AdminReviewDetailResponseSchema = z.object({

@@ -1,5 +1,4 @@
-import { randomBytes } from "node:crypto";
-import { createHash } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 /**
  * A short-lived, opaque token for local fake signed URLs.
@@ -14,17 +13,17 @@ import { createHash } from "node:crypto";
 const LOCAL_UPLOAD_TTL_SECONDS = 60 * 15; // 15 minutes
 const LOCAL_DOWNLOAD_TTL_SECONDS = 60 * 5; // 5 minutes
 const SEPARATOR = "~";
-
-function makeSecret(): string {
-  // Stable within a process lifecycle — good enough for local dev.
-  return process.env["LOCAL_UPLOAD_SECRET"] ?? "local-dev-secret";
-}
+const LOCAL_UPLOAD_SECRET =
+  process.env["LOCAL_UPLOAD_SECRET"] ?? randomBytes(32).toString("hex");
 
 function sign(payload: string): string {
-  return createHash("sha256")
-    .update(makeSecret() + ":" + payload)
-    .digest("hex")
-    .slice(0, 32);
+  return createHmac("sha256", LOCAL_UPLOAD_SECRET).update(payload).digest("hex");
+}
+
+function signaturesMatch(payload: string, signature: string): boolean {
+  const expected = Buffer.from(sign(payload), "hex");
+  const actual = Buffer.from(signature, "hex");
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
 function encode(parts: string[]): string {
@@ -40,7 +39,7 @@ function decode(token: string): string[] | null {
     if (parts.length < 2) return null;
     const sig = parts.pop()!;
     const payload = parts.join(SEPARATOR);
-    if (sign(payload) !== sig) return null;
+    if (!signaturesMatch(payload, sig)) return null;
     return parts;
   } catch {
     return null;

@@ -133,7 +133,7 @@ Use a workflow that makes mistakes cheap and visible:
 - Added a dedicated staff login path at `/admin/login`; marketplace `/login` is for authors and publishers and redirects staff accounts to the staff entry point.
 - Added shared forgot/reset password routes and an `/admin/mfa` path for TOTP enrollment or verification.
 - Frontend uses Supabase Auth directly for session creation and refresh (`AuthContext`, `AuthGuard`).
-- API verifies the Supabase access token via JWKS and never trusts `user_id` from request bodies (`verifyJwt.ts`).
+- API verifies the Supabase access token via JWKS, requires issuer `${SUPABASE_URL}/auth/v1` plus audience `authenticated`, and never trusts `user_id` from request bodies (`verifyJwt.ts`).
 - Added a 3-step signup flow for email/password accounts: account credentials, profile basics, and usage intent.
 - Added Google social auth entry points on login. Signup itself is now a single 3-step wizard; users without a marketplace profile return to `/signup`, and `/signup/complete` is only a compatibility redirect.
 - Persisting app profile rows through the API to `public.profiles` with `display_name`, `role`, `locale`, `profile_photo_url`, and `signup_intent` (`server.ts`).

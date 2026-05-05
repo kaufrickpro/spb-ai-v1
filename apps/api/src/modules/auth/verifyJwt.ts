@@ -1,5 +1,7 @@
 import { createLocalJWKSet, createRemoteJWKSet, jwtVerify } from "jose";
 
+const SUPABASE_AUTH_AUDIENCE = "authenticated";
+
 export type AuthenticatedUser = {
   /** Supabase Auth user UUID — taken from the `sub` claim. */
   userId: string;
@@ -14,14 +16,25 @@ export type JoseKeySet = Parameters<typeof jwtVerify>[1];
 
 export type JwtVerifyFn = (jwt: string) => Promise<AuthenticatedUser>;
 
+export type JwtVerificationRequirements = {
+  issuer: string;
+  audience: string;
+};
+
 /**
  * Creates a JWT verifier from any jose-compatible key set.
  * Production: use `createSupabaseJwksVerifier`.
  * Tests: use `createVerifierFromKeySet` with `createLocalJWKSet`.
  */
-export function createVerifierFromKeySet(keySet: JoseKeySet): JwtVerifyFn {
+export function createVerifierFromKeySet(
+  keySet: JoseKeySet,
+  requirements: JwtVerificationRequirements,
+): JwtVerifyFn {
   return async (jwt: string): Promise<AuthenticatedUser> => {
-    const { payload } = await jwtVerify(jwt, keySet);
+    const { payload } = await jwtVerify(jwt, keySet, {
+      issuer: requirements.issuer,
+      audience: requirements.audience,
+    });
     const userId = payload.sub;
     if (!userId) {
       throw new Error("JWT payload is missing the required sub claim");
@@ -39,10 +52,18 @@ export function createVerifierFromKeySet(keySet: JoseKeySet): JwtVerifyFn {
  * Tokens are verified using the public key — no secret is stored or shared.
  */
 export function createSupabaseJwksVerifier(supabaseUrl: string): JwtVerifyFn {
-  const jwksUrl = `${supabaseUrl}/auth/v1/.well-known/jwks.json`;
+  const issuer = createSupabaseJwtIssuer(supabaseUrl);
+  const jwksUrl = `${issuer}/.well-known/jwks.json`;
   const keySet = createRemoteJWKSet(new URL(jwksUrl));
-  return createVerifierFromKeySet(keySet);
+  return createVerifierFromKeySet(keySet, {
+    issuer,
+    audience: SUPABASE_AUTH_AUDIENCE,
+  });
 }
 
 // Re-export so tests can build local key sets without importing jose directly.
 export { createLocalJWKSet };
+
+function createSupabaseJwtIssuer(supabaseUrl: string): string {
+  return `${supabaseUrl.replace(/\/+$/, "")}/auth/v1`;
+}

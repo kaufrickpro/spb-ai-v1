@@ -7,7 +7,10 @@ import {
 import type { ApiConfig } from "../config/config.js";
 import type { AuthenticatedUser } from "../auth/verifyJwt.js";
 import { hasAdminMembership } from "../auth/requestAuth.js";
-import { createUserSupabaseClient } from "../supabase/client.js";
+import {
+  createServiceRoleSupabaseClient,
+  createUserSupabaseClient,
+} from "../supabase/client.js";
 import {
   mapDbAuthorDetails,
   mapDbProfile,
@@ -64,10 +67,9 @@ export async function createMarketplaceProfile(input: {
     );
   }
 
-  const db = createUserSupabaseClient(
+  const db = createServiceRoleSupabaseClient(
     input.config.supabaseUrl!,
-    input.config.supabaseAnonKey!,
-    input.user.jwt,
+    input.config.supabaseServiceRoleKey!,
   );
 
   const { data, error } = await db
@@ -200,77 +202,55 @@ export async function completeMarketplaceOnboardingDetails(input: {
     )!;
   }
 
-  const db = createUserSupabaseClient(
+  const db = createServiceRoleSupabaseClient(
     input.config.supabaseUrl!,
-    input.config.supabaseAnonKey!,
-    input.user.jwt,
+    input.config.supabaseServiceRoleKey!,
   );
 
-  const existing = await getOwnMarketplaceProfile({
-    config: input.config,
-    user: input.user,
-  });
-
-  if (existing.profile.role !== input.details.role) {
-    throw new ProfileOnboardingError(
-      "role_mismatch",
-      "Onboarding details must match the saved marketplace role",
-    );
-  }
-
-  if (input.details.role === "author") {
-    const { error } = await db.from("author_profiles").upsert(
-      {
-        profile_id: existing.profile.id,
-        biography: input.details.biography,
-        primary_genre: input.details.primaryGenre,
-        writing_languages: input.details.writingLanguages,
-      },
-      { onConflict: "profile_id" },
-    );
-
-    if (error) {
-      throw new ProfileOnboardingError(
-        "storage",
-        "Failed to save author onboarding details",
-        error,
-      );
-    }
-  } else {
-    const { error } = await db.from("publisher_profiles").upsert(
-      {
-        profile_id: existing.profile.id,
-        focus_genres: input.details.focusGenres,
-        preferred_languages: input.details.preferredLanguages,
-        accepts_unsolicited: input.details.acceptsUnsolicited,
-      },
-      { onConflict: "profile_id" },
-    );
-
-    if (error) {
-      throw new ProfileOnboardingError(
-        "storage",
-        "Failed to save publisher onboarding details",
-        error,
-      );
-    }
-  }
-
-  const { data: profileData, error: profileError } = await db
-    .from("profiles")
-    .update({
-      approval_status: "approved",
-      eligibility_status: "eligible",
-      review_outcome: "auto_approved",
-    })
-    .eq("id", existing.profile.id)
-    .select()
-    .single();
+  const { data: profileData, error: profileError } = await db.rpc(
+    "complete_profile_onboarding_details",
+    {
+      p_accepts_unsolicited:
+        input.details.role === "publisher"
+          ? input.details.acceptsUnsolicited
+          : null,
+      p_actor_user_id: input.user.userId,
+      p_biography:
+        input.details.role === "author" ? input.details.biography : null,
+      p_focus_genres:
+        input.details.role === "publisher" ? input.details.focusGenres : null,
+      p_preferred_languages:
+        input.details.role === "publisher"
+          ? input.details.preferredLanguages
+          : null,
+      p_primary_genre:
+        input.details.role === "author" ? input.details.primaryGenre : null,
+      p_role: input.details.role,
+      p_writing_languages:
+        input.details.role === "author" ? input.details.writingLanguages : null,
+    },
+  );
 
   if (profileError) {
+    if (profileError.code === "P0002") {
+      throw new ProfileOnboardingError(
+        "not_found",
+        "No profile found for this account",
+        profileError,
+      );
+    }
+
+    if (profileError.code === "P0004") {
+      throw new ProfileOnboardingError(
+        "role_mismatch",
+        "Onboarding details must match the saved marketplace role",
+        profileError,
+      );
+    }
+
     throw new ProfileOnboardingError(
       "storage",
-      "Failed to update profile eligibility",
+      "Failed to complete onboarding details",
       profileError,
     );
   }

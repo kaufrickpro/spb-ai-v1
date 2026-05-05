@@ -318,11 +318,7 @@ export function getTestAdminDashboardSummary(state: AdminTestState) {
     riskHotlist: state.reviews
       .filter((review) => review.status === "pending")
       .slice()
-      .sort((left, right) => {
-        const risk = riskRank(right.riskLevel) - riskRank(left.riskLevel);
-        if (risk !== 0) return risk;
-        return left.submittedAt.localeCompare(right.submittedAt);
-      })
+      .sort(compareAdminRiskHotlistReviews)
       .slice(0, 5),
     systemHealth: {
       failedJobs: failed,
@@ -351,20 +347,30 @@ export function getTestAdminDashboardSummary(state: AdminTestState) {
   };
 }
 
-async function getAdminRiskHotlist(db: SupabaseClient) {
+export async function getAdminRiskHotlist(db: SupabaseClient) {
   const { data, error } = await db
     .from("admin_reviews")
     .select()
     .eq("status", "pending")
-    .order("risk_level", { ascending: false })
-    .order("submitted_at", { ascending: true })
-    .limit(5);
+    .order("submitted_at", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return (data ?? []).map(mapDbAdminReview);
+  return (data ?? [])
+    .map(mapDbAdminReview)
+    .sort(compareAdminRiskHotlistReviews)
+    .slice(0, 5);
+}
+
+function compareAdminRiskHotlistReviews(
+  left: { riskLevel: string; submittedAt: string },
+  right: { riskLevel: string; submittedAt: string },
+) {
+  const risk = riskRank(right.riskLevel) - riskRank(left.riskLevel);
+  if (risk !== 0) return risk;
+  return left.submittedAt.localeCompare(right.submittedAt);
 }
 
 function riskRank(value: string) {

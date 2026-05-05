@@ -488,7 +488,7 @@ describe("API scaffold", () => {
     ]);
   });
 
-  it("updates profile approval status from the admin decision endpoint", async () => {
+  it("updates and audits pending profile decisions from the legacy admin endpoint", async () => {
     const app = buildApp({ config: testConfig });
     const profileId = "00000000-0000-4000-8000-000000000211";
 
@@ -518,6 +518,98 @@ describe("API scaffold", () => {
     expect(pendingResponse.json().profiles[0]?.id).toBe(
       "00000000-0000-4000-8000-000000000212",
     );
+
+    const logsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/audit-logs",
+      headers: { authorization: "Bearer test-admin-mfa" },
+    });
+
+    expect(logsResponse.statusCode).toBe(200);
+    expect(logsResponse.json().logs[0]).toMatchObject({
+      action: "review.approved",
+      targetType: "profile",
+      targetId: profileId,
+    });
+  });
+
+  it("rejects legacy profile decisions after the pending review is decided", async () => {
+    const app = buildApp({ config: testConfig });
+    const profileId = "00000000-0000-4000-8000-000000000211";
+
+    const firstResponse = await app.inject({
+      method: "POST",
+      url: `/api/v1/admin/profiles/${profileId}/decision`,
+      headers: { authorization: "Bearer test-admin-mfa" },
+      payload: { decision: "approved" },
+    });
+
+    expect(firstResponse.statusCode).toBe(200);
+
+    const secondResponse = await app.inject({
+      method: "POST",
+      url: `/api/v1/admin/profiles/${profileId}/decision`,
+      headers: { authorization: "Bearer test-admin-mfa" },
+      payload: { decision: "rejected" },
+    });
+
+    expect(secondResponse.statusCode).toBe(404);
+    expect(secondResponse.json()).toEqual({
+      error: {
+        code: "not_found",
+        message: "Pending profile review not found",
+      },
+    });
+  });
+
+  it("requires internal notes when the legacy admin endpoint rejects a pending profile", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/profiles/00000000-0000-4000-8000-000000000211/decision",
+      headers: { authorization: "Bearer test-admin-mfa" },
+      payload: { decision: "rejected" },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("audits legacy profile rejections with the supplied internal note", async () => {
+    const app = buildApp({ config: testConfig });
+    const profileId = "00000000-0000-4000-8000-000000000211";
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/v1/admin/profiles/${profileId}/decision`,
+      headers: { authorization: "Bearer test-admin-mfa" },
+      payload: {
+        decision: "rejected",
+        internalNote: "Identity check failed",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().profile).toMatchObject({
+      id: profileId,
+      approvalStatus: "rejected",
+      eligibilityStatus: "blocked",
+      reviewOutcome: "admin_rejected",
+    });
+
+    const logsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/audit-logs",
+      headers: { authorization: "Bearer test-admin-mfa" },
+    });
+
+    expect(logsResponse.statusCode).toBe(200);
+    expect(logsResponse.json().logs[0]).toMatchObject({
+      action: "review.rejected",
+      targetType: "profile",
+      targetId: profileId,
+      metadata: { internalNote: "Identity check failed" },
+    });
   });
 
   it("returns not found when a profile decision targets an unknown profile", async () => {
@@ -534,7 +626,7 @@ describe("API scaffold", () => {
     expect(response.json()).toEqual({
       error: {
         code: "not_found",
-        message: "Profile not found",
+        message: "Pending profile review not found",
       },
     });
   });
@@ -658,6 +750,42 @@ describe("API scaffold", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().reviews).toHaveLength(1);
     expect(response.json().reviews[0].entityType).toBe("manuscript");
+  });
+
+  it("limits review queue results with deterministic priority ordering", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/reviews?limit=2",
+      headers: { authorization: "Bearer test-admin-mfa" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().reviews).toHaveLength(2);
+    expect(
+      response.json().reviews.map((review: { id: string }) => review.id),
+    ).toEqual([
+      "00000000-0000-4000-8000-000000000111",
+      "00000000-0000-4000-8000-000000000114",
+    ]);
+  });
+
+  it("preserves review queue filters when a limit is supplied", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/reviews?exceptionQueue=needs_review&limit=1",
+      headers: { authorization: "Bearer test-admin-mfa" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().reviews).toHaveLength(1);
+    expect(response.json().reviews[0]).toMatchObject({
+      exceptionQueue: "needs_review",
+      riskLevel: "high",
+    });
   });
 
   it("filters review queue by exception queue", async () => {

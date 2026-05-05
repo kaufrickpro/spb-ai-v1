@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AdminReviewDecisionRequest,
   AdminReviewDecisionResponse,
+  AdminReviewQueueItem,
   AdminReviewQueueQuery,
 } from "@marketplace/contracts";
 import { mapDbAdminAuditLog, mapDbAdminReview } from "./mappers.js";
@@ -110,12 +111,51 @@ export function applyTestAdminReviewDecision(
   });
   state.auditLogs.unshift(auditLog);
 
+  updateTestProfileLifecycle(state, review, {
+    decision: input.decision.decision,
+    now: input.now,
+  });
   updateTestReviewedEntityLifecycle(manuscriptState, review, {
     decision: input.decision.decision,
     now: input.now,
   });
 
   return { review, auditLog };
+}
+
+function updateTestProfileLifecycle(
+  state: AdminTestState,
+  review: AdminReviewDecisionResponse["review"],
+  input: { decision: AdminReviewDecisionRequest["decision"]; now: string },
+): void {
+  if (review.entityType !== "profile") {
+    return;
+  }
+
+  const profileIndex = state.profiles.findIndex(
+    (profile) => profile.id === review.entityId,
+  );
+  if (profileIndex < 0) {
+    return;
+  }
+
+  state.profiles[profileIndex] = {
+    ...state.profiles[profileIndex],
+    approvalStatus: input.decision === "approved" ? "approved" : "rejected",
+    eligibilityStatus:
+      input.decision === "approved" || input.decision === "restored"
+        ? "eligible"
+        : input.decision === "quarantined"
+          ? "quarantined"
+          : "blocked",
+    reviewOutcome:
+      input.decision === "approved" || input.decision === "restored"
+        ? "admin_approved"
+        : input.decision === "quarantined"
+          ? "quarantined"
+          : "admin_rejected",
+    updatedAt: input.now,
+  };
 }
 
 export function filterTestAdminReviews(
@@ -150,7 +190,8 @@ export function filterTestAdminReviews(
       }
       return true;
     })
-    .sort(compareAdminReviews);
+    .sort(compareAdminReviews)
+    .slice(0, query.limit);
 }
 
 export function toStringArray(value: unknown): string[] {
@@ -202,41 +243,71 @@ export async function getAdminReviewQueue(
   db: SupabaseClient,
   query: AdminReviewQueueQuery,
 ) {
-  let reviewQuery = db
-    .from("admin_reviews")
-    .select()
-    .order("submitted_at", { ascending: true });
+  const reviews: AdminReviewQueueItem[] = [];
+  const riskLevels = query.riskLevel
+    ? [query.riskLevel]
+    : (["high", "medium", "low"] as const);
+  const exceptionQueues = query.exceptionQueue
+    ? [query.exceptionQueue]
+    : (["quarantine", "needs_review", "reports", "system_failures"] as const);
 
-  if (query.entityType) {
-    reviewQuery = reviewQuery.eq("entity_type", query.entityType);
-  }
-  if (query.status) {
-    reviewQuery = reviewQuery.eq("status", query.status);
-  }
-  if (query.riskLevel) {
-    reviewQuery = reviewQuery.eq("risk_level", query.riskLevel);
-  }
-  if (query.exceptionQueue) {
-    reviewQuery = reviewQuery.eq("exception_queue", query.exceptionQueue);
-  }
-  if (query.eligibilityStatus) {
-    reviewQuery = reviewQuery.eq("eligibility_status", query.eligibilityStatus);
-  }
-  if (query.reviewOutcome) {
-    reviewQuery = reviewQuery.eq("review_outcome", query.reviewOutcome);
+  for (const riskLevel of riskLevels) {
+    for (const exceptionQueue of exceptionQueues) {
+      const remaining = query.limit - reviews.length;
+      if (remaining <= 0) {
+        return reviews;
+      }
+
+      let reviewQuery = db
+        .from("admin_reviews")
+        .select()
+        .eq("risk_level", riskLevel)
+        .eq("exception_queue", exceptionQueue)
+        .order("submitted_at", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(remaining);
+
+      if (query.entityType) {
+        reviewQuery = reviewQuery.eq("entity_type", query.entityType);
+      }
+      if (query.status) {
+        reviewQuery = reviewQuery.eq("status", query.status);
+      }
+      if (query.eligibilityStatus) {
+        reviewQuery = reviewQuery.eq(
+          "eligibility_status",
+          query.eligibilityStatus,
+        );
+      }
+      if (query.reviewOutcome) {
+        reviewQuery = reviewQuery.eq("review_outcome", query.reviewOutcome);
+      }
+
+      const { data, error } = await reviewQuery;
+      if (error) {
+        throw error;
+      }
+
+      reviews.push(...(data ?? []).map(mapDbAdminReview));
+    }
   }
 
-  const { data, error } = await reviewQuery;
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? []).map(mapDbAdminReview).sort(compareAdminReviews);
+  return reviews;
 }
 
 function compareAdminReviews(
-  left: { riskLevel: string; exceptionQueue: string; submittedAt: string },
-  right: { riskLevel: string; exceptionQueue: string; submittedAt: string },
+  left: {
+    id: string;
+    riskLevel: string;
+    exceptionQueue: string;
+    submittedAt: string;
+  },
+  right: {
+    id: string;
+    riskLevel: string;
+    exceptionQueue: string;
+    submittedAt: string;
+  },
 ) {
   const riskDelta = riskRank(right.riskLevel) - riskRank(left.riskLevel);
   if (riskDelta !== 0) return riskDelta;
@@ -245,7 +316,10 @@ function compareAdminReviews(
     queueRank(left.exceptionQueue) - queueRank(right.exceptionQueue);
   if (queueDelta !== 0) return queueDelta;
 
-  return left.submittedAt.localeCompare(right.submittedAt);
+  const submittedAtDelta = left.submittedAt.localeCompare(right.submittedAt);
+  if (submittedAtDelta !== 0) return submittedAtDelta;
+
+  return left.id.localeCompare(right.id);
 }
 
 function riskRank(value: string) {

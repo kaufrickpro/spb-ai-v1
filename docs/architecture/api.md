@@ -59,7 +59,7 @@ Current scaffold:
 - `apps/api/src/modules/config/config.ts` validates runtime config with Zod.
 - `apps/api/src/modules/config/loadEnvFile.ts` loads `apps/api/.env` before config validation so local dev restarts keep the same environment.
 - `apps/api/src/modules/health/registerHealthRoutes.ts` owns health and readiness routes.
-- `apps/api/src/modules/profiles/registerProfileRoutes.ts` owns profile route wiring; `apps/api/src/modules/profiles/service.ts` owns the profile onboarding invariant that an authenticated non-admin user creates exactly one marketplace profile.
+- `apps/api/src/modules/profiles/registerProfileRoutes.ts` owns profile route wiring; `apps/api/src/modules/profiles/service.ts` owns the profile onboarding invariant that an authenticated non-admin user creates exactly one marketplace profile and completes role-specific onboarding details through the atomic profile details RPC.
 - `apps/api/src/modules/admin/registerAdminRoutes.ts` owns admin route wiring; `apps/api/src/modules/admin/service.ts` owns admin read-model aggregation and review decision workflow behavior.
 - `apps/api/src/modules/admin/profileReviews.ts` keeps the legacy pending-profile route backed by `eligibility_status = 'limited'` and `review_outcome = 'needs_review'`; the primary admin workspace is the exception queue in `apps/api/src/modules/admin/service.ts`.
 - `apps/api/src/modules/admin/bootstrapFirstAdmin.ts` and `apps/api/src/scripts/bootstrapFirstAdmin.ts` own the trusted first-admin bootstrap path backed by a service-role client and email allowlist.
@@ -69,7 +69,7 @@ Current scaffold:
 - `apps/api/src/lib/http/` contains shared JSON error helpers and the Fastify error handler.
 - `GET /health` and `GET /ready` return the shared health contract.
 - `POST /api/v1/profiles` and `GET /api/v1/profiles/me` support test auth mode and Supabase-backed mode.
-- `GET /api/v1/admin/pending-profiles` and `POST /api/v1/admin/profiles/:profileId/decision` are compatibility endpoints for profile exceptions. New admin UI should prefer `/api/v1/admin/reviews` with exception queue, eligibility status, and review outcome filters.
+- `GET /api/v1/admin/pending-profiles` and `POST /api/v1/admin/profiles/:profileId/decision` are compatibility endpoints for profile exceptions. The legacy decision endpoint must resolve a pending profile review and then use the canonical admin review decision workflow, so profile decisions remain audited and constrained to `status = 'pending'`, `eligibility_status = 'limited'`, and `review_outcome = 'needs_review'`.
 - Admin dashboard, exception queue/detail/decision, audit log, job health, payment health, and trust-safety routes are scaffolded behind admin authorization checks.
 - Admin review decisions call `public.apply_admin_review_decision(...)` so review status updates and audit-log inserts happen together in one Postgres transaction.
 
@@ -112,7 +112,7 @@ Rules:
 - `POST /api/v1/uploads/signed-url` creates a pending document record and returns a short-lived local fake signed upload URL in Step 8 local mode.
 - `PUT /api/v1/uploads/local/:uploadToken` is a public signed URL target and does not rely on a bearer token.
 - The local signed upload target must accept bytes only while the document is still `pending_upload`, and must verify the request content type and exact byte length against the metadata validated by `POST /api/v1/uploads/signed-url` before writing local storage.
-- `POST /api/v1/documents/:id/complete-upload` returns a conflict when the pending upload is stale or the local file is missing. Replacement uploads keep the previous uploaded sample active until completion succeeds; completion atomically marks the previous uploaded sample `pending_delete` and attaches the new sample.
+- `POST /api/v1/documents/:id/complete-upload` returns a conflict when the pending upload is stale or the local file is missing. Replacement uploads keep the previous uploaded sample active until completion succeeds; completion atomically creates or reuses the ingestion job, marks the previous uploaded sample `pending_delete`, and attaches the new sample. If job creation fails, the document must remain pending and unattached.
 - Signed download URLs require ownership, admin access, or accepted intro access.
 
 ### Matching

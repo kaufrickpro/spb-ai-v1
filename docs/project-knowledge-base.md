@@ -8,6 +8,10 @@ This file is the local quick-reference knowledge base for the publisher-author S
 
 - Last updated: 2026-05-04
 - Current phase: Step 9 (AI Service Foundation) is starting from the ingestion job boundary. Step 8 upload remains the route surface; upload completion now feeds an async document checking flow instead of becoming a synchronous AI operation. Signup remains profile-first: users must complete the 3-step `/signup` wizard before a marketplace profile is created, and `/signup/complete` is only a compatibility redirect back to `/signup`.
+- Recently fixed: user-scoped Supabase writes can no longer self-promote
+  marketplace profile eligibility; profile creation and onboarding auto-approval
+  now use trusted API service-role writes while owner RLS remains available for
+  ordinary profile reads/updates.
 - Recently changed: agent harness hardening moved long-lived instructions out of `AGENTS.md`, added `docs/agent-harness.md`, added `npm run check:harness`, and added a GitHub Actions CI workflow for TypeScript workspace checks plus AI service `uv` checks.
 - Recently decided: remove the standalone onboarding journey from the active product flow. `/onboarding*` now exists only as a compatibility redirect to `/app/profile`.
 - Recently decided: keep admin creation entirely outside the public UI, managed in Supabase/SQL through `public.admin_users`.
@@ -19,6 +23,9 @@ This file is the local quick-reference knowledge base for the publisher-author S
 - Recently changed: `public.profiles.onboarding_status` was removed from the schema and API contract; signup completion is now represented by having a marketplace profile, with richer author/publisher details stored in role-specific tables.
 - Recently fixed: auth docs now include an explicit production OAuth checklist so the team remembers to replace `http://localhost:5173` app URLs with the real domain before production auth testing.
 - Recently fixed: `/app/profile` no longer treats missing author/publisher detail rows as a server error; basic post-signup profiles can load with `details: null` until richer onboarding is completed.
+- Recently fixed: role-specific onboarding detail completion now uses one
+  database RPC so the detail upsert and profile eligibility transition commit
+  or roll back together.
 - Recently finalized: V1 admin is now a lean same-domain exception and override console under `/admin` with needs-review, quarantine, reports, system failures, jobs, payments, audit logs, and settings.
 - Recently decided: the product should use a fully automated happy path. Automated checks can make profiles, manuscripts, documents, discovery, matching, and intro requests eligible without manual admin approval when deterministic safety, validity, entitlement, and ingestion gates pass.
 - Recently decided: admin review is no longer the default marketplace gate. Admin handles exceptions, uncertain/high-risk automated outcomes, reports, quarantines, system failures, and audited overrides.
@@ -36,6 +43,7 @@ This file is the local quick-reference knowledge base for the publisher-author S
 - Recently decided for Step 9: author UI must use simple language such as "Checking your sample", "Sample ready", and "We couldn't read this file"; do not expose ingestion, chunking, embedding, parser, job, GCS, Cloud Tasks, or provider terminology to users.
 - Recently fixed: local signed upload targets now reject stale completed document tokens and enforce the pending document state, declared content type, declared byte size, and 25 MB limit before storing bytes.
 - Recently fixed: replacement sample uploads no longer deactivate the current uploaded sample when only a signed URL is requested; the previous sample moves to `pending_delete` only after the replacement upload completes successfully.
+- Recently fixed: the legacy admin profile decision endpoint now resolves a pending profile review and routes through the audited admin review decision workflow; repeated or non-pending profile decisions are rejected.
 - Next recommended step: finish the Step 9 docs-first implementation, then implement the ingestion API/worker flow against `document_processing_jobs`, `document_chunks`, and `embedding_records` without reworking the Step 8 route surface.
 - Known blockers: real GCS bucket configuration, ingestion worker plumbing, product name/domain, production prices and quotas, embedding model choice, account deletion flow, Resend auth SMTP sender/domain, Resend product email sender domain/from-address, Sentry alert routing, final production OAuth domain values, and remote GitHub branch protection are still open.
 
@@ -150,7 +158,7 @@ Browser
 - Admin auth: separate staff accounts only. Do not allow the same identity to become both a marketplace participant and an admin.
 - Admin MFA: an admin membership alone is not sufficient for protected admin routes; the current session must also satisfy MFA.
 - Config: all services validate typed config at startup and fail fast on missing values or mismatched provider modes. The API config no longer requires `supabaseJwtSecret`; Supabase mode only requires `supabaseUrl` (used to derive the JWKS endpoint).
-- JWT verification: use JWKS (`jose` library) in the API auth middleware, not the legacy symmetric JWT secret. This aligns with current Supabase recommendations.
+- JWT verification: use JWKS (`jose` library) in the API auth middleware, not the legacy symmetric JWT secret. Require issuer `${SUPABASE_URL}/auth/v1` and audience `authenticated`.
 - OAuth deployment rule: app callback URLs are environment-specific. Development uses `http://localhost:5173/auth/callback`; production must switch to `https://your-domain/auth/callback` in frontend config, backend config, and Supabase Auth URL Configuration before release testing.
 - AI limits: start with 25 MB files, 250,000 extracted characters, 300 chunks, 25 candidates, 5-minute ingestion timeout, and 60-second matching timeout.
 - Rate limits: start with 10 match runs per user/hour, 3 match runs per manuscript/hour, 20 upload signed URLs per user/hour, 10 intro requests per user/day, and 10 auth-sensitive attempts per IP/10 minutes.
@@ -236,7 +244,7 @@ Use:
 - TypeScript strict mode.
 - Zod contracts from `packages/contracts`.
 - Consistent JSON errors.
-- Supabase Auth JWTs for end-user auth, verified in the API using JWKS (not the legacy JWT secret). JWKS endpoint: `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`. Use the `jose` library (`createRemoteJWKSet` + `jwtVerify`) in the auth middleware.
+- Supabase Auth JWTs for end-user auth, verified in the API using JWKS (not the legacy JWT secret). JWKS endpoint: `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`. Use the `jose` library (`createRemoteJWKSet` + `jwtVerify`) in the auth middleware, requiring issuer `${SUPABASE_URL}/auth/v1` and audience `authenticated`.
 - Service-role Supabase access only inside trusted server code.
 
 Shared contract layer status:

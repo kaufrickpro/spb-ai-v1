@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "./server.js";
+import { createAdminTestState } from "./modules/admin/testState.js";
+import { TEST_USER_ID } from "./modules/auth/requestAuth.js";
+import { completeAuthorDocumentUpload } from "./modules/manuscripts/documentService.js";
+import {
+  createManuscriptTestState,
+  createTestDocument,
+  TEST_AUTHOR_MANUSCRIPT_ID,
+} from "./modules/manuscripts/testState.js";
+import { saveLocalUpload } from "./modules/storage/localStorage.js";
 
 const testConfig = {
   authMode: "test" as const,
@@ -412,6 +421,55 @@ describe("Manuscript routes", () => {
     expect(completeResponse.json()).toMatchObject({
       error: { code: "stale_upload_completion" },
     });
+  });
+
+  it("leaves a pending upload unattached when ingestion job creation fails", async () => {
+    const adminTestState = createAdminTestState();
+    const testState = createManuscriptTestState();
+    const documentId = "10000000-0000-4000-8000-000000000099";
+    const uploadId = "upload-job-failure";
+
+    adminTestState.failIngestionJobDocumentIds = new Set([documentId]);
+    createTestDocument(
+      testState,
+      documentId,
+      uploadId,
+      TEST_AUTHOR_MANUSCRIPT_ID,
+      TEST_USER_ID,
+      "job-failure.txt",
+      "text/plain",
+      11,
+    );
+    await saveLocalUpload({
+      bytes: Buffer.from("hello world"),
+      documentId,
+      fileName: "job-failure.txt",
+      uploadId,
+    });
+
+    await expect(
+      completeAuthorDocumentUpload(
+        { mode: "test" },
+        {
+          adminTestState,
+          authorId: TEST_USER_ID,
+          documentId,
+          testState,
+        },
+      ),
+    ).rejects.toMatchObject({ kind: "storage" });
+
+    expect(testState.documents.find((item) => item.id === documentId)).toMatchObject({
+      storageStatus: "pending_upload",
+      processingStatus: "not_started",
+    });
+    expect(
+      testState.manuscripts.find((item) => item.id === TEST_AUTHOR_MANUSCRIPT_ID)
+        ?.sampleDocumentId,
+    ).toBeNull();
+    expect(
+      adminTestState.jobRuns.find((item) => item.source.includes(documentId)),
+    ).toBeUndefined();
   });
 
   // ─── Download URL ──────────────────────────────────────────────────────────

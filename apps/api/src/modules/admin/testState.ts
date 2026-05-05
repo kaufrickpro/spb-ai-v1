@@ -24,6 +24,7 @@ export type AdminTestState = {
   paymentEvents: AdminPaymentEvent[];
   trustSignals: AdminTrustSignal[];
   auditLogs: AdminAuditLog[];
+  failIngestionJobDocumentIds?: Set<string>;
 };
 
 export function createAdminTestState(): AdminTestState {

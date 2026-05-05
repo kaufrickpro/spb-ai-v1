@@ -18,6 +18,13 @@ Auth ownership:
 - The browser may use Supabase Auth for email/password signup, Google social auth, login, session refresh, and password reset.
 - The Node API owns marketplace profile creation, saved signup intent, onboarding completion, eligibility state, automated review outcomes, and admin bootstrapping.
 - Client-side code must not directly insert or update privileged profile fields.
+- Browser-authenticated users cannot insert `public.profiles` rows directly and
+  cannot update `approval_status`, `eligibility_status`, `review_outcome`, or
+  `eligibility_updated_at`; those fields are changed only by service-role API
+  paths, admin review RPCs, or trusted database automation.
+- Onboarding detail completion is a trusted atomic database transition: the
+  role-specific detail row and profile eligibility/review outcome update must
+  commit or roll back together.
 - Admin access must be granted through trusted Supabase or SQL operations against `public.admin_users`, not through any public UI path.
 - Admin accounts must not complete the public onboarding flow or create `public.profiles` rows.
 - Admin accounts are separate staff identities. V1 does not support one identity being both a marketplace participant and an admin.

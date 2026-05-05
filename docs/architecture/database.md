@@ -18,7 +18,7 @@ The target V1 database supports:
 - PayTR subscription state, payment event audit, and monthly usage tracking.
 - CSV publisher imports for testing and seed data only.
 
-The current executable schema is a clean rebuild baseline. It includes the onboarding/profile slice, role-specific onboarding details, admin review/audit infrastructure, the Step 8 manuscript/document slice, and Step 9 ingestion storage foundations. Helper and trigger functions live in the private schema; the only public RPC is the intentional admin review decision function.
+The current executable schema is a clean rebuild baseline. It includes the onboarding/profile slice, role-specific onboarding details, admin review/audit infrastructure, the Step 8 manuscript/document slice, and Step 9 ingestion storage foundations. Helper and privileged transition functions live in the private schema; public RPC wrappers exist only for intentional atomic transitions such as onboarding detail completion, document upload completion, and admin review decisions.
 
 Out of scope for v1:
 
@@ -152,6 +152,14 @@ Rules:
 - Profiles with `eligibility_status in ('limited', 'blocked', 'quarantined')` must not appear in discovery or matching.
 - `review_outcome` records whether eligibility came from automation or an admin override.
 - Contact fields are visible only to the owner, admins, or accepted intro counterparties.
+- Profile rows are created through the Node API with a service-role Supabase
+  client. Browser-authenticated users may update only ordinary owner profile
+  fields; direct owner writes to `approval_status`, `eligibility_status`,
+  `review_outcome`, or `eligibility_updated_at` are rejected by database guard
+  rails so users cannot self-promote marketplace eligibility.
+- Role-specific onboarding details and the profile eligibility transition are
+  completed through one database RPC. If the eligibility update fails, the
+  author/publisher detail upsert rolls back with it.
 
 ### `admin_users`
 
@@ -912,7 +920,7 @@ Database implementation is not complete until these scenarios pass:
 - Match runs are rate-limited in the API but do not consume monthly quota.
 - PayTR events are idempotent and stored with hash verification status.
 - Publisher CSV data imports into normalized `profiles` and `publisher_profiles`.
-- Automated eligibility transitions and admin override decisions write audit logs. Admin review decisions should continue to use a transaction/RPC pattern like `public.apply_admin_review_decision(...)` so review rows, target lifecycle fields, and audit logs change together.
+- Automated eligibility transitions and admin override decisions write audit logs. Admin review decisions should continue to use a transaction/RPC pattern like `public.apply_admin_review_decision(...)` so review rows, target lifecycle fields, and audit logs change together. The RPC only applies decisions to pending review rows, and profile targets must still be in `limited`/`needs_review` state when decided.
 
 ## Open Implementation Notes
 

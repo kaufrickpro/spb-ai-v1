@@ -347,6 +347,9 @@ describe("first-slice API contracts", () => {
       status: "pending",
       exceptionQueue: "needs_review",
     });
+    expect(queueQuery.limit).toBe(50);
+    expect(AdminReviewQueueQuerySchema.parse({ limit: "25" }).limit).toBe(25);
+    expect(() => AdminReviewQueueQuerySchema.parse({ limit: 101 })).toThrow();
 
     const jobs = AdminJobHealthResponseSchema.parse({
       summary: dashboard.summary.jobHealth,

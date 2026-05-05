@@ -34,6 +34,11 @@ The default admin dashboard should focus on exceptions:
 - Reports: user or staff reports about abuse, suspicious profiles, bad matches, payment concerns, or platform misuse.
 - System Failures: ingestion, matching, PayTR, Resend, Cloud Tasks, quota, and idempotency failures that need retry or investigation.
 
+The admin review queue API is bounded by default and rejects oversized limits.
+Filters must be preserved while applying the bound, and queue ordering must stay
+deterministic so staff do not see duplicate or drifting rows during repeated
+refreshes.
+
 Step 9 ingestion queue policy:
 
 - Do not create admin exceptions for ordinary user-correctable file problems: empty extracted text, unsupported file type during the text-only phase, too-large extracted text, or corrupt/unreadable files.

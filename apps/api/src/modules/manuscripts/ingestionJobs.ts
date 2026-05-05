@@ -7,6 +7,15 @@ import { ManuscriptServiceError } from "./errors.js";
 const INGESTION_VERSION = "ingestion-v1";
 const CHUNKER_VERSION = "paragraph-v1";
 const EMBEDDING_MODEL = "local-reference-v1";
+const INITIAL_INGESTION_METADATA = {
+  ingestion_version: INGESTION_VERSION,
+  chunker: CHUNKER_VERSION,
+  embedding_model: EMBEDDING_MODEL,
+  scanner: "local-none",
+  scanner_result: "not_scanned",
+  failure_code: null,
+  failure_category: null,
+} as const;
 
 export function buildDocumentIngestionIdempotencyKey(input: {
   documentId: string;
@@ -36,6 +45,22 @@ export function buildDocumentIngestionIdempotencyKey(input: {
   ].join(":");
 }
 
+export function buildInitialDocumentIngestionJob(input: {
+  documentId: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  originalFileName: string;
+  uploadId: string;
+}): {
+  idempotencyKey: string;
+  metadata: Record<string, unknown>;
+} {
+  return {
+    idempotencyKey: buildDocumentIngestionIdempotencyKey(input),
+    metadata: { ...INITIAL_INGESTION_METADATA },
+  };
+}
+
 export function queueTestDocumentIngestionJob(
   adminTestState: AdminTestState,
   input: {
@@ -47,7 +72,14 @@ export function queueTestDocumentIngestionJob(
     updatedAt: string;
   },
 ): void {
-  const idempotencyKey = buildDocumentIngestionIdempotencyKey(input);
+  if (adminTestState.failIngestionJobDocumentIds?.has(input.documentId)) {
+    throw new ManuscriptServiceError(
+      "storage",
+      "Failed to queue document ingestion",
+    );
+  }
+
+  const { idempotencyKey } = buildInitialDocumentIngestionJob(input);
   const existing = adminTestState.jobRuns.find(
     (job) =>
       job.jobType === "document_ingestion" &&
@@ -84,7 +116,7 @@ export async function queueSupabaseDocumentIngestionJob(
     uploadId: string;
   },
 ): Promise<void> {
-  const idempotencyKey = buildDocumentIngestionIdempotencyKey(input);
+  const { idempotencyKey, metadata } = buildInitialDocumentIngestionJob(input);
   const { error } = await context.serviceDb
     .from("document_processing_jobs")
     .upsert(
@@ -95,15 +127,7 @@ export async function queueSupabaseDocumentIngestionJob(
         max_attempts: 3,
         idempotency_key: idempotencyKey,
         error_message: null,
-        metadata: {
-          ingestion_version: INGESTION_VERSION,
-          chunker: CHUNKER_VERSION,
-          embedding_model: EMBEDDING_MODEL,
-          scanner: "local-none",
-          scanner_result: "not_scanned",
-          failure_code: null,
-          failure_category: null,
-        },
+        metadata,
       },
       { onConflict: "document_id,idempotency_key" },
     );

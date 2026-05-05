@@ -25,12 +25,14 @@ import {
 import {
   sendInternalServerError,
   sendNotFound,
+  sendValidationError,
 } from "../../lib/http/errors.js";
 import {
   AdminProfileReviewError,
-  applyProfileDecision,
-  applyTestProfileDecision,
+  getPendingProfileReview,
   getPendingProfiles,
+  getProfileById,
+  getTestPendingProfileReview,
   getTestPendingProfiles,
 } from "./profileReviews.js";
 import {
@@ -166,11 +168,28 @@ export function registerAdminRoutes(
 
       if (auth.config.authMode === "test") {
         try {
-          const profile = applyTestProfileDecision(testState, {
-            decision: decisionInput.decision,
+          const review = getTestPendingProfileReview(testState, profileId);
+          const reviewDecisionInput = parseLegacyProfileReviewDecision(
+            decisionInput,
+            reply,
+          );
+          if (!reviewDecisionInput) {
+            return;
+          }
+
+          applyTestAdminReviewDecision(testState, manuscriptTestState, {
+            actorUserId: user.userId,
+            auditLogId: randomUUID(),
+            decision: reviewDecisionInput,
             now: new Date().toISOString(),
-            profileId,
+            reviewId: review.id,
           });
+          const profile = testState.profiles.find(
+            (item) => item.id === profileId,
+          );
+          if (!profile) {
+            return sendNotFound(reply, "Profile not found");
+          }
 
           return reply.send({ profile });
         } catch (error) {
@@ -178,7 +197,7 @@ export function registerAdminRoutes(
             error instanceof AdminProfileReviewError &&
             error.kind === "not_found"
           ) {
-            return sendNotFound(reply, "Profile not found");
+            return sendNotFound(reply, error.message);
           }
 
           app.log.error(error, "Failed to apply test profile decision");
@@ -186,13 +205,24 @@ export function registerAdminRoutes(
         }
       }
 
-      const db = createAdminServiceDb(auth);
+      const db = createAdminUserDb(auth, user);
 
       try {
-        const profile = await applyProfileDecision(db, {
-          decision: decisionInput.decision,
-          profileId,
+        const review = await getPendingProfileReview(db, profileId);
+        const reviewDecisionInput = parseLegacyProfileReviewDecision(
+          decisionInput,
+          reply,
+        );
+        if (!reviewDecisionInput) {
+          return;
+        }
+
+        await applyAdminReviewDecision(db, {
+          actorUserId: user.userId,
+          decision: reviewDecisionInput,
+          reviewId: review.id,
         });
+        const profile = await getProfileById(db, profileId);
 
         return reply.send({ profile });
       } catch (error) {
@@ -200,7 +230,11 @@ export function registerAdminRoutes(
           error instanceof AdminProfileReviewError &&
           error.kind === "not_found"
         ) {
-          return sendNotFound(reply, "Profile not found");
+          return sendNotFound(reply, error.message);
+        }
+        if (error instanceof AdminReviewDecisionError) {
+          const sent = sendAdminReviewDecisionError(reply, error);
+          if (sent) return sent;
         }
 
         app.log.error(error, "Failed to apply profile decision");
@@ -468,4 +502,29 @@ export function registerAdminRoutes(
       return sendInternalServerError(reply);
     }
   });
+}
+
+function parseLegacyProfileReviewDecision(
+  input: {
+    decision: "approved" | "rejected";
+    internalNote?: string;
+    rejectionNote?: string;
+  },
+  reply: Parameters<typeof sendValidationError>[0],
+) {
+  const parsed = AdminReviewDecisionRequestSchema.safeParse({
+    decision: input.decision,
+    internalNote: input.internalNote,
+    rejectionNote: input.rejectionNote,
+  });
+  if (!parsed.success) {
+    sendValidationError(
+      reply,
+      "Invalid admin profile decision",
+      parsed.error.issues,
+    );
+    return null;
+  }
+
+  return parsed.data;
 }
