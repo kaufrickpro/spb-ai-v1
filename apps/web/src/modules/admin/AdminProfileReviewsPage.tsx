@@ -210,6 +210,13 @@ export function AdminProfileReviewsPage() {
               <div className="px-4 py-8 text-sm text-slate-600">
                 {t("common.loading")}
               </div>
+            ) : queueQuery.isError ? (
+              <div
+                role="alert"
+                className="px-4 py-8 text-sm font-medium text-rose-700"
+              >
+                {getApiErrorMessage(queueQuery.error)}
+              </div>
             ) : reviews.length === 0 ? (
               <div className="px-4 py-8 text-sm text-slate-600">
                 {t("admin.queue.empty")}
@@ -301,6 +308,13 @@ export function AdminProfileReviewsPage() {
             ) : detailQuery.isPending ? (
               <p className="mt-4 text-sm text-slate-600">
                 {t("common.loading")}
+              </p>
+            ) : detailQuery.isError ? (
+              <p
+                role="alert"
+                className="mt-4 text-sm font-medium text-rose-700"
+              >
+                {getApiErrorMessage(detailQuery.error)}
               </p>
             ) : detailQuery.data ? (
               <div className="mt-4 space-y-5">

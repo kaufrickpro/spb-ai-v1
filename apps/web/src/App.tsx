@@ -28,6 +28,7 @@ import { ManuscriptDetailPage } from "./modules/manuscripts/ManuscriptDetailPage
 import { AppPlaceholderPage } from "./modules/layout/AppPlaceholderPage";
 import { AdminSettingsPage } from "./modules/admin/AdminSettingsPage";
 import { ProfilePage } from "./modules/profile/ProfilePage";
+import { LegalPage } from "./modules/legal/LegalPage";
 
 export function App() {
   return (
@@ -39,6 +40,42 @@ export function App() {
       <Route path={WEB_ROUTES.editorial} element={<HomePage />} />
       <Route path={WEB_ROUTES.works} element={<HomePage />} />
       <Route path={WEB_ROUTES.pricing} element={<HomePage />} />
+      <Route
+        path={WEB_ROUTES.terms}
+        element={
+          <LegalPage
+            titleKey="legal.terms.title"
+            descriptionKey="legal.terms.description"
+          />
+        }
+      />
+      <Route
+        path={WEB_ROUTES.privacy}
+        element={
+          <LegalPage
+            titleKey="legal.privacy.title"
+            descriptionKey="legal.privacy.description"
+          />
+        }
+      />
+      <Route
+        path={WEB_ROUTES.kvkk}
+        element={
+          <LegalPage
+            titleKey="legal.kvkk.title"
+            descriptionKey="legal.kvkk.description"
+          />
+        }
+      />
+      <Route
+        path={WEB_ROUTES.cookies}
+        element={
+          <LegalPage
+            titleKey="legal.cookies.title"
+            descriptionKey="legal.cookies.description"
+          />
+        }
+      />
 
       {/* Guest-only: redirect away if already authenticated */}
       <Route
@@ -59,7 +96,10 @@ export function App() {
         }
       />
       <Route path={WEB_ROUTES.authCallback} element={<AuthCallbackPage />} />
-      <Route path={WEB_ROUTES.forgotPassword} element={<ForgotPasswordPage />} />
+      <Route
+        path={WEB_ROUTES.forgotPassword}
+        element={<ForgotPasswordPage />}
+      />
       <Route path={WEB_ROUTES.resetPassword} element={<ResetPasswordPage />} />
       <Route
         path={WEB_ROUTES.checkEmail}
@@ -146,6 +186,39 @@ export function App() {
             <AppPlaceholderPage
               titleKey="appNav.matches"
               descriptionKey="appPages.matches.description"
+            />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path={WEB_ROUTES.matchCandidate}
+        element={
+          <AuthGuard>
+            <AppPlaceholderPage
+              titleKey="appPages.matchCandidate.title"
+              descriptionKey="appPages.matchCandidate.description"
+            />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path={WEB_ROUTES.discoverAuthors}
+        element={
+          <AuthGuard>
+            <AppPlaceholderPage
+              titleKey="appPages.discoverAuthors.title"
+              descriptionKey="appPages.discoverAuthors.description"
+            />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path={WEB_ROUTES.discoverPublishers}
+        element={
+          <AuthGuard>
+            <AppPlaceholderPage
+              titleKey="appPages.discoverPublishers.title"
+              descriptionKey="appPages.discoverPublishers.description"
             />
           </AuthGuard>
         }

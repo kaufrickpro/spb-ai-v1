@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ApiRoutes, type AdminEntityType } from "@marketplace/contracts";
@@ -17,6 +17,7 @@ type DecisionInput = {
 };
 
 type ReviewTab = "all" | AdminEntityType;
+type Translate = ReturnType<typeof useTranslation>["t"];
 
 const reviewTabs: Array<{ value: ReviewTab; labelKey: string }> = [
   { value: "all", labelKey: "admin.tabs.all" },
@@ -35,14 +36,33 @@ const adminSectionLinks = [
   { to: WEB_ROUTES.adminSettings, key: "settings" },
 ] as const;
 
+function formatReviewSummary(summary: string, t: Translate) {
+  const manuscriptMatch = summary.match(/^New manuscript submitted: (.+)$/);
+  if (manuscriptMatch) {
+    return t("admin.queue.summaries.newManuscript", {
+      title: manuscriptMatch[1],
+    });
+  }
+
+  return summary;
+}
+
 export function AdminDashboardPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<ReviewTab>("all");
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [rejectionNote, setRejectionNote] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const dateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(i18n.resolvedLanguage === "en" ? "en" : "tr", {
+        dateStyle: "short",
+        timeStyle: "medium",
+      }),
+    [i18n.resolvedLanguage],
+  );
 
   const dashboardQuery = useQuery({
     queryKey: ["admin", "dashboard"],
@@ -281,45 +301,25 @@ export function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {queue.map((review) => (
-                  <tr
-                    key={review.id}
-                    className="border-t border-slate-100 hover:bg-slate-50"
-                  >
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-slate-900">
-                        {review.entityType}
-                      </p>
-                      <p className="text-xs text-slate-500">{review.summary}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      {t(`admin.exceptionQueues.${review.exceptionQueue}`)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {t(
-                        `admin.eligibilityStatuses.${review.eligibilityStatus}`,
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{review.riskLevel}</td>
-                    <td className="px-4 py-3">
-                      {new Date(review.submittedAt).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-slate-100"
-                        onClick={() => {
-                          setSelectedReviewId(review.id);
-                          setIsDrawerOpen(true);
-                          setActionError(null);
-                        }}
-                      >
-                        {t("admin.queue.open")}
-                      </button>
+                {queueQuery.isPending ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-6 text-center text-slate-500"
+                    >
+                      {t("common.loading")}
                     </td>
                   </tr>
-                ))}
-                {queue.length === 0 ? (
+                ) : queueQuery.isError ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-6 text-center font-medium text-rose-700"
+                    >
+                      {getApiErrorMessage(queueQuery.error)}
+                    </td>
+                  </tr>
+                ) : queue.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -328,7 +328,50 @@ export function AdminDashboardPage() {
                       {t("admin.queue.empty")}
                     </td>
                   </tr>
-                ) : null}
+                ) : (
+                  queue.map((review) => (
+                    <tr
+                      key={review.id}
+                      className="border-t border-slate-100 hover:bg-slate-50"
+                    >
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-slate-900">
+                          {t(`admin.entityTypes.${review.entityType}`)}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {formatReviewSummary(review.summary, t)}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {t(`admin.exceptionQueues.${review.exceptionQueue}`)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {t(
+                          `admin.eligibilityStatuses.${review.eligibilityStatus}`,
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {t(`admin.riskLevels.${review.riskLevel}`)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {dateFormatter.format(new Date(review.submittedAt))}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-slate-100"
+                          onClick={() => {
+                            setSelectedReviewId(review.id);
+                            setIsDrawerOpen(true);
+                            setActionError(null);
+                          }}
+                        >
+                          {t("admin.queue.open")}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

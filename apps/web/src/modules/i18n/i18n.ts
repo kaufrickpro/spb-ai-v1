@@ -265,6 +265,28 @@ void i18n.use(initReactI18next).init({
               "{{section}} will expand as the platform adds deeper workflows and discovery tools.",
           },
         },
+        legal: {
+          terms: {
+            title: "Terms of service",
+            description:
+              "This public terms page is a placeholder for the launch legal text. The final version will describe account responsibilities, marketplace usage rules, subscription terms, and service limitations.",
+          },
+          privacy: {
+            title: "Privacy policy",
+            description:
+              "This public privacy page is a placeholder for the launch privacy text. The final version will describe what data is collected, how it is processed, retention periods, and user rights.",
+          },
+          kvkk: {
+            title: "KVKK disclosure",
+            description:
+              "This public KVKK page is a placeholder for the launch disclosure text. The final version will describe personal data processing under Türkiye's KVKK requirements.",
+          },
+          cookies: {
+            title: "Cookie policy",
+            description:
+              "This public cookie page is a placeholder for the launch cookie text. The final version will describe necessary cookies, analytics choices, and retention.",
+          },
+        },
         dashboard: {
           title: "Dashboard",
           welcome: "Signed in as",
@@ -275,6 +297,9 @@ void i18n.use(initReactI18next).init({
             "Approval is only required before your profile appears in discovery. Your basic profile is already saved.",
           openManuscripts: "Open projects",
           backToDashboard: "Back to dashboard",
+          profileError: {
+            title: "We couldn't load your profile",
+          },
           cards: {
             manuscripts: {
               title: "Manage manuscripts",
@@ -301,6 +326,21 @@ void i18n.use(initReactI18next).init({
           matches: {
             description:
               "Match runs and candidate insights will appear here once matching workflows are enabled for your account.",
+          },
+          matchCandidate: {
+            title: "Match candidate",
+            description:
+              "Candidate fit details will appear here once match detail workflows are enabled for your account.",
+          },
+          discoverAuthors: {
+            title: "Discover authors",
+            description:
+              "Publisher discovery for eligible author profiles will appear here once directory workflows are enabled.",
+          },
+          discoverPublishers: {
+            title: "Discover publishers",
+            description:
+              "Author discovery for eligible publisher profiles will appear here once directory workflows are enabled.",
           },
           requests: {
             description:
@@ -433,6 +473,8 @@ void i18n.use(initReactI18next).init({
             eligibility: "Eligibility",
             sampleDocument: "Sample document",
             noDocument: "No sample uploaded yet.",
+            sampleLoading: "Loading sample details...",
+            sampleLoadError: "We couldn't load this sample. Please try again.",
             uploadCta: "Upload sample",
             replaceCta: "Replace sample",
             downloadCta: "Download sample",
@@ -606,6 +648,9 @@ void i18n.use(initReactI18next).init({
             action: "Action",
             open: "Open",
             empty: "No exceptions waiting for action.",
+            summaries: {
+              newManuscript: "New manuscript submitted: {{title}}",
+            },
           },
           detail: {
             title: "Review detail",
@@ -635,6 +680,7 @@ void i18n.use(initReactI18next).init({
             summaryQueued: "Queued jobs",
             summaryRunning: "Running jobs",
             summaryFailed: "Failed jobs",
+            empty: "No recent job runs.",
           },
           payments: {
             title: "Payment health",
@@ -646,6 +692,7 @@ void i18n.use(initReactI18next).init({
               "Read-only visibility into recent payment events and operational failures.",
             summaryFailures: "Recent failures",
             summaryLastEvent: "Last payment event",
+            empty: "No recent payment events.",
           },
           trust: {
             title: "Trust & safety signals",
@@ -1103,6 +1150,28 @@ void i18n.use(initReactI18next).init({
               "{{section}} alanı, platforma yeni iş akışları ve keşif araçları eklendikçe genişleyecek.",
           },
         },
+        legal: {
+          terms: {
+            title: "Kullanım şartları",
+            description:
+              "Bu herkese açık kullanım şartları sayfası, lansman hukuki metni için geçici bir yer tutucudur. Son sürüm hesap sorumluluklarını, pazar yeri kullanım kurallarını, abonelik koşullarını ve hizmet sınırlarını açıklayacak.",
+          },
+          privacy: {
+            title: "Gizlilik politikası",
+            description:
+              "Bu herkese açık gizlilik sayfası, lansman gizlilik metni için geçici bir yer tutucudur. Son sürüm hangi verilerin toplandığını, nasıl işlendiğini, saklama sürelerini ve kullanıcı haklarını açıklayacak.",
+          },
+          kvkk: {
+            title: "KVKK aydınlatma metni",
+            description:
+              "Bu herkese açık KVKK sayfası, lansman aydınlatma metni için geçici bir yer tutucudur. Son sürüm Türkiye'deki KVKK gereklilikleri kapsamında kişisel veri işleme süreçlerini açıklayacak.",
+          },
+          cookies: {
+            title: "Çerez politikası",
+            description:
+              "Bu herkese açık çerez sayfası, lansman çerez metni için geçici bir yer tutucudur. Son sürüm zorunlu çerezleri, analiz tercihlerini ve saklama sürelerini açıklayacak.",
+          },
+        },
         dashboard: {
           title: "Panel",
           welcome: "Giriş yapıldı:",
@@ -1113,6 +1182,9 @@ void i18n.use(initReactI18next).init({
             "Profiliniz keşifte görünmeden önce yönetici onayı alacak. Temel profiliniz ise zaten kaydedildi.",
           openManuscripts: "Projelerimi aç",
           backToDashboard: "Panele dön",
+          profileError: {
+            title: "Profiliniz yüklenemedi",
+          },
           cards: {
             manuscripts: {
               title: "Manuskriptleri yönet",
@@ -1140,6 +1212,21 @@ void i18n.use(initReactI18next).init({
           matches: {
             description:
               "Eşleştirme iş akışları hesabınızda açıldığında koşular ve aday içgörüleri burada listelenecek.",
+          },
+          matchCandidate: {
+            title: "Eşleşme adayı",
+            description:
+              "Eşleşme detay iş akışları açıldığında aday uyum detayları burada görünecek.",
+          },
+          discoverAuthors: {
+            title: "Yazarları keşfet",
+            description:
+              "Uygun yazar profilleri için yayıncı keşif akışları açıldığında bu dizin burada görünecek.",
+          },
+          discoverPublishers: {
+            title: "Yayıncıları keşfet",
+            description:
+              "Uygun yayıncı profilleri için yazar keşif akışları açıldığında bu dizin burada görünecek.",
           },
           requests: {
             description:
@@ -1276,6 +1363,8 @@ void i18n.use(initReactI18next).init({
             eligibility: "Uygunluk",
             sampleDocument: "Örnek belge",
             noDocument: "Henüz örnek yüklenmedi.",
+            sampleLoading: "Örnek ayrıntıları yükleniyor...",
+            sampleLoadError: "Bu örneği yükleyemedik. Lütfen tekrar deneyin.",
             uploadCta: "Örnek yükle",
             replaceCta: "Örneği değiştir",
             downloadCta: "Örneği indir",
@@ -1449,6 +1538,9 @@ void i18n.use(initReactI18next).init({
             action: "Aksiyon",
             open: "Aç",
             empty: "İşlem bekleyen istisna yok.",
+            summaries: {
+              newManuscript: "Yeni manuskript gönderildi: {{title}}",
+            },
           },
           detail: {
             title: "İnceleme detayı",
@@ -1478,6 +1570,7 @@ void i18n.use(initReactI18next).init({
             summaryQueued: "Kuyruktaki işler",
             summaryRunning: "Çalışan işler",
             summaryFailed: "Başarısız işler",
+            empty: "Yakın zamanda iş çalışması yok.",
           },
           payments: {
             title: "Ödeme sağlığı",
@@ -1489,6 +1582,7 @@ void i18n.use(initReactI18next).init({
               "Son ödeme olayları ve operasyonel hatalar için salt okunur görünürlük.",
             summaryFailures: "Son hatalar",
             summaryLastEvent: "Son ödeme olayı",
+            empty: "Yakın zamanda ödeme olayı yok.",
           },
           trust: {
             title: "Güvenlik sinyalleri",

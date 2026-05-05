@@ -6,6 +6,10 @@ export const WEB_ROUTES = {
   editorial: "/editorial",
   works: "/works",
   pricing: "/pricing",
+  terms: "/terms",
+  privacy: "/privacy",
+  kvkk: "/kvkk",
+  cookies: "/cookies",
   login: "/login",
   adminLogin: "/admin/login",
   signup: "/signup",
@@ -21,6 +25,9 @@ export const WEB_ROUTES = {
   manuscripts: "/app/manuscripts",
   manuscriptDetail: "/app/manuscripts/:id",
   matches: "/app/matches",
+  matchCandidate: "/app/matches/:matchRunId/candidates/:candidateId",
+  discoverAuthors: "/app/discover/authors",
+  discoverPublishers: "/app/discover/publishers",
   requests: "/app/requests",
   billing: "/app/billing",
   profile: "/app/profile",
@@ -38,8 +45,95 @@ export const WEB_ROUTES = {
   adminSettings: "/admin/settings",
 } as const;
 
+export const DOCUMENTED_PUBLIC_ROUTES = [
+  WEB_ROUTES.root,
+  WEB_ROUTES.features,
+  WEB_ROUTES.pricing,
+  WEB_ROUTES.publishers,
+  WEB_ROUTES.authors,
+  WEB_ROUTES.editorial,
+  WEB_ROUTES.works,
+  WEB_ROUTES.login,
+  WEB_ROUTES.signup,
+  WEB_ROUTES.authCallback,
+  WEB_ROUTES.forgotPassword,
+  WEB_ROUTES.terms,
+  WEB_ROUTES.privacy,
+  WEB_ROUTES.kvkk,
+  WEB_ROUTES.cookies,
+] as const;
+
+export const DOCUMENTED_APP_ROUTES = [
+  WEB_ROUTES.onboarding,
+  WEB_ROUTES.dashboard,
+  WEB_ROUTES.manuscripts,
+  WEB_ROUTES.manuscriptDetail,
+  WEB_ROUTES.matches,
+  WEB_ROUTES.matchCandidate,
+  WEB_ROUTES.discoverAuthors,
+  WEB_ROUTES.discoverPublishers,
+  WEB_ROUTES.requests,
+  WEB_ROUTES.profile,
+  WEB_ROUTES.billing,
+  WEB_ROUTES.settings,
+] as const;
+
+export const APP_REGISTERED_ROUTE_PATHS = [
+  WEB_ROUTES.root,
+  WEB_ROUTES.features,
+  WEB_ROUTES.publishers,
+  WEB_ROUTES.authors,
+  WEB_ROUTES.editorial,
+  WEB_ROUTES.works,
+  WEB_ROUTES.pricing,
+  WEB_ROUTES.terms,
+  WEB_ROUTES.privacy,
+  WEB_ROUTES.kvkk,
+  WEB_ROUTES.cookies,
+  WEB_ROUTES.login,
+  WEB_ROUTES.adminLogin,
+  WEB_ROUTES.signup,
+  WEB_ROUTES.authCallback,
+  WEB_ROUTES.forgotPassword,
+  WEB_ROUTES.resetPassword,
+  WEB_ROUTES.checkEmail,
+  WEB_ROUTES.onboarding,
+  WEB_ROUTES.onboardingAuthorDetails,
+  WEB_ROUTES.onboardingPublisherDetails,
+  WEB_ROUTES.signupComplete,
+  WEB_ROUTES.dashboard,
+  WEB_ROUTES.manuscripts,
+  WEB_ROUTES.manuscriptDetail,
+  WEB_ROUTES.admin,
+  WEB_ROUTES.adminMfa,
+  WEB_ROUTES.matches,
+  WEB_ROUTES.matchCandidate,
+  WEB_ROUTES.discoverAuthors,
+  WEB_ROUTES.discoverPublishers,
+  WEB_ROUTES.requests,
+  WEB_ROUTES.billing,
+  WEB_ROUTES.profile,
+  WEB_ROUTES.settings,
+  WEB_ROUTES.adminReviews,
+  WEB_ROUTES.adminUsers,
+  WEB_ROUTES.adminManuscripts,
+  WEB_ROUTES.adminPublishers,
+  WEB_ROUTES.adminTrustSafety,
+  WEB_ROUTES.adminJobs,
+  WEB_ROUTES.adminPayments,
+  WEB_ROUTES.adminAuditLogs,
+  WEB_ROUTES.adminSettings,
+] as const;
+
 export function manuscriptDetailPath(id: string): string {
   return `/app/manuscripts/${id}`;
+}
+
+export function matchCandidatePath(input: {
+  matchRunId: string;
+  candidateId: string;
+}): string {
+  return `/app/matches/${input.matchRunId}/candidates/${input.candidateId}`;
 }
 
 export function onboardingDetailsPath(role: "author" | "publisher"): string {

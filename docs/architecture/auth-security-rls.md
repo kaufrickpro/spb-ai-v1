@@ -29,6 +29,8 @@ Auth ownership:
 - Admin accounts must not complete the public onboarding flow or create `public.profiles` rows.
 - Admin accounts are separate staff identities. V1 does not support one identity being both a marketplace participant and an admin.
 - Staff users sign in through `/admin/login`. The marketplace `/login` route is for author and publisher accounts and redirects staff accounts to the staff entry point.
+- The public `/auth/callback` route is not a staff landing route. If a staff identity reaches it, the frontend clears signup state, signs out, and redirects to `/admin/login?reason=staff` instead of opening `/admin` or `/admin/mfa`.
+- The public `/signup` wizard must not render for any staff membership state. `allowed` staff sessions go to `/admin`, `mfa_required` sessions go to `/admin/mfa`, and `revoked` sessions go back to staff login.
 - Admin sessions must satisfy TOTP MFA before protected admin routes are usable in staging and production. Membership alone is not enough.
 - Local development may seed a known local-only admin account with `public.admin_users.note = 'local_admin_seed'`; only this local seeded admin path may bypass MFA, and only when `APP_CONFIG_MODE=local`.
 

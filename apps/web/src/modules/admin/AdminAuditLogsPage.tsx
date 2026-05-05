@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiRoutes } from "@marketplace/contracts";
 import { useTranslation } from "react-i18next";
 import { AdminShell } from "./AdminShell";
-import { webApiClient } from "../api/client";
+import { getApiErrorMessage, webApiClient } from "../api/client";
 
 export function AdminAuditLogsPage() {
   const { t, i18n } = useTranslation();
@@ -72,6 +72,13 @@ export function AdminAuditLogsPage() {
           {auditQuery.isPending ? (
             <div className="px-4 py-8 text-sm text-slate-600">
               {t("common.loading")}
+            </div>
+          ) : auditQuery.isError ? (
+            <div
+              role="alert"
+              className="px-4 py-8 text-sm font-medium text-rose-700"
+            >
+              {getApiErrorMessage(auditQuery.error)}
             </div>
           ) : logs.length === 0 ? (
             <div className="px-4 py-8 text-sm text-slate-600">

@@ -101,23 +101,32 @@ export function buildReviewRelatedEvents(row: Record<string, unknown>) {
           : entityType === "manuscript"
             ? "Metadata submitted"
             : "Review submitted",
-      createdAt: submittedAt,
+      createdAt: normalizeDbDateTime(submittedAt),
     });
   }
 
   if (entityType === "document" && submittedAt) {
     events.push({
       label: "Processing pending",
-      createdAt: submittedAt,
+      createdAt: normalizeDbDateTime(submittedAt),
     });
   }
 
   if (decidedAt && (status === "approved" || status === "rejected")) {
     events.push({
       label: `Prior decision: ${status}`,
-      createdAt: decidedAt,
+      createdAt: normalizeDbDateTime(decidedAt),
     });
   }
 
   return events;
+}
+
+function normalizeDbDateTime(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toISOString();
 }

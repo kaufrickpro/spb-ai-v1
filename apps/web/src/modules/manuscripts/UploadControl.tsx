@@ -1,7 +1,10 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUploadSample } from "./useManuscripts";
-import { MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES } from "@marketplace/contracts";
+import {
+  MAX_FILE_SIZE_BYTES,
+  ALLOWED_MIME_TYPES,
+} from "@marketplace/contracts";
 
 type Props = {
   manuscriptId: string;
@@ -14,18 +17,27 @@ export function UploadControl({ manuscriptId, hasExistingDocument }: Props) {
   const [localError, setLocalError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState(false);
   const uploadMutation = useUploadSample(manuscriptId);
+  const isUploading = uploadMutation.isPending;
 
   function validateFile(file: File): string | null {
     if (file.size > MAX_FILE_SIZE_BYTES) {
       return t("manuscripts.upload.errorSize");
     }
-    if (!ALLOWED_MIME_TYPES.includes(file.type as typeof ALLOWED_MIME_TYPES[number])) {
+    if (
+      !ALLOWED_MIME_TYPES.includes(
+        file.type as (typeof ALLOWED_MIME_TYPES)[number],
+      )
+    ) {
       return t("manuscripts.upload.errorType");
     }
     return null;
   }
 
   async function handleFile(file: File) {
+    if (isUploading) {
+      return;
+    }
+
     setLocalError(null);
     setSuccessMsg(false);
     const validationError = validateFile(file);
@@ -44,18 +56,23 @@ export function UploadControl({ manuscriptId, hasExistingDocument }: Props) {
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
+    if (isUploading) {
+      return;
+    }
     const file = e.dataTransfer.files[0];
     if (file) void handleFile(file);
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (isUploading) {
+      e.target.value = "";
+      return;
+    }
     const file = e.target.files?.[0];
     if (file) void handleFile(file);
     // Reset so the same file can be re-selected if needed
     e.target.value = "";
   }
-
-  const isUploading = uploadMutation.isPending;
 
   return (
     <div className="space-y-3">
@@ -83,7 +100,9 @@ export function UploadControl({ manuscriptId, hasExistingDocument }: Props) {
         }`}
       >
         {isUploading ? (
-          <p className="text-sm text-slate-500">{t("manuscripts.upload.uploading")}</p>
+          <p className="text-sm text-slate-500">
+            {t("manuscripts.upload.uploading")}
+          </p>
         ) : (
           <>
             <p className="text-center text-sm text-slate-600">
@@ -103,6 +122,7 @@ export function UploadControl({ manuscriptId, hasExistingDocument }: Props) {
         className="sr-only"
         id="upload-file-input"
         aria-hidden="true"
+        disabled={isUploading}
         onChange={handleInputChange}
       />
 

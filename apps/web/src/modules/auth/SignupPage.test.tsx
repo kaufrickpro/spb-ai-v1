@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SignupPage } from "./SignupPage";
+import { WEB_ROUTES } from "../routing/routes";
 
 const mockUseAuth = vi.fn();
 const mockUseAdminSurface = vi.fn();
@@ -18,6 +19,20 @@ vi.mock("../admin/useAdminSurface", () => ({
 vi.mock("../profile/useMarketplaceProfile", () => ({
   useMarketplaceProfile: () => mockUseMarketplaceProfile(),
 }));
+
+vi.mock("react-router-dom", async () => {
+  const React = await vi.importActual<typeof import("react")>("react");
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+
+  return {
+    ...actual,
+    Navigate: ({ to }: { to: string }) =>
+      React.createElement("span", { "data-navigate-to": to }),
+  };
+});
 
 vi.mock("../supabase/client", () => ({
   supabase: {
@@ -103,5 +118,50 @@ describe("SignupPage", () => {
     );
 
     expect(markup).not.toContain("auth.social.google");
+  });
+
+  it("routes MFA-required staff sessions to admin MFA instead of rendering signup", () => {
+    mockUseAdminSurface.mockReturnValue({
+      canRenderAdminSurface: false,
+      hasAdminAccess: false,
+      hasAdminMembership: true,
+      isLoading: false,
+      requiresLogin: false,
+      requiresMfa: true,
+      state: "mfa_required",
+    });
+
+    const markup = renderToStaticMarkup(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <SignupPage />
+      </MemoryRouter>,
+    );
+
+    expect(markup).toContain(`data-navigate-to="${WEB_ROUTES.adminMfa}"`);
+    expect(markup).not.toContain("Step 1 of 3");
+  });
+
+  it("routes revoked staff sessions to staff login instead of rendering signup", () => {
+    mockUseAdminSurface.mockReturnValue({
+      canRenderAdminSurface: false,
+      hasAdminAccess: false,
+      hasAdminMembership: true,
+      isLoading: false,
+      isRevoked: true,
+      requiresLogin: false,
+      requiresMfa: false,
+      state: "revoked",
+    });
+
+    const markup = renderToStaticMarkup(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <SignupPage />
+      </MemoryRouter>,
+    );
+
+    expect(markup).toContain(
+      `data-navigate-to="${WEB_ROUTES.adminLogin}?reason=staff"`,
+    );
+    expect(markup).not.toContain("Step 1 of 3");
   });
 });

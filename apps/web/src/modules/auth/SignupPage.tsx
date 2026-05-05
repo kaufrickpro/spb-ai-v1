@@ -66,7 +66,10 @@ export function SignupPage() {
   const { session, user } = useAuth();
   const adminSurface = useAdminSurface();
   const profileQuery = useMarketplaceProfile({
-    enabled: Boolean(session) && !adminSurface.isLoading,
+    enabled:
+      Boolean(session) &&
+      !adminSurface.isLoading &&
+      !adminSurface.hasAdminMembership,
   });
   const locale = resolveSignupLocale(i18n.resolvedLanguage ?? i18n.language);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +122,14 @@ export function SignupPage() {
 
   if (adminSurface.hasAdminAccess) {
     return <Navigate to={WEB_ROUTES.admin} replace />;
+  }
+
+  if (adminSurface.requiresMfa) {
+    return <Navigate to={WEB_ROUTES.adminMfa} replace />;
+  }
+
+  if (adminSurface.hasAdminMembership) {
+    return <Navigate to={`${WEB_ROUTES.adminLogin}?reason=staff`} replace />;
   }
 
   if (session && (profileQuery.isPending || adminSurface.isLoading)) {

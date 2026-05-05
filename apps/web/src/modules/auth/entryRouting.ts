@@ -1,6 +1,8 @@
 import type { AdminAccessStatus } from "@marketplace/contracts";
 import { WEB_ROUTES } from "../routing/routes";
 
+export const PUBLIC_STAFF_AUTH_REDIRECT = `${WEB_ROUTES.adminLogin}?reason=staff`;
+
 export function resolveAuthenticatedLandingRoute(input: {
   hasAdminAccess: boolean;
   hasProfile: boolean;
@@ -22,4 +24,8 @@ export function resolveAdminLandingRoute(status: AdminAccessStatus) {
   }
 
   return WEB_ROUTES.adminLogin;
+}
+
+export function resolvePublicStaffAuthRoute() {
+  return PUBLIC_STAFF_AUTH_REDIRECT;
 }

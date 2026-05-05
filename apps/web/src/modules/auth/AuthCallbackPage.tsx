@@ -10,6 +10,7 @@ import { PlatformHeader } from "../layout/PlatformHeader";
 import { WEB_ROUTES } from "../routing/routes";
 import { resolvePostAuthRoute } from "./postAuthRouting";
 import { getApiErrorMessage } from "../api/client";
+import { supabase } from "../supabase/client";
 
 export function AuthCallbackPage() {
   const { t } = useTranslation();
@@ -36,7 +37,11 @@ export function AuthCallbackPage() {
       setLastAuthMethod(provider);
     }
 
-    void resolvePostAuthRoute({ allowAdminLanding: true })
+    void resolvePostAuthRoute({
+      onPublicStaffSession: async () => {
+        await supabase.auth.signOut();
+      },
+    })
       .then((nextRoute) => {
         void navigate(nextRoute, { replace: true });
       })

@@ -1,6 +1,7 @@
 import { ApiRoutes, CreateProfileRequestSchema } from "@marketplace/contracts";
 import { getApiErrorCode, webApiClient } from "../api/client";
 import {
+  resolvePublicStaffAuthRoute,
   resolveAdminLandingRoute,
   resolveAuthenticatedLandingRoute,
 } from "./entryRouting";
@@ -8,6 +9,7 @@ import { clearSignupDraft, loadSignupDraft } from "./authFlowStorage";
 
 export async function resolvePostAuthRoute(input?: {
   allowAdminLanding?: boolean;
+  onPublicStaffSession?: () => Promise<void> | void;
 }) {
   const adminResponse = await webApiClient.request(ApiRoutes.admin.access);
   if (adminResponse.status !== "no_access") {
@@ -16,10 +18,8 @@ export async function resolvePostAuthRoute(input?: {
       return resolveAdminLandingRoute(adminResponse.status);
     }
 
-    return resolveAuthenticatedLandingRoute({
-      hasAdminAccess: true,
-      hasProfile: false,
-    });
+    await input?.onPublicStaffSession?.();
+    return resolvePublicStaffAuthRoute();
   }
 
   try {
@@ -31,9 +31,8 @@ export async function resolvePostAuthRoute(input?: {
     });
   } catch (error) {
     if (getApiErrorCode(error) === "not_found") {
-      const savedDraft = CreateProfileRequestSchema.safeParse(
-        loadSignupDraft(),
-      );
+      const savedDraft =
+        CreateProfileRequestSchema.safeParse(loadSignupDraft());
 
       if (savedDraft.success) {
         try {

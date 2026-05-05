@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiRoutes } from "@marketplace/contracts";
 import { useTranslation } from "react-i18next";
 import { AdminShell } from "./AdminShell";
-import { webApiClient } from "../api/client";
+import { getApiErrorMessage, webApiClient } from "../api/client";
 
 export function AdminTrustSafetyPage() {
   const { t, i18n } = useTranslation();
@@ -68,6 +68,13 @@ export function AdminTrustSafetyPage() {
           {trustQuery.isPending ? (
             <div className="px-4 py-8 text-sm text-slate-600">
               {t("common.loading")}
+            </div>
+          ) : trustQuery.isError ? (
+            <div
+              role="alert"
+              className="px-4 py-8 text-sm font-medium text-rose-700"
+            >
+              {getApiErrorMessage(trustQuery.error)}
             </div>
           ) : (trustQuery.data?.signals?.length ?? 0) === 0 ? (
             <div className="px-4 py-8 text-sm text-slate-600">

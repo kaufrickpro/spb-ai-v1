@@ -34,9 +34,11 @@ export function mapDbAdminReview(
     decisionNote:
       typeof row.rejection_note === "string" ? row.rejection_note : null,
     lastSignalAt:
-      typeof row.last_signal_at === "string" ? row.last_signal_at : null,
-    submittedAt: row.submitted_at,
-    updatedAt: row.updated_at,
+      typeof row.last_signal_at === "string"
+        ? toContractDateTime(row.last_signal_at)
+        : null,
+    submittedAt: toContractDateTime(row.submitted_at),
+    updatedAt: toContractDateTime(row.updated_at),
   });
 }
 
@@ -50,7 +52,7 @@ export function mapDbAdminAuditLog(
     targetType: row.target_type,
     targetId: row.target_id,
     metadata: row.metadata,
-    createdAt: row.created_at,
+    createdAt: toContractDateTime(row.created_at),
   });
 }
 
@@ -68,8 +70,8 @@ export function mapDbAdminJobRun(row: Record<string, unknown>): AdminJobRun {
     attemptCount:
       typeof row.attempt_count === "number" ? row.attempt_count : null,
     maxAttempts: typeof row.max_attempts === "number" ? row.max_attempts : null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: toContractDateTime(row.created_at),
+    updatedAt: toContractDateTime(row.updated_at),
   });
 }
 
@@ -95,7 +97,7 @@ export function mapDbAdminPaymentEvent(
     eventType: row.event_type,
     status: row.status,
     failureReason: row.failure_reason,
-    occurredAt: row.occurred_at,
+    occurredAt: toContractDateTime(row.occurred_at),
   });
 }
 
@@ -109,6 +111,19 @@ export function mapDbAdminTrustSignal(
     severity: row.severity,
     status: row.status,
     note: row.note,
-    createdAt: row.created_at,
+    createdAt: toContractDateTime(row.created_at),
   });
+}
+
+function toContractDateTime(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toISOString();
 }

@@ -23,8 +23,11 @@ Implemented now:
 - Public home route at `/` and shared logged-out header/navigation.
 - Public auth entry pages for login, signup, social auth callback, and email confirmation.
 - Three-step signup flow for email/password accounts: account, profile basics, and usage intent.
-- Google auth entry points for signup/login, plus a short completion flow for social users who still need a marketplace profile.
+- Google auth entry points for login/signup; public auth callbacks keep staff identities out of admin landing and send them back to `/admin/login`.
 - Basic `/app/profile` placeholder that shows the saved marketplace profile after signup.
+- `/app/dashboard` waits for a marketplace profile before rendering workspace cards and sends no-profile sessions back to `/signup`.
+- Public legal routes at `/terms`, `/privacy`, `/kvkk`, and `/cookies`.
+- Guarded placeholders for documented match detail and discovery routes.
 - API health status panel backed by the shared contracts client.
 - Fastify health routes: `GET /health`, `GET /ready`.
 - Test-mode onboarding routes: `POST /api/v1/profiles`, `GET /api/v1/profiles/me`, and `POST /api/v1/profiles/me/onboarding-details`.
@@ -186,6 +189,8 @@ npm run bootstrap:first-admin --workspace apps/api -- <email>
 
 - After bootstrap, the staff user accepts the invite or uses password recovery, signs in through `/admin/login`, completes TOTP MFA at `/admin/mfa`, and reaches `/admin`.
 - The marketplace `/login` route is for author and publisher accounts. Staff accounts are sent to `/admin/login`.
+- The public `/auth/callback` route does not land staff sessions in `/admin`; staff identities that reach it are signed out and sent to `/admin/login?reason=staff`.
+- The public `/signup` wizard blocks all staff membership states, including `mfa_required` and `revoked`.
 - The admin surface now distinguishes:
   - `no_access`
   - `mfa_required`

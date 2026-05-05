@@ -86,4 +86,40 @@ describe("resolvePostAuthRoute", () => {
     expect(mockRequest).toHaveBeenCalledWith(ApiRoutes.admin.access);
     expect(mockClearSignupDraft).toHaveBeenCalledOnce();
   });
+
+  it.each(["allowed", "mfa_required", "revoked"] as const)(
+    "signs out and sends public staff callback sessions to staff login for %s access",
+    async (status) => {
+      const onPublicStaffSession = vi.fn();
+      mockRequest.mockResolvedValueOnce({ status });
+
+      await expect(
+        resolvePostAuthRoute({ onPublicStaffSession }),
+      ).resolves.toBe(`${WEB_ROUTES.adminLogin}?reason=staff`);
+
+      expect(mockRequest).toHaveBeenCalledOnce();
+      expect(mockRequest).toHaveBeenCalledWith(ApiRoutes.admin.access);
+      expect(mockClearSignupDraft).toHaveBeenCalledOnce();
+      expect(onPublicStaffSession).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps no-access public callback sessions in the marketplace flow", async () => {
+    const missingProfileError = new Error("profile missing");
+    const onPublicStaffSession = vi.fn();
+
+    mockRequest
+      .mockResolvedValueOnce({ status: "no_access" })
+      .mockRejectedValueOnce(missingProfileError);
+    mockGetApiErrorCode.mockReturnValue("not_found");
+    mockLoadSignupDraft.mockReturnValue(null);
+
+    await expect(resolvePostAuthRoute({ onPublicStaffSession })).resolves.toBe(
+      WEB_ROUTES.signup,
+    );
+
+    expect(mockRequest).toHaveBeenCalledTimes(2);
+    expect(mockClearSignupDraft).not.toHaveBeenCalled();
+    expect(onPublicStaffSession).not.toHaveBeenCalled();
+  });
 });

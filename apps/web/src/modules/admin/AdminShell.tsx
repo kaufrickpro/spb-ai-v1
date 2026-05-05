@@ -18,20 +18,30 @@ function isActive(pathname: string, to: string) {
   return pathname === to;
 }
 
-function AdminSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function AdminSidebarContent({
+  onNavigate,
+  showBrand = true,
+}: {
+  onNavigate?: () => void;
+  showBrand?: boolean;
+}) {
   const { t } = useTranslation();
   const location = useLocation();
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-slate-800 px-4 py-4">
-        <Link to={WEB_ROUTES.root} onClick={onNavigate}>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-400">
-            {t("app.kicker")}
-          </p>
-          <p className="text-sm font-semibold text-white">{t("admin.title")}</p>
-        </Link>
-      </div>
+      {showBrand ? (
+        <div className="border-b border-slate-800 px-4 py-4">
+          <Link to={WEB_ROUTES.root} onClick={onNavigate}>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-400">
+              {t("app.kicker")}
+            </p>
+            <p className="text-sm font-semibold text-white">
+              {t("admin.title")}
+            </p>
+          </Link>
+        </div>
+      ) : null}
 
       <nav
         className="flex-1 overflow-y-auto px-2 py-3"
@@ -87,7 +97,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {mobileMenuOpen ? (
         <div className="fixed inset-0 z-50 bg-slate-950/55 lg:hidden">
           <aside className="h-full w-72 max-w-[85vw] bg-slate-900 text-white">
-            <div className="flex items-center justify-end border-b border-slate-800 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+              <Link
+                to={WEB_ROUTES.root}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-400">
+                  {t("app.kicker")}
+                </p>
+                <p className="text-sm font-semibold text-white">
+                  {t("admin.title")}
+                </p>
+              </Link>
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
@@ -97,7 +118,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <AdminSidebarContent onNavigate={() => setMobileMenuOpen(false)} />
+            <AdminSidebarContent
+              onNavigate={() => setMobileMenuOpen(false)}
+              showBrand={false}
+            />
           </aside>
         </div>
       ) : null}

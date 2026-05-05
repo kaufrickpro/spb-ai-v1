@@ -136,6 +136,8 @@ Use a workflow that makes mistakes cheap and visible:
 - API verifies the Supabase access token via JWKS, requires issuer `${SUPABASE_URL}/auth/v1` plus audience `authenticated`, and never trusts `user_id` from request bodies (`verifyJwt.ts`).
 - Added a 3-step signup flow for email/password accounts: account credentials, profile basics, and usage intent.
 - Added Google social auth entry points on login. Signup itself is now a single 3-step wizard; users without a marketplace profile return to `/signup`, and `/signup/complete` is only a compatibility redirect.
+- Public `/auth/callback` is marketplace-only: if a staff identity reaches it, the app clears signup state, signs out, and redirects to `/admin/login?reason=staff` instead of landing in admin.
+- `/signup` blocks all staff membership states from rendering the marketplace wizard; `mfa_required` goes to `/admin/mfa`, `allowed` goes to `/admin`, and `revoked` returns to staff login.
 - Persisting app profile rows through the API to `public.profiles` with `display_name`, `role`, `locale`, `profile_photo_url`, and `signup_intent` (`server.ts`).
 - Added `GET /api/v1/profiles/me` to fetch the current user's profile.
 - Replaced the standalone onboarding journey with a profile-first flow. `/onboarding*` routes now behave as compatibility redirects to `/app/profile`.
@@ -230,8 +232,8 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 15. Build Frontend Product Screens
 
-- Public pages: home, pricing, login, signup, signup complete, auth callback, forgot password, terms, privacy, KVKK, cookies.
-- App pages: dashboard, manuscripts, manuscript detail, matches, match detail, discover authors, discover publishers, requests, profile, billing, settings. Keep `/onboarding` only as a compatibility redirect until removed.
+- Public pages: home, pricing, login, signup, signup complete compatibility redirect, auth callback, forgot password, terms, privacy, KVKK, cookies.
+- App pages: dashboard, manuscripts, manuscript detail, matches, guarded match detail placeholder, guarded discover authors/publishers placeholders, requests, profile, billing, settings. Keep `/onboarding` only as a compatibility redirect until removed.
 - Admin pages: dashboard, reviews, users, manuscripts, publishers, jobs, payments, audit logs, settings.
 - Public pages should be SEO-oriented and prerendered while the authenticated app remains a SPA.
 - Add a static health route or file for the web container and Cloud Run health checks.
