@@ -28,9 +28,11 @@ apps/ai-service/
 1. Author uploads a manuscript sample through an API-issued signed URL.
 2. Node API creates a `documents` row and, after upload completion, creates or reuses an idempotent `document_processing_jobs` row.
 3. The document moves into an async checking state; the upload request must not wait for full AI processing.
-4. A trusted worker calls the FastAPI ingestion endpoint.
-5. AI service downloads the file through trusted credentials or an internal short-lived URL.
-6. AI service extracts text, chunks it, writes bounded chunks to `document_chunks`, creates embedding references in `embedding_records`, and updates job/document status.
+4. A trusted worker calls the FastAPI ingestion endpoint with the durable job id.
+5. AI service resolves the job and document through its repository adapter, then downloads the file through trusted credentials or an internal short-lived URL.
+6. AI service extracts text, chunks it, writes bounded chunks to `document_chunks`, creates embedding reference records in `embedding_records`, and updates job/document status.
+
+The internal ingestion endpoint must not accept raw document text from the caller. It processes the uploaded object through configured repository, storage, and embedding-reference adapters so local/dev fakes keep the same boundary as staging and production.
 
 The first Step 9 implementation supports `text/plain` only. Digital PDF, DOCX, and EPUB parsers are planned behind the same parser interface. OCR/Document AI is deferred unless explicitly requested.
 

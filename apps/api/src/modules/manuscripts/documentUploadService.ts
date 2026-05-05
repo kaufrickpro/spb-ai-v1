@@ -83,7 +83,11 @@ async function assertSupabaseManuscriptOwnership(
     .single();
 
   if (error || !data) {
-    throw new ManuscriptServiceError("not_found", "Manuscript not found", error);
+    throw new ManuscriptServiceError(
+      "not_found",
+      "Manuscript not found",
+      error,
+    );
   }
 }
 

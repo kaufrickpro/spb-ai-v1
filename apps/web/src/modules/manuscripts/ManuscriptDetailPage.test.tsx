@@ -58,6 +58,47 @@ function mockLoadedManuscript() {
   });
 }
 
+function mockLoadedDocument(
+  overrides: Partial<{
+    processingFailureCode: string | null;
+    processingStatus: string;
+  }> = {},
+) {
+  mockUseDocument.mockReturnValue({
+    data: {
+      document: {
+        id: "20000000-0000-4000-8000-000000000001",
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        authorId: "00000000-0000-4000-8000-000000000010",
+        originalFileName: "sample.txt",
+        mimeType: "text/plain",
+        fileSizeBytes: 13,
+        storageStatus: "uploaded",
+        processingStatus: "queued",
+        processingFailureCode: null,
+        adminReviewStatus: "not_submitted",
+        eligibilityStatus: "eligible",
+        reviewOutcome: "auto_approved",
+        uploadId: "upload-1",
+        retentionExpiresAt: null,
+        createdAt: "2026-05-04T09:00:00.000Z",
+        updatedAt: "2026-05-04T09:00:00.000Z",
+        ...overrides,
+      },
+    },
+  });
+}
+
+function renderDetailPage() {
+  return renderToStaticMarkup(
+    <MemoryRouter
+      initialEntries={["/app/manuscripts/10000000-0000-4000-8000-000000000001"]}
+    >
+      <ManuscriptDetailPage />
+    </MemoryRouter>,
+  );
+}
+
 describe("ManuscriptDetailPage", () => {
   beforeEach(() => {
     mockUseManuscript.mockReset();
@@ -82,41 +123,40 @@ describe("ManuscriptDetailPage", () => {
 
   it("shows a download action when a sample document is attached", () => {
     mockLoadedManuscript();
-    mockUseDocument.mockReturnValue({
-      data: {
-        document: {
-          id: "20000000-0000-4000-8000-000000000001",
-          manuscriptId: "10000000-0000-4000-8000-000000000001",
-          authorId: "00000000-0000-4000-8000-000000000010",
-          originalFileName: "sample.txt",
-          mimeType: "text/plain",
-          fileSizeBytes: 13,
-          storageStatus: "uploaded",
-          processingStatus: "queued",
-          processingFailureCode: null,
-          adminReviewStatus: "not_submitted",
-          eligibilityStatus: "eligible",
-          reviewOutcome: "auto_approved",
-          uploadId: "upload-1",
-          retentionExpiresAt: null,
-          createdAt: "2026-05-04T09:00:00.000Z",
-          updatedAt: "2026-05-04T09:00:00.000Z",
-        },
-      },
-    });
+    mockLoadedDocument();
 
-    const markup = renderToStaticMarkup(
-      <MemoryRouter
-        initialEntries={[
-          "/app/manuscripts/10000000-0000-4000-8000-000000000001",
-        ]}
-      >
-        <ManuscriptDetailPage />
-      </MemoryRouter>,
-    );
+    const markup = renderDetailPage();
 
     expect(markup).toContain("sample.txt");
     expect(markup).toContain("manuscripts.detail.downloadCta");
+  });
+
+  it.each([
+    ["queued", "manuscripts.documentCheck.title.checking"],
+    ["processing", "manuscripts.documentCheck.title.checking"],
+    ["succeeded", "manuscripts.documentCheck.title.ready"],
+  ])("shows the %s sample checking state", (processingStatus, titleKey) => {
+    mockLoadedManuscript();
+    mockLoadedDocument({ processingStatus });
+
+    const markup = renderDetailPage();
+
+    expect(markup).toContain(titleKey);
+  });
+
+  it("shows unreadable copy without exposing the raw failure code", () => {
+    mockLoadedManuscript();
+    mockLoadedDocument({
+      processingFailureCode: "parser_failed",
+      processingStatus: "failed",
+    });
+
+    const markup = renderDetailPage();
+
+    expect(markup).toContain("manuscripts.documentCheck.title.unreadable");
+    expect(markup).toContain("manuscripts.documentCheck.failure.unreadable");
+    expect(markup).not.toContain("parser_failed");
+    expect(markup).not.toContain("manuscripts.detail.processingFailure");
   });
 
   it("shows sample loading when a manuscript has a sample id and document details are pending", () => {
@@ -128,15 +168,7 @@ describe("ManuscriptDetailPage", () => {
       isPending: true,
     });
 
-    const markup = renderToStaticMarkup(
-      <MemoryRouter
-        initialEntries={[
-          "/app/manuscripts/10000000-0000-4000-8000-000000000001",
-        ]}
-      >
-        <ManuscriptDetailPage />
-      </MemoryRouter>,
-    );
+    const markup = renderDetailPage();
 
     expect(markup).toContain("manuscripts.detail.sampleLoading");
     expect(markup).not.toContain("manuscripts.detail.noDocument");
@@ -153,15 +185,7 @@ describe("ManuscriptDetailPage", () => {
       refetch: vi.fn(),
     });
 
-    const markup = renderToStaticMarkup(
-      <MemoryRouter
-        initialEntries={[
-          "/app/manuscripts/10000000-0000-4000-8000-000000000001",
-        ]}
-      >
-        <ManuscriptDetailPage />
-      </MemoryRouter>,
-    );
+    const markup = renderDetailPage();
 
     expect(markup).toContain("manuscripts.detail.sampleLoadError");
     expect(markup).toContain("common.retry");

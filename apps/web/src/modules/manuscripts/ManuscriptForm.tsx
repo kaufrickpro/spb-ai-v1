@@ -70,7 +70,11 @@ export function ManuscriptForm({
     "block text-xs font-semibold uppercase tracking-wider text-slate-500";
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2" noValidate>
+    <form
+      onSubmit={handleSubmit}
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+      noValidate
+    >
       {/* Title */}
       <div className="sm:col-span-2">
         <label htmlFor="manuscript-title" className={labelClass}>

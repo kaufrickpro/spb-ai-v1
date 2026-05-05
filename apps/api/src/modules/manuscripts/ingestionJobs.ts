@@ -82,8 +82,7 @@ export function queueTestDocumentIngestionJob(
   const { idempotencyKey } = buildInitialDocumentIngestionJob(input);
   const existing = adminTestState.jobRuns.find(
     (job) =>
-      job.jobType === "document_ingestion" &&
-      job.source === idempotencyKey,
+      job.jobType === "document_ingestion" && job.source === idempotencyKey,
   );
 
   if (existing) {

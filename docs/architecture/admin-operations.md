@@ -42,7 +42,7 @@ refreshes.
 Step 9 ingestion queue policy:
 
 - Do not create admin exceptions for ordinary user-correctable file problems: empty extracted text, unsupported file type during the text-only phase, too-large extracted text, or corrupt/unreadable files.
-- Create admin exceptions for suspicious scanner outcomes, quarantines, validation bypass signals such as file type mismatch, repeated system/provider failures after automatic retries, or unexpected runtime errors.
+- Create admin exceptions for suspicious scanner outcomes, quarantines, validation bypass signals such as file type mismatch, repeated system/provider failures after automatic retries, or unexpected runtime errors. These exception records must store only safe operational fields such as failure code, attempt counts, scanner result, job id, MIME type, and file size; never store manuscript text, signed URLs, private storage paths, or extracted chunks.
 - Admin job health should show ingestion job state from `document_processing_jobs` without requiring staff to babysit normal queued/running work.
 - Manual admin retry UI is deferred for the first Step 9 implementation. Automatic retries should handle transient failures where idempotency allows it.
 

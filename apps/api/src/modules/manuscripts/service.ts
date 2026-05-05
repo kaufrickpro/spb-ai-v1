@@ -1,7 +1,5 @@
 export { ManuscriptServiceError } from "./errors.js";
-export {
-  completeAuthorDocumentUpload,
-} from "./documentService.js";
+export { completeAuthorDocumentUpload } from "./documentService.js";
 export { createAuthorDocumentUpload } from "./documentUploadService.js";
 export {
   assertAuthorCanDownloadDocument,

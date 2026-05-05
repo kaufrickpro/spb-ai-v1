@@ -22,10 +22,7 @@ import {
   sendValidationError,
 } from "../../lib/http/errors.js";
 import type { AdminTestState } from "../admin/testState.js";
-import {
-  readLocalUpload,
-  saveLocalUpload,
-} from "../storage/localStorage.js";
+import { readLocalUpload, saveLocalUpload } from "../storage/localStorage.js";
 import {
   verifyLocalDownloadToken,
   verifyLocalUploadToken,

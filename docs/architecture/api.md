@@ -112,7 +112,7 @@ Rules:
 - `POST /api/v1/uploads/signed-url` creates a pending document record and returns a short-lived local fake signed upload URL in Step 8 local mode.
 - `PUT /api/v1/uploads/local/:uploadToken` is a public signed URL target and does not rely on a bearer token.
 - The local signed upload target must accept bytes only while the document is still `pending_upload`, and must verify the request content type and exact byte length against the metadata validated by `POST /api/v1/uploads/signed-url` before writing local storage.
-- `POST /api/v1/documents/:id/complete-upload` returns a conflict when the pending upload is stale or the local file is missing. Replacement uploads keep the previous uploaded sample active until completion succeeds; completion atomically creates or reuses the ingestion job, marks the previous uploaded sample `pending_delete`, and attaches the new sample. If job creation fails, the document must remain pending and unattached.
+- `POST /api/v1/documents/:id/complete-upload` returns a conflict when the pending upload is stale, already completed, or the local file is missing. Replacement uploads keep the previous uploaded sample active until completion succeeds; completion atomically creates or reuses exactly one idempotent ingestion job, marks the previous uploaded sample `pending_delete`, and attaches the new sample. If job creation fails, the document must remain pending and unattached.
 - Signed download URLs require ownership, admin access, or accepted intro access.
 
 ### Matching
@@ -250,7 +250,7 @@ Use explicit idempotency keys or unique constraints:
 - Intro requests: unique pending manuscript/publisher pair.
 - Match generation: unique request key for the same requester/manuscript/direction while a run is queued or running.
 - Usage ledger: unique source event ID for quota-consuming actions.
-- Document ingestion: unique document ID and processing attempt state.
+- Document ingestion: unique document ID plus ingestion idempotency key. Upload completion creates or reuses the row without resetting an existing processing attempt.
 
 Quota-consuming writes must be transactional. The API must reserve or consume quota in the same database transaction as the action that creates usage.
 

@@ -3,7 +3,8 @@ from pydantic import BaseModel
 
 from app.modules.config import AiServiceConfig
 from app.modules.config import load_config
-from app.modules.ingestion import IngestionResult, ingest_text_document
+from app.modules.ingestion import IngestionResult
+from app.modules.ingestion_worker import IngestionWorker
 from app.modules.runtime import RuntimeAdapter, create_runtime_adapter
 
 
@@ -14,14 +15,12 @@ class HealthResponse(BaseModel):
 
 class InternalIngestionRequest(BaseModel):
     job_id: str
-    document_id: str
-    mime_type: str
-    text_content: str | None = None
 
 
 def create_app(
     config: AiServiceConfig | None = None,
     runtime_adapter: RuntimeAdapter | None = None,
+    ingestion_worker: IngestionWorker | None = None,
 ) -> FastAPI:
     resolved_config = config or load_config()
     runtime = runtime_adapter or create_runtime_adapter(resolved_config)
@@ -42,11 +41,12 @@ def create_app(
         authorization: str | None = Header(default=None),
     ) -> IngestionResult:
         require_internal_auth(resolved_config, authorization)
-        return ingest_text_document(
-            document_id=request.document_id,
-            mime_type=request.mime_type,
-            text=request.text_content,
-        )
+        if ingestion_worker is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Ingestion worker is not configured",
+            )
+        return ingestion_worker.process_job(request.job_id)
 
     return app
 

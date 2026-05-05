@@ -3,6 +3,11 @@ import { buildApp } from "./server.js";
 import { createAdminTestState } from "./modules/admin/testState.js";
 import { TEST_USER_ID } from "./modules/auth/requestAuth.js";
 import { completeAuthorDocumentUpload } from "./modules/manuscripts/documentService.js";
+import { queueTestDocumentIngestionJob } from "./modules/manuscripts/ingestionJobs.js";
+import {
+  classifyDocumentProcessingFailure,
+  createTestDocumentProcessingAdminException,
+} from "./modules/manuscripts/processingOutcomes.js";
 import {
   createManuscriptTestState,
   createTestDocument,
@@ -459,17 +464,301 @@ describe("Manuscript routes", () => {
       ),
     ).rejects.toMatchObject({ kind: "storage" });
 
-    expect(testState.documents.find((item) => item.id === documentId)).toMatchObject({
+    expect(
+      testState.documents.find((item) => item.id === documentId),
+    ).toMatchObject({
       storageStatus: "pending_upload",
       processingStatus: "not_started",
     });
     expect(
-      testState.manuscripts.find((item) => item.id === TEST_AUTHOR_MANUSCRIPT_ID)
-        ?.sampleDocumentId,
+      testState.manuscripts.find(
+        (item) => item.id === TEST_AUTHOR_MANUSCRIPT_ID,
+      )?.sampleDocumentId,
     ).toBeNull();
     expect(
       adminTestState.jobRuns.find((item) => item.source.includes(documentId)),
     ).toBeUndefined();
+  });
+
+  it("rejects repeated upload completion and keeps a single ingestion job", async () => {
+    const app = buildApp({ config: testConfig });
+    const fileBytes = Buffer.from("once only");
+
+    const signedUrlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "repeat.txt",
+        mimeType: "text/plain",
+        fileSizeBytes: fileBytes.length,
+      },
+    });
+
+    const { documentId, uploadUrl } = signedUrlResponse.json() as {
+      documentId: string;
+      uploadUrl: string;
+    };
+
+    await app.inject({
+      method: "PUT",
+      url: localPathFromUrl(uploadUrl),
+      payload: fileBytes,
+      headers: { "content-type": "text/plain" },
+    });
+
+    const firstComplete = await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+    expect(firstComplete.statusCode).toBe(200);
+
+    const secondComplete = await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+    expect(secondComplete.statusCode).toBe(409);
+
+    const jobsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/jobs/health",
+      headers: { authorization: "Bearer test-admin-mfa" },
+    });
+    const matchingJobs = jobsResponse
+      .json()
+      .runs.filter(
+        (item: { jobType: string; source: string }) =>
+          item.jobType === "document_ingestion" &&
+          item.source.includes(documentId),
+      );
+    expect(matchingJobs).toHaveLength(1);
+  });
+
+  it("reuses an existing idempotent ingestion job when completion is retried internally", async () => {
+    const adminTestState = createAdminTestState();
+    const testState = createManuscriptTestState();
+    const documentId = "10000000-0000-4000-8000-000000000098";
+    const uploadId = "upload-existing-job";
+    const updatedAt = new Date().toISOString();
+
+    createTestDocument(
+      testState,
+      documentId,
+      uploadId,
+      TEST_AUTHOR_MANUSCRIPT_ID,
+      TEST_USER_ID,
+      "existing-job.txt",
+      "text/plain",
+      11,
+    );
+    queueTestDocumentIngestionJob(adminTestState, {
+      documentId,
+      fileSizeBytes: 11,
+      mimeType: "text/plain",
+      originalFileName: "existing-job.txt",
+      uploadId,
+      updatedAt,
+    });
+    await saveLocalUpload({
+      bytes: Buffer.from("hello world"),
+      documentId,
+      fileName: "existing-job.txt",
+      uploadId,
+    });
+
+    const document = await completeAuthorDocumentUpload(
+      { mode: "test" },
+      {
+        adminTestState,
+        authorId: TEST_USER_ID,
+        documentId,
+        testState,
+      },
+    );
+
+    expect(document.processingStatus).toBe("queued");
+    expect(
+      adminTestState.jobRuns.filter((item) => item.source.includes(documentId)),
+    ).toHaveLength(1);
+  });
+
+  it("keeps user-correctable document processing failures out of admin queues", () => {
+    const adminTestState = createAdminTestState();
+    const existingReviewCount = adminTestState.reviews.length;
+
+    for (const failureCode of [
+      "empty_extracted_text",
+      "unsupported_file_type",
+      "extracted_text_too_large",
+      "chunk_limit_exceeded",
+      "parser_failed",
+    ] as const) {
+      expect(
+        classifyDocumentProcessingFailure({
+          attemptCount: 3,
+          failureCode,
+          maxAttempts: 3,
+          metadata: { scanner_result: "clean" },
+          mimeType: "text/plain",
+        }),
+      ).toMatchObject({
+        createAdminException: false,
+        exceptionQueue: null,
+        riskWarnings: [],
+      });
+
+      expect(
+        createTestDocumentProcessingAdminException(adminTestState, {
+          attemptCount: 3,
+          authorId: TEST_USER_ID,
+          documentId: "10000000-0000-4000-8000-000000000088",
+          failureCode,
+          maxAttempts: 3,
+          metadata: { scanner_result: "clean" },
+          mimeType: "text/plain",
+          now: "2026-05-05T12:00:00.000Z",
+        }),
+      ).toBeNull();
+    }
+
+    expect(adminTestState.reviews).toHaveLength(existingReviewCount);
+  });
+
+  it("creates safe admin exception decisions for suspicious processing outcomes", () => {
+    expect(
+      classifyDocumentProcessingFailure({
+        attemptCount: 1,
+        failureCode: "scanner_suspicious",
+        jobId: "job-scanner",
+        maxAttempts: 3,
+        metadata: { scanner_result: "suspicious" },
+        mimeType: "text/plain",
+      }),
+    ).toMatchObject({
+      createAdminException: true,
+      exceptionQueue: "needs_review",
+      eligibilityStatus: "limited",
+      reviewOutcome: "needs_review",
+      riskLevel: "high",
+      riskWarnings: ["scanner_suspicious"],
+      submittedFields: {
+        failureCode: "scanner_suspicious",
+        jobId: "job-scanner",
+        scannerResult: "suspicious",
+      },
+    });
+
+    expect(
+      classifyDocumentProcessingFailure({
+        attemptCount: 1,
+        failureCode: "scanner_suspicious",
+        maxAttempts: 3,
+        metadata: { scanner_result: "quarantined" },
+        mimeType: "text/plain",
+      }),
+    ).toMatchObject({
+      createAdminException: true,
+      exceptionQueue: "quarantine",
+      eligibilityStatus: "quarantined",
+      reviewOutcome: "quarantined",
+      riskLevel: "high",
+      riskWarnings: ["scanner_quarantine"],
+    });
+
+    expect(
+      classifyDocumentProcessingFailure({
+        attemptCount: 1,
+        failureCode: "file_type_mismatch",
+        maxAttempts: 3,
+        metadata: { signedUrl: "https://example.invalid/private-token" },
+        mimeType: "application/pdf",
+      }),
+    ).toMatchObject({
+      createAdminException: true,
+      exceptionQueue: "needs_review",
+      riskWarnings: ["validation_bypass_signal"],
+      submittedFields: {
+        failureCode: "file_type_mismatch",
+        mimeType: "application/pdf",
+      },
+    });
+    expect(
+      classifyDocumentProcessingFailure({
+        attemptCount: 1,
+        failureCode: "file_type_mismatch",
+        maxAttempts: 3,
+        metadata: { signedUrl: "https://example.invalid/private-token" },
+        mimeType: "application/pdf",
+      }).submittedFields,
+    ).not.toHaveProperty("signedUrl");
+
+    const adminTestState = createAdminTestState();
+    const review = createTestDocumentProcessingAdminException(adminTestState, {
+      attemptCount: 1,
+      authorId: TEST_USER_ID,
+      documentId: "10000000-0000-4000-8000-000000000087",
+      failureCode: "scanner_suspicious",
+      jobId: "job-scanner",
+      maxAttempts: 3,
+      metadata: { scanner_result: "suspicious" },
+      mimeType: "text/plain",
+      now: "2026-05-05T12:00:00.000Z",
+    });
+
+    expect(review).toMatchObject({
+      entityType: "document",
+      entityId: "10000000-0000-4000-8000-000000000087",
+      exceptionQueue: "needs_review",
+      source: "document_processing",
+      status: "pending",
+    });
+    expect(
+      adminTestState.reviews.filter(
+        (item) =>
+          item.entityType === "document" &&
+          item.entityId === "10000000-0000-4000-8000-000000000087",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("creates admin exceptions only after repeated system/provider failures, plus unexpected runtime errors", () => {
+    expect(
+      classifyDocumentProcessingFailure({
+        attemptCount: 1,
+        failureCode: "embedding_failed",
+        maxAttempts: 3,
+        mimeType: "text/plain",
+      }),
+    ).toMatchObject({ createAdminException: false });
+
+    expect(
+      classifyDocumentProcessingFailure({
+        attemptCount: 3,
+        failureCode: "embedding_failed",
+        maxAttempts: 3,
+        mimeType: "text/plain",
+      }),
+    ).toMatchObject({
+      createAdminException: true,
+      exceptionQueue: "system_failures",
+      riskWarnings: ["repeated_system_or_provider_failure"],
+    });
+
+    expect(
+      classifyDocumentProcessingFailure({
+        attemptCount: 1,
+        failureCode: "unexpected_processing_error",
+        maxAttempts: 3,
+        mimeType: "text/plain",
+      }),
+    ).toMatchObject({
+      createAdminException: true,
+      exceptionQueue: "system_failures",
+      riskWarnings: ["unexpected_runtime_error"],
+    });
   });
 
   // ─── Download URL ──────────────────────────────────────────────────────────

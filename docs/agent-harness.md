@@ -68,6 +68,10 @@ When a rule becomes important enough to repeat, promote it from chat into the ri
 
 The current repo has generic TypeScript linting and focused tests. Strengthen it incrementally with project-specific checks:
 
+- `npm run check:harness` currently enforces these project-specific rules:
+  - `packages/*/src/index.ts` files must stay as re-export-only barrels. If this fails, move implementation code into a focused module such as `profiles.ts`, `client.ts`, or `panel.tsx`, then export from `src/index.ts`.
+  - `apps/web/src` must not import API workspace internals, AI-service internals, PayTR, Resend, service-role, Secret Manager, or Cloud Tasks modules. If this fails, keep the frontend on browser-safe modules and call privileged behavior through the Fastify API.
+  - Tracked and untracked text files are scanned for high-confidence secret shapes: Supabase service-role keys, PayTR key/salt values, Resend keys, Sentry auth tokens, Google service account private keys, and signed URLs. If this fails, remove the value from repository files and load it from local untracked env, CI secrets, Secret Manager, or short-lived runtime generation.
 - Module boundaries: prevent frontend code from importing server-only modules, secrets, service-role clients, PayTR, Resend, or AI-service internals.
 - Barrel entrypoints: keep `src/index.ts` package entrypoints as re-export-only files.
 - API contracts: ensure public `/api/v1` routes validate request and response payloads through `packages/contracts`.

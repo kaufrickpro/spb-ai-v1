@@ -50,11 +50,7 @@ export async function createAuthorManuscript(
   },
 ) {
   if (context.mode === "test") {
-    return createTestManuscript(
-      input.testState,
-      input.authorId,
-      input.request,
-    );
+    return createTestManuscript(input.testState, input.authorId, input.request);
   }
 
   const { data, error } = await context.db
@@ -184,7 +180,8 @@ function buildManuscriptUpdatePayload(
   if (input.title !== undefined) updatePayload["title"] = input.title;
   if (input.genre !== undefined) updatePayload["genre"] = input.genre;
   if (input.language !== undefined) updatePayload["language"] = input.language;
-  if (input.wordCount !== undefined) updatePayload["word_count"] = input.wordCount;
+  if (input.wordCount !== undefined)
+    updatePayload["word_count"] = input.wordCount;
   if (input.synopsis !== undefined) updatePayload["synopsis"] = input.synopsis;
   if (input.targetAgeMin !== undefined) {
     updatePayload["target_age_min"] = input.targetAgeMin;

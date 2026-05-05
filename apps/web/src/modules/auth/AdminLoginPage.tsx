@@ -22,9 +22,9 @@ export function AdminLoginPage() {
       ? t("auth.adminLogin.staffRedirect")
       : null,
   );
-  const [blockedMode, setBlockedMode] = useState<"no_access" | "revoked" | null>(
-    null,
-  );
+  const [blockedMode, setBlockedMode] = useState<
+    "no_access" | "revoked" | null
+  >(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {

@@ -1,5 +1,8 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { findAuthUserByEmail, normalizeAdminEmail } from "./bootstrapFirstAdmin.js";
+import {
+  findAuthUserByEmail,
+  normalizeAdminEmail,
+} from "./bootstrapFirstAdmin.js";
 
 export const LOCAL_ADMIN_NOTE = "local_admin_seed";
 export const DEFAULT_LOCAL_ADMIN_EMAIL = "admin@example.com";

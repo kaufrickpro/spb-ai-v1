@@ -76,15 +76,17 @@ export function useUploadSample(manuscriptId: string) {
   return useMutation({
     mutationFn: async (file: File) => {
       // Step 1: request a signed URL
-      const { uploadId, documentId, uploadUrl } =
-        await webApiClient.request(ApiRoutes.uploads.requestSignedUrl, {
+      const { uploadId, documentId, uploadUrl } = await webApiClient.request(
+        ApiRoutes.uploads.requestSignedUrl,
+        {
           body: {
             manuscriptId,
             fileName: file.name,
             mimeType: file.type as AllowedMimeType,
             fileSizeBytes: file.size,
           },
-        });
+        },
+      );
 
       // Step 2: PUT the file to the signed URL
       const uploadResponse = await fetch(uploadUrl, {

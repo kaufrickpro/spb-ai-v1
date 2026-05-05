@@ -6,15 +6,14 @@ import { WEB_ROUTES, manuscriptDetailPath } from "../routing/routes";
 import { useManuscripts, useCreateManuscript } from "./useManuscripts";
 import { ManuscriptForm } from "./ManuscriptForm";
 import { SidePanel } from "../ui/SidePanel";
-import type { CreateManuscriptRequest, Manuscript } from "@marketplace/contracts";
+import type {
+  CreateManuscriptRequest,
+  Manuscript,
+} from "@marketplace/contracts";
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
-function StatusBadge({
-  status,
-}: {
-  status: string;
-}) {
+function StatusBadge({ status }: { status: string }) {
   const colorMap: Record<string, string> = {
     draft: "bg-slate-100 text-slate-700",
     submitted: "bg-blue-100 text-blue-700",
@@ -74,7 +73,8 @@ function SampleBadge({ hasSample }: { hasSample: boolean }) {
 function buildManuscriptSummary(manuscripts: Manuscript[]) {
   return {
     total: manuscripts.length,
-    eligible: manuscripts.filter((m) => m.eligibilityStatus === "eligible").length,
+    eligible: manuscripts.filter((m) => m.eligibilityStatus === "eligible")
+      .length,
     withSample: manuscripts.filter((m) => Boolean(m.sampleDocumentId)).length,
   };
 }
@@ -104,7 +104,9 @@ export function ManuscriptListPage() {
         {/* Page header */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">{t("manuscripts.pageTitle")}</h1>
+            <h1 className="text-2xl font-semibold">
+              {t("manuscripts.pageTitle")}
+            </h1>
             <p className="mt-1 text-sm text-slate-500">
               {t("manuscripts.pageSubtitle")}
             </p>
@@ -138,9 +140,7 @@ export function ManuscriptListPage() {
         )}
 
         {isError && (
-          <p className="mt-8 text-sm text-red-600">
-            {t("common.retry")}
-          </p>
+          <p className="mt-8 text-sm text-red-600">{t("common.retry")}</p>
         )}
 
         {!isLoading && !isError && data && data.manuscripts.length === 0 && (
@@ -192,22 +192,37 @@ export function ManuscriptListPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      <th className="px-4 py-3">{t("manuscripts.table.title")}</th>
-                      <th className="px-4 py-3">{t("manuscripts.table.genre")}</th>
-                      <th className="px-4 py-3">{t("manuscripts.table.language")}</th>
-                      <th className="px-4 py-3">{t("manuscripts.table.status")}</th>
-                      <th className="px-4 py-3">{t("manuscripts.table.sample")}</th>
-                      <th className="px-4 py-3">{t("manuscripts.table.eligibility")}</th>
-                      <th className="px-4 py-3">{t("manuscripts.table.words")}</th>
-                      <th className="px-4 py-3"><span className="sr-only">{t("manuscripts.table.actions")}</span></th>
+                      <th className="px-4 py-3">
+                        {t("manuscripts.table.title")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("manuscripts.table.genre")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("manuscripts.table.language")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("manuscripts.table.status")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("manuscripts.table.sample")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("manuscripts.table.eligibility")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("manuscripts.table.words")}
+                      </th>
+                      <th className="px-4 py-3">
+                        <span className="sr-only">
+                          {t("manuscripts.table.actions")}
+                        </span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {manuscripts.map((m) => (
-                      <tr
-                        key={m.id}
-                        className="transition hover:bg-slate-50"
-                      >
+                      <tr key={m.id} className="transition hover:bg-slate-50">
                         <td className="px-4 py-3 font-medium">{m.title}</td>
                         <td className="px-4 py-3 text-slate-600">{m.genre}</td>
                         <td className="px-4 py-3 text-slate-600 uppercase">
@@ -217,7 +232,9 @@ export function ManuscriptListPage() {
                           <StatusBadge status={m.status} />
                         </td>
                         <td className="px-4 py-3">
-                          <SampleBadge hasSample={Boolean(m.sampleDocumentId)} />
+                          <SampleBadge
+                            hasSample={Boolean(m.sampleDocumentId)}
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <EligibilityBadge status={m.eligibilityStatus} />

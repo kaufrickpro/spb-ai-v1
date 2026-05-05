@@ -41,9 +41,8 @@ describe("local signed URL tokens", () => {
   });
 
   it("rejects upload tokens after signed payload tampering", async () => {
-    const { createLocalUploadToken, verifyLocalUploadToken } = await import(
-      "./localTokens.js"
-    );
+    const { createLocalUploadToken, verifyLocalUploadToken } =
+      await import("./localTokens.js");
     const { token } = createLocalUploadToken(
       "document-1",
       "upload-1",
@@ -56,9 +55,8 @@ describe("local signed URL tokens", () => {
   });
 
   it("rejects download tokens after signed payload tampering", async () => {
-    const { createLocalDownloadToken, verifyLocalDownloadToken } = await import(
-      "./localTokens.js"
-    );
+    const { createLocalDownloadToken, verifyLocalDownloadToken } =
+      await import("./localTokens.js");
     const { token } = createLocalDownloadToken("document-1", "author-1");
 
     const tamperedToken = tamperToken(token, "author", "admin");

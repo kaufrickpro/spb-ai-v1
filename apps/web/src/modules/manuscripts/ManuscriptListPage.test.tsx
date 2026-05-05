@@ -68,7 +68,9 @@ describe("ManuscriptListPage", () => {
 
     expect(markup).toContain("Gece Yarisi Sehri");
     expect(markup).toContain("Speculative fiction");
-    expect(markup).toContain("/app/manuscripts/10000000-0000-4000-8000-000000000001");
+    expect(markup).toContain(
+      "/app/manuscripts/10000000-0000-4000-8000-000000000001",
+    );
     expect(markup).not.toContain("manuscripts.empty");
   });
 });

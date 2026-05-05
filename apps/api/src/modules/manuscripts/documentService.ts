@@ -56,6 +56,13 @@ async function completeTestUploadAndQueueReview(input: {
     throw new ManuscriptServiceError("not_found", "Document not found");
   }
 
+  if (pendingDocument.storageStatus !== "pending_upload") {
+    throw new ManuscriptServiceError(
+      "conflict",
+      "The upload is no longer pending completion",
+    );
+  }
+
   queueTestDocumentIngestionJob(input.adminTestState, {
     documentId: pendingDocument.id,
     fileSizeBytes: pendingDocument.fileSizeBytes,
@@ -105,7 +112,11 @@ async function getPendingSupabaseDocument(
 
   if (error) {
     if (error.code === "PGRST116") {
-      throw new ManuscriptServiceError("not_found", "Document not found", error);
+      throw new ManuscriptServiceError(
+        "not_found",
+        "Document not found",
+        error,
+      );
     }
     throw new ManuscriptServiceError(
       "storage",

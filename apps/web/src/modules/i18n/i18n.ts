@@ -487,35 +487,36 @@ void i18n.use(initReactI18next).init({
               pending_delete: "Pending deletion",
               deleted: "Deleted",
             },
-            processingStatus: {
-              not_started: "Waiting for sample",
-              queued: "Checking your sample",
-              processing: "Checking your sample",
-              succeeded: "Sample ready",
-              failed: "We couldn't read this file",
+          },
+          documentCheck: {
+            title: {
+              checking: "Checking your sample",
+              ready: "Sample ready",
+              unreadable: "We couldn't read this file",
             },
-            processingFailure: {
-              generic: "We couldn't read this file. Upload a different sample.",
-              empty_extracted_text:
-                "This file looks empty. Upload a different sample.",
-              unsupported_file_type:
+            description: {
+              checking:
+                "You can keep editing this manuscript while we check the sample.",
+              ready:
+                "Your sample is ready to use in the next manuscript steps.",
+              unreadable:
+                "This sample cannot be used yet. Upload a different file when you're ready.",
+            },
+            failure: {
+              generic: "Upload a different sample.",
+              empty: "This file looks empty. Upload a different sample.",
+              unsupportedType:
                 "This file type is not supported yet. Upload a plain text sample.",
-              file_type_mismatch:
+              mismatch:
                 "This file does not match its selected type. Upload a different sample.",
-              extracted_text_too_large:
+              tooLarge:
                 "This file is too large to check. Upload a shorter sample.",
-              chunk_limit_exceeded:
-                "This file is too long to check. Upload a shorter sample.",
-              download_failed:
+              unreadable:
                 "We couldn't open this file. Upload it again or choose a different sample.",
-              parser_failed:
-                "We couldn't read this file. Upload a different sample.",
-              embedding_failed:
+              temporary:
                 "We couldn't finish checking this sample. Try again later or upload a different sample.",
-              scanner_suspicious:
+              safety:
                 "This file needs an extra safety check before it can be used.",
-              unexpected_processing_error:
-                "We couldn't finish checking this sample. Try again later.",
             },
           },
           upload: {
@@ -1377,35 +1378,36 @@ void i18n.use(initReactI18next).init({
               pending_delete: "Silinme bekliyor",
               deleted: "Silindi",
             },
-            processingStatus: {
-              not_started: "Örnek bekleniyor",
-              queued: "Örneğiniz kontrol ediliyor",
-              processing: "Örneğiniz kontrol ediliyor",
-              succeeded: "Örnek hazır",
-              failed: "Bu dosyayı okuyamadık",
+          },
+          documentCheck: {
+            title: {
+              checking: "Örneğiniz kontrol ediliyor",
+              ready: "Örnek hazır",
+              unreadable: "Bu dosyayı okuyamadık",
             },
-            processingFailure: {
-              generic: "Bu dosyayı okuyamadık. Farklı bir örnek yükleyin.",
-              empty_extracted_text:
-                "Bu dosya boş görünüyor. Farklı bir örnek yükleyin.",
-              unsupported_file_type:
+            description: {
+              checking:
+                "Biz örneği kontrol ederken manuskript bilgilerinizi düzenlemeye devam edebilirsiniz.",
+              ready:
+                "Örneğiniz sonraki manuskript adımlarında kullanılmaya hazır.",
+              unreadable:
+                "Bu örnek şimdilik kullanılamaz. Hazır olduğunuzda farklı bir dosya yükleyin.",
+            },
+            failure: {
+              generic: "Farklı bir örnek yükleyin.",
+              empty: "Bu dosya boş görünüyor. Farklı bir örnek yükleyin.",
+              unsupportedType:
                 "Bu dosya türü henüz desteklenmiyor. Düz metin örneği yükleyin.",
-              file_type_mismatch:
+              mismatch:
                 "Bu dosya seçilen türle eşleşmiyor. Farklı bir örnek yükleyin.",
-              extracted_text_too_large:
+              tooLarge:
                 "Bu dosya kontrol için çok büyük. Daha kısa bir örnek yükleyin.",
-              chunk_limit_exceeded:
-                "Bu dosya kontrol için çok uzun. Daha kısa bir örnek yükleyin.",
-              download_failed:
+              unreadable:
                 "Bu dosyayı açamadık. Tekrar yükleyin veya farklı bir örnek seçin.",
-              parser_failed:
-                "Bu dosyayı okuyamadık. Farklı bir örnek yükleyin.",
-              embedding_failed:
+              temporary:
                 "Bu örneği kontrol etmeyi tamamlayamadık. Daha sonra tekrar deneyin veya farklı bir örnek yükleyin.",
-              scanner_suspicious:
+              safety:
                 "Bu dosyanın kullanılmadan önce ek güvenlik kontrolünden geçmesi gerekiyor.",
-              unexpected_processing_error:
-                "Bu örneği kontrol etmeyi tamamlayamadık. Daha sonra tekrar deneyin.",
             },
           },
           upload: {

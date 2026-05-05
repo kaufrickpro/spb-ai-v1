@@ -182,6 +182,8 @@ def base_metadata(
     failure_category: str | None,
     extracted_character_count: int,
     chunk_count: int,
+    embedding_model: str = LOCAL_EMBEDDING_MODEL,
+    vector_index_name: str = "local-reference-index",
 ) -> dict[str, object]:
     return {
         "ingestion_version": INGESTION_VERSION,
@@ -189,7 +191,8 @@ def base_metadata(
         "chunker": CHUNKER_VERSION,
         "scanner": "local-none",
         "scanner_result": "not_scanned",
-        "embedding_model": LOCAL_EMBEDDING_MODEL,
+        "embedding_model": embedding_model,
+        "vector_index_name": vector_index_name,
         "extracted_character_count": extracted_character_count,
         "chunk_count": chunk_count,
         "failure_code": failure_code,

@@ -88,9 +88,7 @@ export function ForgotPasswordPage() {
               disabled={loading}
               className="mt-6 w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              {loading
-                ? t("common.loading")
-                : t("auth.forgotPassword.submit")}
+              {loading ? t("common.loading") : t("auth.forgotPassword.submit")}
             </button>
           </form>
 

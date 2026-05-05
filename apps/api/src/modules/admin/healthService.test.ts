@@ -77,9 +77,10 @@ function createHotlistQuery(data: Array<Record<string, unknown>>) {
     },
     then<TResult1 = { data: Array<Record<string, unknown>>; error: null }>(
       onfulfilled?:
-        | ((
-            value: { data: Array<Record<string, unknown>>; error: null },
-          ) => TResult1 | PromiseLike<TResult1>)
+        | ((value: {
+            data: Array<Record<string, unknown>>;
+            error: null;
+          }) => TResult1 | PromiseLike<TResult1>)
         | null,
     ) {
       return Promise.resolve({ data, error: null }).then(onfulfilled);

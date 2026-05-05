@@ -17,7 +17,9 @@ const LOCAL_UPLOAD_SECRET =
   process.env["LOCAL_UPLOAD_SECRET"] ?? randomBytes(32).toString("hex");
 
 function sign(payload: string): string {
-  return createHmac("sha256", LOCAL_UPLOAD_SECRET).update(payload).digest("hex");
+  return createHmac("sha256", LOCAL_UPLOAD_SECRET)
+    .update(payload)
+    .digest("hex");
 }
 
 function signaturesMatch(payload: string, signature: string): boolean {

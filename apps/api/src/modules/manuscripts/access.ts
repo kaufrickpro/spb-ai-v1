@@ -71,7 +71,5 @@ async function getMarketplaceRole(
     return null;
   }
 
-  return data.role === "author" || data.role === "publisher"
-    ? data.role
-    : null;
+  return data.role === "author" || data.role === "publisher" ? data.role : null;
 }

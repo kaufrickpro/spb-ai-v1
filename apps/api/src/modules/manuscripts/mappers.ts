@@ -23,8 +23,9 @@ export function mapDbManuscript(row: Record<string, unknown>): Manuscript {
         ? Number(row["target_age_max"])
         : null,
     status: row["status"] as Manuscript["status"],
-    adminReviewStatus:
-      row["admin_review_status"] as Manuscript["adminReviewStatus"],
+    adminReviewStatus: row[
+      "admin_review_status"
+    ] as Manuscript["adminReviewStatus"],
     eligibilityStatus: (row["eligibility_status"] ??
       "limited") as Manuscript["eligibilityStatus"],
     reviewOutcome: (row["review_outcome"] ??
@@ -44,13 +45,13 @@ export function mapDbDocument(row: Record<string, unknown>): Document {
     mimeType: row["mime_type"] as Document["mimeType"],
     fileSizeBytes: Number(row["file_size_bytes"]),
     storageStatus: row["storage_status"] as Document["storageStatus"],
-    processingStatus:
-      row["processing_status"] as Document["processingStatus"],
+    processingStatus: row["processing_status"] as Document["processingStatus"],
     processingFailureCode:
       (row["processing_failure_code"] as Document["processingFailureCode"]) ??
       null,
-    adminReviewStatus:
-      row["admin_review_status"] as Document["adminReviewStatus"],
+    adminReviewStatus: row[
+      "admin_review_status"
+    ] as Document["adminReviewStatus"],
     eligibilityStatus: (row["eligibility_status"] ??
       "limited") as Document["eligibilityStatus"],
     reviewOutcome: (row["review_outcome"] ??
@@ -71,7 +72,9 @@ function normalizeDbDateTime(value: unknown): unknown {
   return new Date(value).toISOString();
 }
 
-function normalizeNullableDbDateTime(value: unknown): string | null | undefined {
+function normalizeNullableDbDateTime(
+  value: unknown,
+): string | null | undefined {
   if (value === null || value === undefined) {
     return value;
   }

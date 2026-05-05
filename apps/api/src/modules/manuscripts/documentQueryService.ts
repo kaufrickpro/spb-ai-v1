@@ -10,7 +10,11 @@ export async function getAuthorDocument(
   input: { authorId: string; documentId: string },
 ) {
   if (context.mode === "test") {
-    const document = getTestDocument(testState, input.documentId, input.authorId);
+    const document = getTestDocument(
+      testState,
+      input.documentId,
+      input.authorId,
+    );
     if (!document) {
       throw new ManuscriptServiceError("not_found", "Document not found");
     }
@@ -48,7 +52,11 @@ export async function assertAuthorCanDownloadDocument(
   input: { authorId: string; documentId: string },
 ) {
   if (context.mode === "test") {
-    const document = getTestDocument(testState, input.documentId, input.authorId);
+    const document = getTestDocument(
+      testState,
+      input.documentId,
+      input.authorId,
+    );
     if (!document || document.storageStatus === "deleted") {
       throw new ManuscriptServiceError("not_found", "Document not found");
     }

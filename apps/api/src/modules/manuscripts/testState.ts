@@ -95,9 +95,8 @@ export function getTestManuscript(
   authorId: string,
 ): Manuscript | null {
   return (
-    state.manuscripts.find(
-      (m) => m.id === id && m.authorId === authorId,
-    ) ?? null
+    state.manuscripts.find((m) => m.id === id && m.authorId === authorId) ??
+    null
   );
 }
 
@@ -268,7 +267,9 @@ export function setTestManuscriptReviewStatus(
   decision: "approved" | "rejected",
   now: string,
 ): void {
-  const index = state.manuscripts.findIndex((manuscript) => manuscript.id === manuscriptId);
+  const index = state.manuscripts.findIndex(
+    (manuscript) => manuscript.id === manuscriptId,
+  );
   if (index < 0) {
     return;
   }
@@ -278,7 +279,8 @@ export function setTestManuscriptReviewStatus(
     ...current,
     adminReviewStatus: decision,
     eligibilityStatus: decision === "approved" ? "eligible" : "blocked",
-    reviewOutcome: decision === "approved" ? "admin_approved" : "admin_rejected",
+    reviewOutcome:
+      decision === "approved" ? "admin_approved" : "admin_rejected",
     status: decision === "approved" ? "approved" : "rejected",
     updatedAt: now,
   });
@@ -290,7 +292,9 @@ export function setTestDocumentReviewStatus(
   decision: "approved" | "rejected",
   now: string,
 ): void {
-  const index = state.documents.findIndex((document) => document.id === documentId);
+  const index = state.documents.findIndex(
+    (document) => document.id === documentId,
+  );
   if (index < 0) {
     return;
   }
@@ -300,7 +304,8 @@ export function setTestDocumentReviewStatus(
     ...current,
     adminReviewStatus: decision,
     eligibilityStatus: decision === "approved" ? "eligible" : "blocked",
-    reviewOutcome: decision === "approved" ? "admin_approved" : "admin_rejected",
+    reviewOutcome:
+      decision === "approved" ? "admin_approved" : "admin_rejected",
     updatedAt: now,
   });
 }

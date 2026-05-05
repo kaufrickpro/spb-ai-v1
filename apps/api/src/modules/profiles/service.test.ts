@@ -136,7 +136,9 @@ describe("profile service", () => {
     const rpc = vi.fn().mockResolvedValue({ data: profileRow, error: null });
     const serviceDb = {
       from: vi.fn(() => {
-        throw new Error("Onboarding details must not use separate table writes");
+        throw new Error(
+          "Onboarding details must not use separate table writes",
+        );
       }),
       rpc,
     };

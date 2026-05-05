@@ -10,6 +10,7 @@ import {
   useUpdateManuscript,
   useDownloadDocument,
 } from "./useManuscripts";
+import { getDocumentCheckingState } from "./documentCheckingState";
 import { ManuscriptForm } from "./ManuscriptForm";
 import { UploadControl } from "./UploadControl";
 import type { UpdateManuscriptRequest } from "@marketplace/contracts";
@@ -44,22 +45,6 @@ const manuscriptStatusColors: Record<string, string> = {
   archived: "bg-slate-200 text-slate-500",
 };
 
-const storageStatusColors: Record<string, string> = {
-  pending_upload: "bg-yellow-100 text-yellow-700",
-  uploaded: "bg-blue-100 text-blue-700",
-  attached: "bg-green-100 text-green-700",
-  pending_delete: "bg-orange-100 text-orange-700",
-  deleted: "bg-red-100 text-red-700",
-};
-
-const processingStatusColors: Record<string, string> = {
-  not_started: "bg-slate-100 text-slate-500",
-  queued: "bg-yellow-100 text-yellow-700",
-  processing: "bg-blue-100 text-blue-700",
-  succeeded: "bg-green-100 text-green-700",
-  failed: "bg-red-100 text-red-700",
-};
-
 const eligibilityStatusColors: Record<string, string> = {
   eligible: "bg-green-100 text-green-700",
   limited: "bg-yellow-100 text-yellow-700",
@@ -82,6 +67,12 @@ export function ManuscriptDetailPage() {
 
   const documentQuery = useDocument(manuscript?.sampleDocumentId ?? null);
   const doc = documentQuery.data?.document;
+  const documentCheckingState = getDocumentCheckingState(
+    doc ?? {
+      processingFailureCode: null,
+      processingStatus: "not_started",
+    },
+  );
   const hasSampleDocument = Boolean(manuscript?.sampleDocumentId);
 
   async function handleSave(values: UpdateManuscriptRequest) {
@@ -273,16 +264,12 @@ export function ManuscriptDetailPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <StatusBadge
-                      status={doc.storageStatus}
-                      colorMap={storageStatusColors}
-                    />
-                    <StatusBadge
-                      status={doc.processingStatus}
-                      label={t(
-                        `manuscripts.detail.processingStatus.${doc.processingStatus}`,
-                        { defaultValue: doc.processingStatus },
-                      )}
-                      colorMap={processingStatusColors}
+                      status={documentCheckingState.kind}
+                      label={t(documentCheckingState.titleKey)}
+                      colorMap={{
+                        [documentCheckingState.kind]:
+                          documentCheckingState.badgeClassName,
+                      }}
                     />
                     <StatusBadge
                       status={doc.eligibilityStatus}
@@ -294,18 +281,21 @@ export function ManuscriptDetailPage() {
                     />
                   </div>
                 </div>
-                {doc.processingStatus === "failed" && (
-                  <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {t(
-                      `manuscripts.detail.processingFailure.${doc.processingFailureCode ?? "generic"}`,
-                      {
-                        defaultValue: t(
-                          "manuscripts.detail.processingFailure.generic",
-                        ),
-                      },
-                    )}
+                <div
+                  className={`rounded-md border px-3 py-2 ${documentCheckingState.panelClassName}`}
+                >
+                  <p className="text-sm font-medium">
+                    {t(documentCheckingState.titleKey)}
                   </p>
-                )}
+                  <p className="mt-1 text-sm">
+                    {t(documentCheckingState.descriptionKey)}
+                  </p>
+                  {documentCheckingState.failureMessageKey && (
+                    <p className="mt-2 text-sm">
+                      {t(documentCheckingState.failureMessageKey)}
+                    </p>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="button"
