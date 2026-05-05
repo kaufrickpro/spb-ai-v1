@@ -1,0 +1,58 @@
+# Environment files
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Node and package manager
+node_modules/
+.npm/
+.pnpm-store/
+
+# TypeScript and JS build artifacts
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# Python
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.python-version
+
+# Logs and temp files
+.DS_Store
+*.log
+logs/
+tmp/
+temp/
+
+# Local uploads and manuscript files
+uploads/
+local-uploads/
+**/uploads/
+**/local-uploads/
+manuscripts/
+samples/
+
+# Supabase local runtime artifacts
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# Credentials and keys
+*.pem
+*.key
+*.p12
+*service-account*.json
+gcp-service-account.json
+
+# Local agent tooling checkouts
+codex/.skills/

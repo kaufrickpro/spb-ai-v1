@@ -1,0 +1,24 @@
+{
+  "name": "@marketplace/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "generate:openapi": "node dist/generate-openapi.js && prettier --write openapi.json",
+    "build": "tsc -p tsconfig.json && npm run generate:openapi"
+  },
+  "dependencies": {
+    "zod": "^3.24.3"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@marketplace/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "bootstrap:first-admin": "tsx src/scripts/bootstrapFirstAdmin.ts",
+    "admin:seed": "tsx src/scripts/seedLocalAdmin.ts",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@marketplace/contracts": "*",
+    "@supabase/supabase-js": "^2.105.1",
+    "fastify": "^5.2.1",
+    "jose": "^6.2.3",
+    "zod": "^3.24.3"
+  }
+}

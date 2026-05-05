@@ -1,0 +1,40 @@
+{
+  "name": "publisher-author-marketplace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Monorepo scaffold for the publisher-author SaaS marketplace.",
+  "workspaces": [
+    "apps/web",
+    "apps/api",
+    "packages/contracts",
+    "packages/ui"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,green \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:api": "npm run dev --workspace apps/api",
+    "check:harness": "node scripts/check-harness.mjs",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "format:check": "prettier --check \"*.{json,md}\" \"apps/**/*.{css,html,js,json,md,mjs,ts,tsx,yaml,yml}\" \"packages/**/*.{css,html,js,json,md,mjs,ts,tsx,yaml,yml}\" \"scripts/**/*.{js,mjs,json,md,yaml,yml}\" \"docs/**/*.{md,yaml,yml}\" \"infra/**/*.{md,yaml,yml}\" \"supabase/**/*.{md,yaml,yml}\" \".github/**/*.{yaml,yml}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.1",
+    "@types/node": "^22.15.9",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.25.1",
+    "postcss": "^8.5.6",
+    "prettier": "^3.5.3",
+    "supabase": "^2.98.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.30.1",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.2"
+  }
+}

@@ -1,0 +1,1 @@
+-- Intentionally empty until taxonomy and plan seed fixtures are added.

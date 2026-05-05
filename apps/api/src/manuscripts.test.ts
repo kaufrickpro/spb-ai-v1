@@ -1,0 +1,762 @@
+import { describe, expect, it } from "vitest";
+import { buildApp } from "./server.js";
+
+const testConfig = {
+  authMode: "test" as const,
+  appConfigMode: "local" as const,
+  host: "127.0.0.1",
+  logLevel: "silent" as const,
+  port: 4000,
+  webAppUrl: "http://localhost:5173",
+};
+
+function localPathFromUrl(url: string): string {
+  return url.replace("http://localhost:4000", "");
+}
+
+describe("Manuscript routes", () => {
+  // ─── Auth required ─────────────────────────────────────────────────────────
+
+  it("blocks unauthenticated access to manuscript list", async () => {
+    const app = buildApp({ config: testConfig });
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/manuscripts",
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("blocks unauthenticated access to manuscript create", async () => {
+    const app = buildApp({ config: testConfig });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/manuscripts",
+      payload: { title: "Test", genre: "Deneme", language: "tr" },
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("blocks unauthenticated access to signed-url", async () => {
+    const app = buildApp({ config: testConfig });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      payload: {},
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  // ─── Author can list their own manuscripts ─────────────────────────────────
+
+  it("returns empty list initially for a new author (after seeded fixture)", async () => {
+    const app = buildApp({ config: testConfig });
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/manuscripts",
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    // Test state seeds one fixture manuscript for test-user
+    expect(response.json().manuscripts).toHaveLength(1);
+    expect(response.json().manuscripts[0].title).toBe("Gece Yarısı Şehri");
+  });
+
+  // ─── Create manuscript ─────────────────────────────────────────────────────
+
+  it("creates a manuscript in draft status for an authenticated user", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/manuscripts",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        title: "Bozkır",
+        genre: "Doğa Yazını",
+        language: "tr",
+        wordCount: 60000,
+        synopsis: "Orta Anadolu bozkırında yaşanan bir aşk hikayesi.",
+        targetAgeMin: 16,
+        targetAgeMax: 99,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.manuscript).toMatchObject({
+      title: "Bozkır",
+      genre: "Doğa Yazını",
+      language: "tr",
+      wordCount: 60000,
+      status: "draft",
+      adminReviewStatus: "not_submitted",
+      eligibilityStatus: "eligible",
+      reviewOutcome: "auto_approved",
+    });
+  });
+
+  // ─── Get manuscript ────────────────────────────────────────────────────────
+
+  it("returns a manuscript the author owns", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/manuscripts/10000000-0000-4000-8000-000000000001",
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().manuscript.id).toBe(
+      "10000000-0000-4000-8000-000000000001",
+    );
+  });
+
+  it("returns 404 when the manuscript belongs to another author", async () => {
+    const app = buildApp({ config: testConfig });
+
+    // another author tries to read test-user's manuscript
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/manuscripts/10000000-0000-4000-8000-000000000001",
+      headers: { authorization: "Bearer test-other-author" },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  // ─── Update manuscript ─────────────────────────────────────────────────────
+
+  it("updates a manuscript the author owns", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/manuscripts/10000000-0000-4000-8000-000000000001",
+      headers: { authorization: "Bearer test-user" },
+      payload: { wordCount: 95000 },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().manuscript.wordCount).toBe(95000);
+  });
+
+  // ─── Upload signed URL ─────────────────────────────────────────────────────
+
+  it("returns a signed upload URL for a valid request", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "sample.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 1024 * 1024, // 1 MB
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.uploadId).toBeTruthy();
+    expect(body.documentId).toBeTruthy();
+    expect(body.uploadUrl).toMatch(/\/api\/v1\/uploads\/local\//);
+    expect(body.expiresAt).toBeTruthy();
+  });
+
+  it("allows the local signed upload URL to accept file bytes without auth headers", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const signedUrlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "sample.txt",
+        mimeType: "text/plain",
+        fileSizeBytes: 12,
+      },
+    });
+
+    const { uploadUrl } = signedUrlResponse.json() as { uploadUrl: string };
+    const uploadPath = localPathFromUrl(uploadUrl);
+
+    const uploadResponse = await app.inject({
+      method: "PUT",
+      url: uploadPath,
+      payload: Buffer.from("hello world!"),
+      headers: { "content-type": "text/plain" },
+    });
+
+    expect(uploadResponse.statusCode).toBe(200);
+    expect(uploadResponse.json()).toEqual({ ok: true });
+  });
+
+  it("rejects unsupported MIME types", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "image.png",
+        mimeType: "image/png",
+        fileSizeBytes: 500,
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("rejects files over 25 MB", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "huge.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 26 * 1024 * 1024, // 26 MB
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  // ─── Complete upload flow ──────────────────────────────────────────────────
+
+  it("completes upload and returns updated document", async () => {
+    const app = buildApp({ config: testConfig });
+
+    // Step 1: request signed URL (creates the pending_upload document)
+    const urlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "chapter1.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 2 * 1024 * 1024,
+      },
+    });
+
+    expect(urlResponse.statusCode).toBe(201);
+    const { documentId } = urlResponse.json() as { documentId: string };
+
+    const uploadPath = localPathFromUrl(urlResponse.json().uploadUrl);
+    const uploadResponse = await app.inject({
+      method: "PUT",
+      url: uploadPath,
+      payload: Buffer.from("%PDF-1.7"),
+      headers: { "content-type": "application/pdf" },
+    });
+    expect(uploadResponse.statusCode).toBe(200);
+
+    // Step 2: complete upload
+    const completeResponse = await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    expect(completeResponse.statusCode).toBe(200);
+    expect(completeResponse.json().document.storageStatus).toBe("uploaded");
+    expect(completeResponse.json().document.processingStatus).toBe("queued");
+    expect(completeResponse.json().document.processingFailureCode).toBeNull();
+  });
+
+  it("rejects stale upload completion when no local file was stored for the pending document", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const urlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "missing.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 1024,
+      },
+    });
+
+    const { documentId } = urlResponse.json() as { documentId: string };
+
+    const completeResponse = await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    expect(completeResponse.statusCode).toBe(409);
+    expect(completeResponse.json()).toMatchObject({
+      error: { code: "stale_upload_completion" },
+    });
+  });
+
+  // ─── Download URL ──────────────────────────────────────────────────────────
+
+  it("returns a download URL for a document the author owns", async () => {
+    const app = buildApp({ config: testConfig });
+
+    // Create doc first
+    const urlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "sample.docx",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        fileSizeBytes: 512 * 1024,
+      },
+    });
+    const { documentId } = urlResponse.json() as { documentId: string };
+
+    const uploadPath = localPathFromUrl(urlResponse.json().uploadUrl);
+    await app.inject({
+      method: "PUT",
+      url: uploadPath,
+      payload: Buffer.from("docx bytes"),
+      headers: {
+        "content-type":
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    const downloadResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${documentId}/download-url`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    expect(downloadResponse.statusCode).toBe(200);
+    expect(downloadResponse.json().downloadUrl).toContain(
+      "/api/v1/documents/local-download/",
+    );
+  });
+
+  it("serves stored local file bytes from the signed download URL", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const signedUrlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "chapter.txt",
+        mimeType: "text/plain",
+        fileSizeBytes: 13,
+      },
+    });
+
+    const { documentId, uploadUrl } = signedUrlResponse.json() as {
+      documentId: string;
+      uploadUrl: string;
+    };
+
+    await app.inject({
+      method: "PUT",
+      url: localPathFromUrl(uploadUrl),
+      payload: Buffer.from("Merhaba dunya"),
+      headers: { "content-type": "text/plain" },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    const downloadResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${documentId}/download-url`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    const downloadPath = localPathFromUrl(downloadResponse.json().downloadUrl);
+    const fileResponse = await app.inject({
+      method: "GET",
+      url: downloadPath,
+    });
+
+    expect(fileResponse.statusCode).toBe(200);
+    expect(fileResponse.headers["content-disposition"]).toBe(
+      'attachment; filename="chapter.txt"',
+    );
+    expect(fileResponse.body).toBe("Merhaba dunya");
+  });
+
+  it("blocks another user from getting download URL for someone else's document", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const urlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "private.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 1024,
+      },
+    });
+    const { documentId } = urlResponse.json() as { documentId: string };
+
+    await app.inject({
+      method: "PUT",
+      url: localPathFromUrl(urlResponse.json().uploadUrl),
+      payload: Buffer.from("private"),
+      headers: { "content-type": "application/pdf" },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    // another author (different userId) tries to get download URL
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${documentId}/download-url`,
+      headers: { authorization: "Bearer test-other-author" },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("blocks a publisher user from every manuscript and upload endpoint", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/manuscripts",
+      headers: { authorization: "Bearer test-publisher" },
+    });
+    expect(listResponse.statusCode).toBe(403);
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/manuscripts",
+      headers: { authorization: "Bearer test-publisher" },
+      payload: { title: "Nope", genre: "Roman", language: "tr" },
+    });
+    expect(createResponse.statusCode).toBe(403);
+
+    const getResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/manuscripts/10000000-0000-4000-8000-000000000001",
+      headers: { authorization: "Bearer test-publisher" },
+    });
+    expect(getResponse.statusCode).toBe(403);
+
+    const updateResponse = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/manuscripts/10000000-0000-4000-8000-000000000001",
+      headers: { authorization: "Bearer test-publisher" },
+      payload: { title: "Still nope" },
+    });
+    expect(updateResponse.statusCode).toBe(403);
+
+    const signedUrlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-publisher" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "sample.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 1024,
+      },
+    });
+    expect(signedUrlResponse.statusCode).toBe(403);
+  });
+
+  it("blocks a non-owner author from another author's manuscript and document routes", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const ownerSignedUrlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "owner.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 1024,
+      },
+    });
+
+    const { documentId, uploadUrl } = ownerSignedUrlResponse.json() as {
+      documentId: string;
+      uploadUrl: string;
+    };
+
+    await app.inject({
+      method: "PUT",
+      url: localPathFromUrl(uploadUrl),
+      payload: Buffer.from("owner-file"),
+      headers: { "content-type": "application/pdf" },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    const manuscriptResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/manuscripts/10000000-0000-4000-8000-000000000001",
+      headers: { authorization: "Bearer test-other-author" },
+    });
+    expect(manuscriptResponse.statusCode).toBe(404);
+
+    const documentResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${documentId}`,
+      headers: { authorization: "Bearer test-other-author" },
+    });
+    expect(documentResponse.statusCode).toBe(404);
+
+    const downloadResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${documentId}/download-url`,
+      headers: { authorization: "Bearer test-other-author" },
+    });
+    expect(downloadResponse.statusCode).toBe(404);
+  });
+
+  it("marks the prior active sample as pending_delete when a replacement upload is completed", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const firstUpload = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "first.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 2048,
+      },
+    });
+    const first = firstUpload.json() as {
+      documentId: string;
+      uploadUrl: string;
+    };
+    await app.inject({
+      method: "PUT",
+      url: localPathFromUrl(first.uploadUrl),
+      payload: Buffer.from("first"),
+      headers: { "content-type": "application/pdf" },
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${first.documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    const secondUpload = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "second.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 2048,
+      },
+    });
+    const second = secondUpload.json() as {
+      documentId: string;
+      uploadUrl: string;
+    };
+    await app.inject({
+      method: "PUT",
+      url: localPathFromUrl(second.uploadUrl),
+      payload: Buffer.from("second"),
+      headers: { "content-type": "application/pdf" },
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${second.documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    const oldDocumentResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${first.documentId}`,
+      headers: { authorization: "Bearer test-user" },
+    });
+    expect(oldDocumentResponse.statusCode).toBe(200);
+    expect(oldDocumentResponse.json().document.storageStatus).toBe(
+      "pending_delete",
+    );
+
+    const manuscriptResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/manuscripts/10000000-0000-4000-8000-000000000001",
+      headers: { authorization: "Bearer test-user" },
+    });
+    expect(manuscriptResponse.json().manuscript.sampleDocumentId).toBe(
+      second.documentId,
+    );
+  });
+
+  it("auto-approves a clean manuscript without creating an admin exception", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/manuscripts",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        title: "Moderation Test",
+        genre: "Roman",
+        language: "tr",
+      },
+    });
+
+    const manuscriptId = createResponse.json().manuscript.id as string;
+    expect(createResponse.json().manuscript).toMatchObject({
+      adminReviewStatus: "not_submitted",
+      eligibilityStatus: "eligible",
+      reviewOutcome: "auto_approved",
+    });
+
+    const queueResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/reviews?entityType=manuscript",
+      headers: { authorization: "Bearer test-admin-mfa" },
+    });
+
+    const review = queueResponse
+      .json()
+      .reviews.find(
+        (item: { entityId: string }) => item.entityId === manuscriptId,
+      );
+    expect(review).toBeUndefined();
+  });
+
+  it("queues a clean uploaded document for ingestion without creating an admin exception", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const signedUrlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "moderation.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 1024,
+      },
+    });
+
+    const { documentId, uploadUrl } = signedUrlResponse.json() as {
+      documentId: string;
+      uploadUrl: string;
+    };
+
+    await app.inject({
+      method: "PUT",
+      url: new URL(uploadUrl).pathname,
+      payload: Buffer.from("moderation"),
+      headers: { "content-type": "application/pdf" },
+    });
+
+    const completeResponse = await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+    expect(completeResponse.json().document).toMatchObject({
+      adminReviewStatus: "not_submitted",
+      processingStatus: "queued",
+      processingFailureCode: null,
+      eligibilityStatus: "limited",
+      reviewOutcome: "needs_review",
+    });
+
+    const queueResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/reviews?entityType=document",
+      headers: { authorization: "Bearer test-admin-mfa" },
+    });
+
+    const review = queueResponse
+      .json()
+      .reviews.find(
+        (item: { entityId: string }) => item.entityId === documentId,
+      );
+    expect(review).toBeUndefined();
+
+    const jobsResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/jobs/health",
+      headers: { authorization: "Bearer test-admin-mfa" },
+    });
+
+    const ingestionJob = jobsResponse
+      .json()
+      .runs.find(
+        (item: { jobType: string; source: string }) =>
+          item.jobType === "document_ingestion" &&
+          item.source.includes(documentId),
+      );
+    expect(ingestionJob).toMatchObject({
+      status: "queued",
+      failureCode: null,
+      attemptCount: 0,
+      maxAttempts: 3,
+    });
+  });
+
+  // ─── Fake upload token ─────────────────────────────────────────────────────
+
+  it("rejects an expired or malformed local upload token", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/v1/uploads/local/invalid-token",
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("rejects malformed local download tokens", async () => {
+    const app = buildApp({ config: testConfig });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/documents/local-download/invalid-token",
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: { code: "download_token_invalid" },
+    });
+  });
+});
