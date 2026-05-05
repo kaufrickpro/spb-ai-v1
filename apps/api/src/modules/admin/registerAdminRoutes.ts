@@ -404,7 +404,9 @@ export function registerAdminRoutes(
 
     if (auth.config.authMode === "test") {
       return reply.send(
-        AdminJobHealthResponseSchema.parse(getTestAdminJobHealth(testState)),
+        AdminJobHealthResponseSchema.parse(
+          getTestAdminJobHealth(testState, manuscriptTestState.ingestionJobs),
+        ),
       );
     }
 

@@ -373,15 +373,19 @@ function riskRank(value: string) {
   return 1;
 }
 
-export function getTestAdminJobHealth(state: AdminTestState) {
+export function getTestAdminJobHealth(
+  state: AdminTestState,
+  extraRuns: AdminJobRun[] = [],
+) {
+  const allRuns = [...state.jobRuns, ...extraRuns];
   return {
     summary: {
-      queued: state.jobRuns.filter((run) => run.status === "queued").length,
-      running: state.jobRuns.filter((run) => run.status === "running").length,
-      failed: state.jobRuns.filter((run) => run.status === "failed").length,
-      lastRunAt: latestValue(state.jobRuns.map((run) => run.updatedAt)),
+      queued: allRuns.filter((run) => run.status === "queued").length,
+      running: allRuns.filter((run) => run.status === "running").length,
+      failed: allRuns.filter((run) => run.status === "failed").length,
+      lastRunAt: latestValue(allRuns.map((run) => run.updatedAt)),
     },
-    runs: state.jobRuns,
+    runs: allRuns,
   };
 }
 

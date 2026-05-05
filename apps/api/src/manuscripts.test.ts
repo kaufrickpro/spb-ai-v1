@@ -304,6 +304,56 @@ describe("Manuscript routes", () => {
     });
   });
 
+  it("leaves document in pending_upload and manuscript unchanged when complete-upload pre-condition fails", async () => {
+    // Regression: if the pre-condition check (no file uploaded) rejects the
+    // request, neither the document's processing_status nor the manuscript's
+    // sample_document_id should be mutated — proving the atomic guarantee.
+    const app = buildApp({ config: testConfig });
+
+    const urlResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/uploads/signed-url",
+      headers: { authorization: "Bearer test-user" },
+      payload: {
+        manuscriptId: "10000000-0000-4000-8000-000000000001",
+        fileName: "ghost.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 512,
+      },
+    });
+    const { documentId } = urlResponse.json() as { documentId: string };
+
+    // Intentionally skip uploading the file, then attempt to complete.
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/documents/${documentId}/complete-upload`,
+      headers: { authorization: "Bearer test-user" },
+    });
+
+    // The document must remain in pending_upload — not queued.
+    const documentResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${documentId}`,
+      headers: { authorization: "Bearer test-user" },
+    });
+    expect(documentResponse.json().document.storageStatus).toBe(
+      "pending_upload",
+    );
+    expect(documentResponse.json().document.processingStatus).toBe(
+      "not_started",
+    );
+
+    // The manuscript must not have this document as its active sample.
+    const manuscriptResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/manuscripts/10000000-0000-4000-8000-000000000001",
+      headers: { authorization: "Bearer test-user" },
+    });
+    expect(manuscriptResponse.json().manuscript.sampleDocumentId).not.toBe(
+      documentId,
+    );
+  });
+
   // ─── Download URL ──────────────────────────────────────────────────────────
 
   it("returns a download URL for a document the author owns", async () => {
