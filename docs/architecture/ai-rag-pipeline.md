@@ -44,6 +44,15 @@ The first Step 9 implementation supports `text/plain` only. Digital PDF, DOCX, a
 - Staging/production: files live in private GCS with `STORAGE_PROVIDER=gcs` and `GCS_BUCKET_PRIVATE_UPLOADS`; Cloud Tasks calls the private Cloud Run AI service with OIDC; AI service authentication uses Cloud Run IAM/OIDC; the AI service reads document bytes from private GCS through its service identity, not through public buckets or browser-provided signed URLs. Vertex AI embeddings and Vector Search are wired behind config when that provider slice is implemented.
 - Local/dev may mark scanner metadata as `not_scanned`. Staging/production must configure real malware/safety scanning with `DOCUMENT_SCANNER_MODE=real` and `DOCUMENT_SCANNER_PROVIDER`, or carry a named explicit launch decision in `DOCUMENT_SCANNER_LAUNCH_DECISION_ID` before accepting real user documents. The API and AI service both fail fast when deployed config tries to use `DOCUMENT_SCANNER_MODE=local_fake` without that decision.
 
+### Local Validation
+
+The repeatable Step 9 local validation path is covered by focused automated checks:
+
+- `npm run test --workspace apps/api -- localDocumentProcessingFlow` exercises author manuscript creation, sample upload, upload completion, queued job creation, local processor dispatch, processed/failed document query states, and the rule that ordinary user-correctable failures do not create default admin exceptions.
+- `cd apps/ai-service && uv run pytest tests/test_local_validation_flow.py` exercises the local worker reading stored text bytes, writing bounded chunks, writing reference-only embedding records, and recording user-safe failure outcomes without storing chunks for empty text.
+
+For a real local Supabase smoke run, start the API and AI service with matching `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LOCAL_STORAGE_ROOT`, and `AI_INTERNAL_TOKEN`; upload and complete a `text/plain` sample through the author manuscript UI or API; then run `npm run documents:process --workspace apps/api -- 1`. Verify the document reaches `processing_status = 'succeeded'` or a safe failure state, and for a successful text sample verify rows exist in `document_chunks` and `embedding_records`.
+
 Current staging target values:
 
 - GCP project: `spb-ai`

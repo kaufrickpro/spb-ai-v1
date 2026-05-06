@@ -10,14 +10,22 @@ import { registerHealthRoutes } from "./modules/health/registerHealthRoutes.js";
 import { registerProfileRoutes } from "./modules/profiles/registerProfileRoutes.js";
 import { registerAdminRoutes } from "./modules/admin/registerAdminRoutes.js";
 import { createAdminTestState } from "./modules/admin/testState.js";
+import type { AdminTestState } from "./modules/admin/testState.js";
 import { registerManuscriptRoutes } from "./modules/manuscripts/registerManuscriptRoutes.js";
 import { createManuscriptTestState } from "./modules/manuscripts/testState.js";
+import type { ManuscriptTestState } from "./modules/manuscripts/testState.js";
 import { createProfileTestState } from "./modules/profiles/testState.js";
+import type { ProfileTestState } from "./modules/profiles/testState.js";
 
 type BuildAppOptions = {
   config: ApiConfig;
   /** Override the JWT verifier — used in tests to inject a local key set. */
   jwtVerify?: JwtVerifyFn;
+  testState?: {
+    admin?: AdminTestState;
+    manuscripts?: ManuscriptTestState;
+    profiles?: ProfileTestState;
+  };
 };
 
 function isAllowedOrigin(requestOrigin: string | undefined, config: ApiConfig) {
@@ -52,6 +60,7 @@ function isAllowedOrigin(requestOrigin: string | undefined, config: ApiConfig) {
 export function buildApp({
   config,
   jwtVerify,
+  testState: injectedTestState,
 }: BuildAppOptions): FastifyInstance {
   const app = Fastify({
     logger: config.logLevel === "silent" ? false : { level: config.logLevel },
@@ -67,9 +76,11 @@ export function buildApp({
       : null;
 
   const auth = { config, verifyJwt };
-  const testState = createAdminTestState();
-  const manuscriptTestState = createManuscriptTestState();
-  const profileTestState = createProfileTestState();
+  const testState = injectedTestState?.admin ?? createAdminTestState();
+  const manuscriptTestState =
+    injectedTestState?.manuscripts ?? createManuscriptTestState();
+  const profileTestState =
+    injectedTestState?.profiles ?? createProfileTestState();
 
   app.addHook("onRequest", async (request, reply) => {
     const requestOrigin = request.headers.origin;
