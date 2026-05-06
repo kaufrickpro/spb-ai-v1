@@ -40,9 +40,9 @@ The first Step 9 implementation supports `text/plain` only. Digital PDF, DOCX, a
 
 ### Environment Split
 
-- Local/dev: local file storage and fake signed URLs stand in for private GCS; the API local processor command `npm run documents:process --workspace apps/api -- <limit>` claims queued jobs and calls the AI service with only `{ job_id }`; the AI service local worker reads Supabase job/document rows, reads bytes from `LOCAL_STORAGE_ROOT`, and writes chunks plus embedding references back to Supabase; fake embeddings write deterministic reference metadata only; AI calls use `AI_INTERNAL_TOKEN`.
-- Staging/production: files live in private GCS with `STORAGE_PROVIDER=gcs` and `GCS_BUCKET_PRIVATE_UPLOADS`; Cloud Tasks calls the private Cloud Run AI service with OIDC; AI service authentication uses Cloud Run IAM/OIDC; the AI service reads document bytes from private GCS through its service identity, not through public buckets or browser-provided signed URLs. Vertex AI embeddings and Vector Search are wired behind config when that provider slice is implemented.
-- Local/dev may mark scanner metadata as `not_scanned`. Staging/production must configure real malware/safety scanning with `DOCUMENT_SCANNER_MODE=real` and `DOCUMENT_SCANNER_PROVIDER`, or carry a named explicit launch decision in `DOCUMENT_SCANNER_LAUNCH_DECISION_ID` before accepting real user documents. The API and AI service both fail fast when deployed config tries to use `DOCUMENT_SCANNER_MODE=local_fake` without that decision.
+- Local/dev: local file storage and fake signed URLs stand in for private GCS; the API local processor command `npm run documents:process --workspace apps/api -- <limit>` claims queued jobs and calls the AI service with only `{ job_id }`; the AI service local worker reads Supabase job/document rows, reads bytes from `LOCAL_STORAGE_ROOT`, scans through the fake scanner adapter, and writes chunks plus embedding references back to Supabase for clean text samples; fake embeddings write deterministic reference metadata only; AI calls use `AI_INTERNAL_TOKEN`.
+- Staging/production: files live in private GCS with `STORAGE_PROVIDER=gcs` and `GCS_BUCKET_PRIVATE_UPLOADS`; Cloud Tasks calls the private Cloud Run AI service with OIDC; AI service authentication uses Cloud Run IAM/OIDC; the AI service reads document bytes from private GCS through its service identity, not through public buckets or browser-provided signed URLs. Step 9 stores reference-only embedding records. Step 10 owns fake vector retrieval first, then real Vertex AI embeddings and Vector Search upsert/query wiring.
+- Local/dev may simulate scanner outcomes with the fake scanner adapter through `LOCAL_FAKE_SCANNER_RESULT`. Staging/production must configure real malware/safety scanning with `DOCUMENT_SCANNER_MODE=real`, `DOCUMENT_SCANNER_PROVIDER=http-clamav`, `DOCUMENT_SCANNER_ENDPOINT`, `DOCUMENT_SCANNER_TOKEN`, and `DOCUMENT_SCANNER_TIMEOUT_SECONDS`, or carry a named explicit launch decision in `DOCUMENT_SCANNER_LAUNCH_DECISION_ID` before accepting real user documents. Deployed environments must not use local simulation outcomes such as fake `clean`, fake `suspicious`, or fake `quarantined`.
 
 ### Local Validation
 
@@ -50,6 +50,8 @@ The repeatable Step 9 local validation path is covered by focused automated chec
 
 - `npm run test --workspace apps/api -- localDocumentProcessingFlow` exercises author manuscript creation, sample upload, upload completion, queued job creation, local processor dispatch, processed/failed document query states, and the rule that ordinary user-correctable failures do not create default admin exceptions.
 - `cd apps/ai-service && uv run pytest tests/test_local_validation_flow.py` exercises the local worker reading stored text bytes, writing bounded chunks, writing reference-only embedding records, and recording user-safe failure outcomes without storing chunks for empty text.
+
+As of 2026-05-06, Step 9 foundation validation passes with `npm run test --workspace apps/api -- localDocumentProcessingFlow` and `cd apps/ai-service && uv run pytest tests/test_config.py tests/test_ingestion.py tests/test_scanner.py tests/test_local_validation_flow.py`.
 
 For a real local Supabase smoke run, start the API and AI service with matching `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LOCAL_STORAGE_ROOT`, and `AI_INTERNAL_TOKEN`; upload and complete a `text/plain` sample through the author manuscript UI or API; then run `npm run documents:process --workspace apps/api -- 1`. Verify the document reaches `processing_status = 'succeeded'` or a safe failure state, and for a successful text sample verify rows exist in `document_chunks` and `embedding_records`.
 
@@ -67,22 +69,27 @@ Current staging target values:
 
 ### Scanner Policy
 
-`scanner_result = not_scanned` means the uploaded sample has not received a malware or safety scan. In local/dev, this is deterministic fake scanner behavior only and is acceptable because local files are developer fixtures.
+The AI service scans downloaded bytes through a `DocumentScanner` boundary before parsing. The scanner receives file bytes and safe file metadata only; the parser, chunker, and embedding adapters run only after the scanner returns a clean result.
 
-In staging and production, `not_scanned` is not a clean result. It is allowed only when the team has made and documented an explicit launch decision named by `DOCUMENT_SCANNER_LAUNCH_DECISION_ID`. Without that decision, staging and production services must not start in fake scanner mode. A real scanner launch instead sets `DOCUMENT_SCANNER_MODE=real` plus a provider name so operators can tell which scanning system owns the decision.
+Local/dev can use the fake scanner adapter to simulate `not_scanned`, `clean`, `suspicious`, `quarantined`, and `scanner_failed` outcomes. Real scanning uses `DOCUMENT_SCANNER_PROVIDER=http-clamav` with `DOCUMENT_SCANNER_ENDPOINT`, `DOCUMENT_SCANNER_TOKEN`, and `DOCUMENT_SCANNER_TIMEOUT_SECONDS`.
+
+Scanner job metadata must remain safe and bounded to `scanner`, `scanner_result`, `scanner_version`, `scanner_signature`, and `scanner_error_type`. Do not store raw scanner responses, file bytes, signed URLs, tokens, or manuscript text in metadata, logs, or admin exception details.
 
 Scanner outcomes map to admin exceptions as follows:
 
 - `clean`: no scanner-driven admin exception.
-- `suspicious`, `malware_suspected`, or `policy_suspicious`: document stays `limited` with `needs_review` and enters the Needs Review queue.
-- `quarantined`, `malware_detected`, or `unsafe`: document becomes `quarantined` with `review_outcome = quarantined` and enters the Quarantine queue.
+- `suspicious`: ingestion stops before parsing with `scanner_suspicious`; no chunks or embedding records are written, and the document enters Needs Review.
+- `quarantined`: ingestion stops before parsing with `scanner_suspicious`; no chunks or embedding records are written, and the document enters Quarantine.
+- Provider errors, HTTP failures, timeouts, malformed payloads, and unknown scanner response values: ingestion fails as retryable `scanner_failed` and writes no chunks or embedding records. A System Failures admin exception is created only after automatic retries are exhausted.
 - `not_scanned`: local/dev fake result, or a deployed explicit launch exception; it must not be treated as clean for launch readiness.
+
+No scanner container or repo-owned scanner deployable is introduced in Step 9c. Live malware protection still requires a private scanner endpoint, or a documented launch-decision escape hatch before accepting real user documents.
 
 ### Ingestion Result Policy
 
 - Successful Step 9 ingestion marks the document processed and stores evidence for later eligibility. Step 10 owns full matching/discovery eligibility.
 - Ordinary user-correctable failures, such as empty text, unsupported type during the text-only phase, too-large extracted text, or corrupt files, fail the document with a safe reason code and do not create default admin work.
-- Admin exceptions are reserved for suspicious scanner signals, quarantine, file type mismatch/validation bypass, repeated system/provider failures after automatic retries, and unexpected runtime errors.
+- Admin exceptions are reserved for suspicious scanner signals, quarantine, file type mismatch/validation bypass, repeated system/provider failures after automatic retries, and unexpected runtime errors. Scanner provider errors, timeouts, and invalid responses use the safe `scanner_failed` code.
 - Author-facing copy must use simple terms such as "Checking your sample", "Sample ready", and "We couldn't read this file". Do not show users internal terms such as ingestion, chunking, embeddings, parser, job, GCS, Cloud Tasks, provider, or pipeline.
 
 Initial V1 limits:

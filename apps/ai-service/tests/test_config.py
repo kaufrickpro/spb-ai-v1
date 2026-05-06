@@ -80,6 +80,19 @@ def test_deployed_real_scanner_requires_provider_name() -> None:
         )
 
 
+def test_real_scanner_requires_http_clamav_settings() -> None:
+    with pytest.raises(ValueError, match="DOCUMENT_SCANNER_PROVIDER=http-clamav"):
+        AiServiceConfig(
+            app_config_mode="staging",
+            storage_provider="gcs",
+            gcs_bucket_private_uploads="spb-ai-staging-manuscripts",
+            supabase_url="https://example.supabase.co",
+            supabase_service_role_key="service",
+            document_scanner_mode="real",
+            document_scanner_provider="http-clamav",
+        )
+
+
 def test_deployed_real_scanner_config_is_explicit() -> None:
     config = AiServiceConfig(
         app_config_mode="staging",
@@ -88,10 +101,51 @@ def test_deployed_real_scanner_config_is_explicit() -> None:
         supabase_url="https://example.supabase.co",
         supabase_service_role_key="service",
         document_scanner_mode="real",
-        document_scanner_provider="gcs-malware-scanner",
+        document_scanner_provider="http-clamav",
+        document_scanner_endpoint="https://scanner.internal/scan",
+        document_scanner_token="scanner-token",
+        document_scanner_timeout_seconds=5,
     )
 
-    assert config.document_scanner_provider == "gcs-malware-scanner"
+    assert config.document_scanner_provider == "http-clamav"
+    assert config.document_scanner_endpoint == "https://scanner.internal/scan"
+
+
+def test_real_scanner_rejects_local_fake_result_configuration() -> None:
+    with pytest.raises(ValueError, match="LOCAL_FAKE_SCANNER_RESULT"):
+        AiServiceConfig(
+            document_scanner_mode="real",
+            document_scanner_provider="http-clamav",
+            document_scanner_endpoint="https://scanner.internal/scan",
+            document_scanner_token="scanner-token",
+            document_scanner_timeout_seconds=5,
+            local_fake_scanner_result="suspicious",
+        )
+
+
+def test_deployed_fake_scanner_rejects_local_simulation_outcomes() -> None:
+    with pytest.raises(ValueError, match="LOCAL_FAKE_SCANNER_RESULT"):
+        AiServiceConfig(
+            app_config_mode="staging",
+            storage_provider="gcs",
+            gcs_bucket_private_uploads="spb-ai-staging-manuscripts",
+            supabase_url="https://example.supabase.co",
+            supabase_service_role_key="service",
+            document_scanner_mode="local_fake",
+            document_scanner_launch_decision_id="ADR-STEP9-SCANNER-LAUNCH-DECISION",
+            local_fake_scanner_result="clean",
+        )
+
+
+def test_scanner_timeout_must_be_positive() -> None:
+    with pytest.raises(ValueError, match="DOCUMENT_SCANNER_TIMEOUT_SECONDS"):
+        AiServiceConfig(
+            document_scanner_mode="real",
+            document_scanner_provider="http-clamav",
+            document_scanner_endpoint="https://scanner.internal/scan",
+            document_scanner_token="scanner-token",
+            document_scanner_timeout_seconds=0,
+        )
 
 
 def test_deployed_config_requires_gcs_storage() -> None:
@@ -99,7 +153,10 @@ def test_deployed_config_requires_gcs_storage() -> None:
         AiServiceConfig(
             app_config_mode="staging",
             document_scanner_mode="real",
-            document_scanner_provider="gcs-malware-scanner",
+            document_scanner_provider="http-clamav",
+            document_scanner_endpoint="https://scanner.internal/scan",
+            document_scanner_token="scanner-token",
+            document_scanner_timeout_seconds=5,
         )
 
 

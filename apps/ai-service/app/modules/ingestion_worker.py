@@ -15,6 +15,11 @@ from app.modules.ingestion import (
     normalize_text,
 )
 from app.modules.repositories import ChunkWrite, EmbeddingRecordWrite, IngestionRepository
+from app.modules.scanner import (
+    DocumentScanner,
+    ScannerProviderError,
+    build_document_scanner,
+)
 from app.modules.storage import DocumentStorage, StorageReadError
 
 
@@ -24,6 +29,7 @@ class IngestionWorker:
     storage: DocumentStorage
     embedding_provider: EmbeddingReferenceProvider
     config: AiServiceConfig
+    scanner: DocumentScanner
 
     def process_job(self, job_id: str) -> IngestionResult:
         job = self.repository.get_job(job_id)
@@ -83,12 +89,6 @@ class IngestionWorker:
                 IngestionCategory.SYSTEM,
             )
 
-        if document.mime_type != "text/plain":
-            return failure_result(
-                ProcessingFailureCode.UNSUPPORTED_FILE_TYPE,
-                IngestionCategory.USER_CORRECTABLE,
-            )
-
         if document.byte_size > self.config.max_upload_bytes:
             return failure_result(
                 ProcessingFailureCode.EXTRACTED_TEXT_TOO_LARGE,
@@ -103,12 +103,54 @@ class IngestionWorker:
                 IngestionCategory.SYSTEM,
             )
 
+        scanner_metadata: dict[str, object]
+        try:
+            scan = self.scanner.scan_bytes(
+                document_id=document.id,
+                mime_type=document.mime_type,
+                byte_size=document.byte_size,
+                content=raw_bytes,
+            )
+            scanner_metadata = scan.safe_metadata()
+        except ScannerProviderError as exc:
+            return failure_result(
+                ProcessingFailureCode.SCANNER_FAILED,
+                IngestionCategory.SYSTEM,
+                scanner_metadata={
+                    "scanner": self.config.document_scanner_provider or "local-fake",
+                    "scanner_result": "not_scanned",
+                    "scanner_error_type": exc.error_type,
+                },
+            )
+
+        if scan.scanner_result == "quarantined":
+            return failure_result(
+                ProcessingFailureCode.SCANNER_SUSPICIOUS,
+                IngestionCategory.QUARANTINED,
+                scanner_metadata=scanner_metadata,
+            )
+
+        if scan.scanner_result == "suspicious":
+            return failure_result(
+                ProcessingFailureCode.SCANNER_SUSPICIOUS,
+                IngestionCategory.SUSPICIOUS,
+                scanner_metadata=scanner_metadata,
+            )
+
+        if document.mime_type != "text/plain":
+            return failure_result(
+                ProcessingFailureCode.UNSUPPORTED_FILE_TYPE,
+                IngestionCategory.USER_CORRECTABLE,
+                scanner_metadata=scanner_metadata,
+            )
+
         try:
             text = raw_bytes.decode("utf-8")
         except UnicodeDecodeError:
             return failure_result(
                 ProcessingFailureCode.PARSER_FAILED,
                 IngestionCategory.USER_CORRECTABLE,
+                scanner_metadata=scanner_metadata,
             )
 
         normalized = normalize_text(text)
@@ -116,6 +158,7 @@ class IngestionWorker:
             return failure_result(
                 ProcessingFailureCode.EMPTY_EXTRACTED_TEXT,
                 IngestionCategory.USER_CORRECTABLE,
+                scanner_metadata=scanner_metadata,
             )
 
         if len(normalized) > self.config.max_extracted_characters:
@@ -123,6 +166,7 @@ class IngestionWorker:
                 ProcessingFailureCode.EXTRACTED_TEXT_TOO_LARGE,
                 IngestionCategory.USER_CORRECTABLE,
                 extracted_character_count=len(normalized),
+                scanner_metadata=scanner_metadata,
             )
 
         chunk_contents = chunk_text(normalized)
@@ -131,6 +175,7 @@ class IngestionWorker:
                 ProcessingFailureCode.CHUNK_LIMIT_EXCEEDED,
                 IngestionCategory.USER_CORRECTABLE,
                 extracted_character_count=len(normalized),
+                scanner_metadata=scanner_metadata,
             )
 
         chunks: list[IngestionChunk] = []
@@ -156,14 +201,17 @@ class IngestionWorker:
             extracted_character_count=len(normalized),
             chunk_count=len(chunks),
             chunks=chunks,
-            metadata=base_metadata(
-                failure_code=None,
-                failure_category=None,
-                extracted_character_count=len(normalized),
-                chunk_count=len(chunks),
-                embedding_model=self.config.embedding_model,
-                vector_index_name=self.config.vector_index_name,
-            ),
+            metadata={
+                **base_metadata(
+                    failure_code=None,
+                    failure_category=None,
+                    extracted_character_count=len(normalized),
+                    chunk_count=len(chunks),
+                    embedding_model=self.config.embedding_model,
+                    vector_index_name=self.config.vector_index_name,
+                ),
+                **scanner_metadata,
+            },
         )
 
     def _build_embedding_record(
@@ -201,6 +249,7 @@ def create_local_ingestion_worker(
             vector_index_name=config.vector_index_name,
         ),
         config=config,
+        scanner=build_document_scanner(config),
     )
 
 
@@ -208,16 +257,20 @@ def failure_result(
     failure_code: ProcessingFailureCode,
     category: IngestionCategory,
     extracted_character_count: int = 0,
+    scanner_metadata: dict[str, object] | None = None,
 ) -> IngestionResult:
     return IngestionResult(
         status=IngestionStatus.FAILED,
         category=category,
         failure_code=failure_code,
         extracted_character_count=extracted_character_count,
-        metadata=base_metadata(
-            failure_code=failure_code.value,
-            failure_category=category.value,
-            extracted_character_count=extracted_character_count,
-            chunk_count=0,
-        ),
+        metadata={
+            **base_metadata(
+                failure_code=failure_code.value,
+                failure_category=category.value,
+                extracted_character_count=extracted_character_count,
+                chunk_count=0,
+            ),
+            **(scanner_metadata or {}),
+        },
     )

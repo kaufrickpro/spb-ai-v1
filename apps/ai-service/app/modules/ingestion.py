@@ -23,6 +23,7 @@ class ProcessingFailureCode(StrEnum):
     PARSER_FAILED = "parser_failed"
     EMBEDDING_FAILED = "embedding_failed"
     SCANNER_SUSPICIOUS = "scanner_suspicious"
+    SCANNER_FAILED = "scanner_failed"
     UNEXPECTED_PROCESSING_ERROR = "unexpected_processing_error"
 
 

@@ -54,22 +54,51 @@ export function normalizeFailureCode(
 export function sanitizeWorkerMetadata(
   metadata: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
-  const safeKeys = new Set([
-    "chunk_count",
-    "chunker",
-    "embedding_model",
-    "extracted_character_count",
-    "failure_category",
-    "failure_code",
-    "ingestion_version",
-    "scanner",
-    "scanner_result",
-    "vector_index_name",
-    "worker_status_code",
-  ]);
-  return Object.fromEntries(
-    Object.entries(metadata ?? {}).filter(([key]) => safeKeys.has(key)),
-  );
+  const input = metadata ?? {};
+  return {
+    ...pickSafeWorkerValue(input, "chunk_count"),
+    ...pickSafeWorkerValue(input, "chunker"),
+    ...pickSafeWorkerValue(input, "embedding_model"),
+    ...pickSafeWorkerValue(input, "extracted_character_count"),
+    ...pickSafeWorkerValue(input, "failure_category"),
+    ...pickSafeWorkerValue(input, "failure_code"),
+    ...pickSafeWorkerValue(input, "ingestion_version"),
+    ...pickSafeWorkerValue(input, "scanner"),
+    ...pickSafeWorkerValue(input, "scanner_result"),
+    ...pickSafeWorkerValue(input, "scanner_version"),
+    ...pickScannerSignature(input),
+    ...pickSafeWorkerValue(input, "scanner_error_type"),
+    ...pickSafeWorkerValue(input, "vector_index_name"),
+    ...pickSafeWorkerValue(input, "worker_status_code"),
+  };
+}
+
+function pickSafeWorkerValue(
+  metadata: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> {
+  const value = metadata[key];
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? { [key]: trimmed.slice(0, 200) } : {};
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return { [key]: value };
+  }
+  if (typeof value === "boolean" || value === null) {
+    return { [key]: value };
+  }
+  return {};
+}
+
+function pickScannerSignature(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> {
+  const scannerResult = metadata["scanner_result"];
+  if (scannerResult === "clean") {
+    return {};
+  }
+  return pickSafeWorkerValue(metadata, "scanner_signature");
 }
 
 export function parseDocumentIdFromIdempotencySource(source: string): string {

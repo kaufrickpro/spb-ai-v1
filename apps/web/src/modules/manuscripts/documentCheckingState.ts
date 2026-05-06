@@ -29,6 +29,7 @@ const failureMessageByCode: Record<DocumentProcessingFailureCode, string> = {
   parser_failed: "manuscripts.documentCheck.failure.unreadable",
   embedding_failed: "manuscripts.documentCheck.failure.temporary",
   scanner_suspicious: "manuscripts.documentCheck.failure.safety",
+  scanner_failed: "manuscripts.documentCheck.failure.temporary",
   unexpected_processing_error: "manuscripts.documentCheck.failure.temporary",
 };
 

@@ -91,7 +91,7 @@ Manual admin review is required only for:
 
 Items in `needs_review` remain limited. Users can keep safe workspace access, but marketplace exposure and intro actions wait until the issue is cleared. Quarantined documents or accounts are blocked from user preview, matching, discovery, and download access except for admin/security review paths.
 
-Document scanner config is part of this gate. Local/dev may store `scanner_result = not_scanned` from the fake scanner. Staging and production must fail fast unless a real scanner provider is configured or an explicit `DOCUMENT_SCANNER_LAUNCH_DECISION_ID` documents why real user documents may be accepted before scanning is live.
+Document scanner config is part of this gate. Local/dev may store fake scanner evidence, including `scanner_result = not_scanned`, only for development and test fixtures. Staging and production must fail fast unless `DOCUMENT_SCANNER_MODE=real` with `DOCUMENT_SCANNER_PROVIDER=http-clamav`, endpoint, token, and timeout config is present, or an explicit `DOCUMENT_SCANNER_LAUNCH_DECISION_ID` documents why real user documents may be accepted before scanning is live. Deployed environments must not use fake clean/suspicious/quarantined scanner outcomes.
 
 ## Contact Unlock
 

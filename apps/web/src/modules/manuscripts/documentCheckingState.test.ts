@@ -45,4 +45,19 @@ describe("getDocumentCheckingState", () => {
     );
     expect(state.failureMessageKey).not.toContain("parser");
   });
+
+  it("maps scanner provider failures to temporary recovery language", () => {
+    const state = getDocumentCheckingState(
+      documentWith({
+        processingFailureCode: "scanner_failed",
+        processingStatus: "failed",
+      }),
+    );
+
+    expect(state.kind).toBe("unreadable");
+    expect(state.failureMessageKey).toBe(
+      "manuscripts.documentCheck.failure.temporary",
+    );
+    expect(state.failureMessageKey).not.toContain("safety");
+  });
 });

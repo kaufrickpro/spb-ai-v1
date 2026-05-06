@@ -8,6 +8,13 @@ AppConfigMode = Literal["local", "staging", "production"]
 ProviderMode = Literal["local", "vertex"]
 ScannerMode = Literal["local_fake", "real"]
 StorageProvider = Literal["local", "gcs"]
+LocalFakeScannerResult = Literal[
+    "not_scanned",
+    "clean",
+    "suspicious",
+    "quarantined",
+    "scanner_failed",
+]
 
 
 class AiServiceConfig(BaseModel):
@@ -27,6 +34,10 @@ class AiServiceConfig(BaseModel):
     document_scanner_mode: ScannerMode = Field(default="local_fake")
     document_scanner_provider: str | None = None
     document_scanner_launch_decision_id: str | None = None
+    document_scanner_endpoint: str | None = None
+    document_scanner_token: str | None = None
+    document_scanner_timeout_seconds: float | None = None
+    local_fake_scanner_result: LocalFakeScannerResult = Field(default="not_scanned")
     vertex_project_id: str | None = None
     vertex_location: str | None = None
 
@@ -41,6 +52,13 @@ class AiServiceConfig(BaseModel):
             raise ValueError("AI service numeric limits must be positive")
         return value
 
+    @field_validator("document_scanner_timeout_seconds")
+    @classmethod
+    def require_positive_optional_timeout(cls, value: float | None) -> float | None:
+        if value is not None and value <= 0:
+            raise ValueError("DOCUMENT_SCANNER_TIMEOUT_SECONDS must be positive")
+        return value
+
     @field_validator("embedding_model", "vector_index_name")
     @classmethod
     def require_non_empty_provider_value(cls, value: str) -> str:
@@ -48,7 +66,12 @@ class AiServiceConfig(BaseModel):
             raise ValueError("Embedding provider settings must be non-empty")
         return value
 
-    @field_validator("document_scanner_provider", "document_scanner_launch_decision_id")
+    @field_validator(
+        "document_scanner_provider",
+        "document_scanner_launch_decision_id",
+        "document_scanner_endpoint",
+        "document_scanner_token",
+    )
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -72,7 +95,32 @@ class AiServiceConfig(BaseModel):
                 "VERTEX_AI_EMBEDDING_MODEL, and VERTEX_AI_VECTOR_INDEX"
             )
 
+        if self.document_scanner_mode == "real":
+            if self.local_fake_scanner_result != "not_scanned":
+                raise ValueError(
+                    "LOCAL_FAKE_SCANNER_RESULT is allowed only in local fake scanner mode"
+                )
+            if self.document_scanner_provider != "http-clamav":
+                raise ValueError(
+                    "DOCUMENT_SCANNER_PROVIDER must be http-clamav when "
+                    "DOCUMENT_SCANNER_MODE=real"
+                )
+            if (
+                not self.document_scanner_endpoint
+                or not self.document_scanner_token
+                or self.document_scanner_timeout_seconds is None
+            ):
+                raise ValueError(
+                    "DOCUMENT_SCANNER_PROVIDER=http-clamav requires "
+                    "DOCUMENT_SCANNER_ENDPOINT, DOCUMENT_SCANNER_TOKEN, and "
+                    "DOCUMENT_SCANNER_TIMEOUT_SECONDS"
+                )
+
         if self.app_config_mode != "local":
+            if self.local_fake_scanner_result != "not_scanned":
+                raise ValueError(
+                    "LOCAL_FAKE_SCANNER_RESULT is allowed only in local config"
+                )
             if self.storage_provider != "gcs":
                 raise ValueError("Staging/production must use STORAGE_PROVIDER=gcs")
             if not self.supabase_url or not self.supabase_service_role_key:
@@ -80,13 +128,10 @@ class AiServiceConfig(BaseModel):
                     "Staging/production AI service requires SUPABASE_URL and "
                     "SUPABASE_SERVICE_ROLE_KEY"
                 )
-            if self.document_scanner_mode == "real":
-                if not self.document_scanner_provider:
-                    raise ValueError(
-                        "DOCUMENT_SCANNER_PROVIDER is required when "
-                        "DOCUMENT_SCANNER_MODE=real"
-                    )
-            elif not self.document_scanner_launch_decision_id:
+            if (
+                self.document_scanner_mode == "local_fake"
+                and not self.document_scanner_launch_decision_id
+            ):
                 raise ValueError(
                     "Staging/production cannot use DOCUMENT_SCANNER_MODE=local_fake "
                     "without DOCUMENT_SCANNER_LAUNCH_DECISION_ID"
@@ -119,6 +164,14 @@ def load_config() -> AiServiceConfig:
             document_scanner_provider=os.getenv("DOCUMENT_SCANNER_PROVIDER"),
             document_scanner_launch_decision_id=os.getenv(
                 "DOCUMENT_SCANNER_LAUNCH_DECISION_ID"
+            ),
+            document_scanner_endpoint=os.getenv("DOCUMENT_SCANNER_ENDPOINT"),
+            document_scanner_token=os.getenv("DOCUMENT_SCANNER_TOKEN"),
+            document_scanner_timeout_seconds=parse_optional_float(
+                os.getenv("DOCUMENT_SCANNER_TIMEOUT_SECONDS")
+            ),
+            local_fake_scanner_result=parse_local_fake_scanner_result(
+                os.getenv("LOCAL_FAKE_SCANNER_RESULT", "not_scanned")
             ),
             vertex_project_id=os.getenv("VERTEX_PROJECT_ID"),
             vertex_location=os.getenv("VERTEX_LOCATION"),
@@ -159,6 +212,29 @@ def parse_scanner_mode(value: str) -> ScannerMode:
     if value == "real":
         return "real"
     raise ValueError("DOCUMENT_SCANNER_MODE must be local_fake or real")
+
+
+def parse_local_fake_scanner_result(value: str) -> LocalFakeScannerResult:
+    if value == "not_scanned":
+        return "not_scanned"
+    if value == "clean":
+        return "clean"
+    if value == "suspicious":
+        return "suspicious"
+    if value == "quarantined":
+        return "quarantined"
+    if value == "scanner_failed":
+        return "scanner_failed"
+    raise ValueError(
+        "LOCAL_FAKE_SCANNER_RESULT must be not_scanned, clean, suspicious, "
+        "quarantined, or scanner_failed"
+    )
+
+
+def parse_optional_float(value: str | None) -> float | None:
+    if value is None or not value.strip():
+        return None
+    return float(value)
 
 
 def load_local_env_file() -> None:

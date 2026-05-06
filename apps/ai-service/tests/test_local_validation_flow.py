@@ -6,6 +6,7 @@ from app.modules.repositories import (
     InMemoryIngestionRepository,
     ProcessingJobRecord,
 )
+from app.modules.scanner import LocalFakeDocumentScanner
 from app.modules.storage import InMemoryDocumentStorage
 
 
@@ -29,6 +30,7 @@ def build_worker(
             vector_index_name=config.vector_index_name,
         ),
         config=config,
+        scanner=LocalFakeDocumentScanner(),
     )
     return worker, repository
 

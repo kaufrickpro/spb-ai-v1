@@ -167,7 +167,7 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 9. Build AI Service Foundation
 
-- Status: in progress. The Step 9 local job-boundary slice is implemented and now has a repeatable local validation path: upload completion queues an idempotent processing job, the API has a local processor that claims queued jobs and dispatches the AI service by `job_id`, the AI service configures a local `text/plain` worker from Supabase and local storage settings, local fake embedding references are stored as references rather than vectors, admin exception rules are encoded for document processing outcomes, authors see simple checking/ready/unreadable states, and focused tests cover the upload-to-processed state loop plus chunk/embedding-reference persistence.
+- Status: complete for the Step 9 AI service foundation. The local job-boundary, production-shaped processing adapters, reprocessing storage boundary, admin exception policy, Step 9c scanner slice, staging env templates, and ADR 0008 scanner launch posture are implemented and documented. Upload completion queues an idempotent processing job; the API processor claims queued jobs and dispatches the AI service by `job_id`; the AI service reads stored bytes through storage adapters, scans before parsing, processes local `text/plain` samples, writes bounded chunks plus reference-only embedding records, and preserves one active chunk/reference set per document.
 - Create FastAPI app with ingestion, retrieval, matching, repositories, and settings modules.
 - Add Pydantic models that match the then-current API contracts for AI-facing requests and responses.
 - Implemented first ingestion slice supports plain text (`text/plain`) only, behind parser/storage/repository/embedding interfaces that can later add digital PDF, DOCX, and EPUB without changing the job flow.
@@ -180,22 +180,27 @@ Use a workflow that makes mistakes cheap and visible:
 - The production-shaped Step 9B plumbing is wired behind config and adapters: staging/production require `DOCUMENT_PROCESSING_PROVIDER=cloud_tasks`, private GCS storage, Cloud Tasks queue config, and an AI service URL; local development keeps `DOCUMENT_PROCESSING_PROVIDER=local`, local storage, and fake signed URLs.
 - Cloud Tasks document-processing tasks carry only `{ job_id }` and use OIDC with the configured Cloud Tasks invoker service account to call the private AI Cloud Run service. Browser/frontend code never receives service-role credentials, GCS privileged access, or AI-service internal URLs.
 - The API can issue private GCS signed upload/download URLs when `STORAGE_PROVIDER=gcs`; the AI service can read private GCS objects through its service identity when `STORAGE_PROVIDER=gcs` and `GCS_BUCKET_PRIVATE_UPLOADS` are configured.
-- Local development uses reference-only fake embedding records. Staging and production wire Vertex AI embeddings and Vertex AI Vector Search behind typed config.
-- Local development may mark scanner metadata as `not_scanned` with a local fake scanner adapter. Staging and production must either configure `DOCUMENT_SCANNER_MODE=real` with `DOCUMENT_SCANNER_PROVIDER`, or carry a named `DOCUMENT_SCANNER_LAUNCH_DECISION_ID`; the API and AI service fail fast when deployed config silently keeps fake scanner mode.
+- Local development uses reference-only fake embedding records. Step 9 intentionally stops at embedding references; Step 10 owns fake vector retrieval first, then real Vertex AI embeddings and Vertex AI Vector Search wiring.
+- Step 9c implements the scanner issue set (#34-#39): `scanner_failed` is part of the shared contract/schema/AI enum, the AI worker runs a `DocumentScanner` boundary before UTF-8 decoding or parsing, local development/tests can simulate `not_scanned`, `clean`, `suspicious`, `quarantined`, and `scanner_failed`, and real scanning uses `DOCUMENT_SCANNER_PROVIDER=http-clamav` with `DOCUMENT_SCANNER_ENDPOINT`, `DOCUMENT_SCANNER_TOKEN`, and `DOCUMENT_SCANNER_TIMEOUT_SECONDS`.
+- Scanner outcomes are fail-closed. `clean` continues ingestion. `suspicious` and `quarantined` stop before parsing with `scanner_suspicious`, write no chunks or embeddings, and route to Needs Review or Quarantine. Provider errors, timeouts, malformed payloads, and unknown response values fail as retryable `scanner_failed`.
+- Scanner metadata must stay safe and bounded: `scanner`, `scanner_result`, `scanner_version`, `scanner_signature`, and `scanner_error_type` only. API/admin sanitizers must not preserve manuscript text, chunks, original filenames, storage paths, signed URLs, author IDs, tokens, or raw provider payloads.
+- No repo-owned scanner deployable is introduced in Step 9c. ADR 0008 documents a controlled internal staging smoke-test escape hatch with `DOCUMENT_SCANNER_LAUNCH_DECISION_ID=ADR-0008`; live malware protection for production and any real-user staging uploads still requires a private scanner endpoint.
+- Existing remote databases must apply `supabase/migrations/20260506120855_add_scanner_failed_processing_code.sql` to accept `scanner_failed`; edits to older migrations only keep fresh rebuilds accurate.
 - AI service internal calls use a local shared `AI_INTERNAL_TOKEN` in local/dev. Staging and production use private Cloud Run IAM/OIDC.
 - Store bounded extracted chunks in `document_chunks`; never store the original file bytes in Postgres. The Supabase-backed worker persists only document metadata, chunks, embedding references, job metadata, and status transitions.
 - Store one active chunk set per document. Re-ingestion replaces the active chunks and embedding records through the transactional `public.replace_document_ingestion_outputs(...)` RPC while preserving `document_processing_jobs` history.
 - Store chunk-level embedding references only in `embedding_records`; do not store numeric vector arrays in Postgres.
 - Step 9 marks documents as checked/processed and stores ingestion evidence. Step 10 owns full matching/discovery eligibility.
 - Failed outcomes use stable safe failure codes. Ordinary user-correctable failures such as empty text, unsupported type in the text-only phase, too-large extracted text, and corrupt/unreadable files do not create default admin work.
-- Admin exceptions are narrow: suspicious scanner results, quarantine, file type mismatches that indicate validation bypass, repeated system/provider failures after automatic retries, and unexpected runtime errors.
+- Admin exceptions are narrow: suspicious scanner results, quarantine, file type mismatches that indicate validation bypass, repeated system/provider failures after automatic retries including `scanner_failed`, and unexpected runtime errors.
 - Author-facing UI uses simple Turkish/English copy and avoids technical terms such as ingestion, chunking, embeddings, parser, job, provider, GCS, Cloud Tasks, or pipeline.
-- Add `/health` and `/ready` endpoints for container and Cloud Run checks.
+- `/health` and `/ready` endpoints exist for container and Cloud Run checks.
 
 ### 10. Build Matching Vertical Slice
 
 - Implement eligibility checks for `eligibility_status = 'eligible'`, valid profile/manuscript/document data, successful ingestion, and entitlement/rate limits.
 - Retrieve candidate publishers using the local fake vector adapter first.
+- After the fake matching loop works, add the real Vertex embedding provider and Vertex AI Vector Search upsert/query path. Keep numeric vectors out of Postgres; store only `vector_index_name`, `vector_datapoint_id`, model, and safe metadata in `embedding_records`.
 - Apply hard filters for genre, excluded genres, language, age range, accepted formats, and structured content limits.
 - Store `match_runs` and `match_candidates`.
 - Return score band, fit reasons, risk reasons, shared genres, source snippets, intro CTA state, and match detail CTA state.

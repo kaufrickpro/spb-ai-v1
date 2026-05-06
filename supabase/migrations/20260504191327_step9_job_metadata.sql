@@ -18,6 +18,7 @@ add column if not exists processing_failure_code text check (
     'parser_failed',
     'embedding_failed',
     'scanner_suspicious',
+    'scanner_failed',
     'unexpected_processing_error'
   )
 );

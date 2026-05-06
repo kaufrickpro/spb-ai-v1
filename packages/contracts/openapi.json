@@ -2024,6 +2024,7 @@
                               "parser_failed",
                               "embedding_failed",
                               "scanner_suspicious",
+                              "scanner_failed",
                               "unexpected_processing_error"
                             ],
                             "nullable": true,
@@ -3281,6 +3282,7 @@
                             "parser_failed",
                             "embedding_failed",
                             "scanner_suspicious",
+                            "scanner_failed",
                             "unexpected_processing_error"
                           ],
                           "nullable": true,
@@ -3521,6 +3523,7 @@
                             "parser_failed",
                             "embedding_failed",
                             "scanner_suspicious",
+                            "scanner_failed",
                             "unexpected_processing_error"
                           ],
                           "nullable": true,

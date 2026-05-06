@@ -35,6 +35,7 @@ const USER_CORRECTABLE_FAILURES = new Set<DocumentProcessingFailureCode>([
 const SYSTEM_OR_PROVIDER_FAILURES = new Set<DocumentProcessingFailureCode>([
   "download_failed",
   "embedding_failed",
+  "scanner_failed",
 ]);
 
 const SUSPICIOUS_SCANNER_RESULTS = new Set([
@@ -317,17 +318,39 @@ function buildSafeSubmittedFields(
     failureCode: DocumentProcessingFailureCode;
     jobId?: string | null;
     maxAttempts: number;
+    metadata?: Record<string, unknown> | null;
     mimeType?: string | null;
   },
   scannerResult: string | null,
 ): Record<string, unknown> {
+  const scannerFields = buildSafeScannerFields(input.metadata, scannerResult);
   return {
     attemptCount: input.attemptCount,
     failureCode: input.failureCode,
     jobId: input.jobId ?? null,
     maxAttempts: input.maxAttempts,
     mimeType: input.mimeType ?? null,
+    ...scannerFields,
+  };
+}
+
+function buildSafeScannerFields(
+  metadata: Record<string, unknown> | null | undefined,
+  scannerResult: string | null,
+): Record<string, unknown> {
+  const scanner = getStringMetadata(metadata, "scanner");
+  const scannerVersion = getStringMetadata(metadata, "scanner_version");
+  const scannerSignature = getStringMetadata(metadata, "scanner_signature");
+  const scannerErrorType = getStringMetadata(metadata, "scanner_error_type");
+  return {
+    scanner: scanner ?? null,
     scannerResult,
+    scannerVersion: scannerVersion ?? null,
+    scannerSignature:
+      scannerResult && scannerResult !== "clean" && scannerSignature
+        ? scannerSignature.slice(0, 200)
+        : null,
+    scannerErrorType: scannerErrorType ?? null,
   };
 }
 

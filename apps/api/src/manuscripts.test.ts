@@ -3,6 +3,7 @@ import { buildApp } from "./server.js";
 import { createAdminTestState } from "./modules/admin/testState.js";
 import { TEST_USER_ID } from "./modules/auth/requestAuth.js";
 import { completeAuthorDocumentUpload } from "./modules/manuscripts/documentService.js";
+import { sanitizeWorkerMetadata } from "./modules/manuscripts/documentProcessingTypes.js";
 import { queueTestDocumentIngestionJob } from "./modules/manuscripts/ingestionJobs.js";
 import {
   classifyDocumentProcessingFailure,
@@ -628,16 +629,25 @@ describe("Manuscript routes", () => {
   });
 
   it("creates safe admin exception decisions for suspicious processing outcomes", () => {
-    expect(
-      classifyDocumentProcessingFailure({
-        attemptCount: 1,
-        failureCode: "scanner_suspicious",
-        jobId: "job-scanner",
-        maxAttempts: 3,
-        metadata: { scanner_result: "suspicious" },
-        mimeType: "text/plain",
-      }),
-    ).toMatchObject({
+    const suspiciousDecision = classifyDocumentProcessingFailure({
+      attemptCount: 1,
+      failureCode: "scanner_suspicious",
+      jobId: "job-scanner",
+      maxAttempts: 3,
+      metadata: {
+        scanner: "clamav",
+        scanner_result: "suspicious",
+        scanner_signature: "Eicar-Test-Signature",
+        original_filename: "secret.txt",
+        storage_path: "private/document/path",
+        signed_url: "https://example.invalid/private-token",
+        raw_provider_payload: { unsafe: true },
+        author_id: TEST_USER_ID,
+      },
+      mimeType: "text/plain",
+    });
+
+    expect(suspiciousDecision).toMatchObject({
       createAdminException: true,
       exceptionQueue: "needs_review",
       eligibilityStatus: "limited",
@@ -647,9 +657,33 @@ describe("Manuscript routes", () => {
       submittedFields: {
         failureCode: "scanner_suspicious",
         jobId: "job-scanner",
+        scanner: "clamav",
         scannerResult: "suspicious",
+        scannerSignature: "Eicar-Test-Signature",
       },
     });
+    expect(suspiciousDecision.submittedFields).not.toHaveProperty(
+      "original_filename",
+    );
+    expect(suspiciousDecision.submittedFields).not.toHaveProperty(
+      "storage_path",
+    );
+    expect(suspiciousDecision.submittedFields).not.toHaveProperty("signed_url");
+    expect(suspiciousDecision.submittedFields).not.toHaveProperty(
+      "raw_provider_payload",
+    );
+    expect(suspiciousDecision.submittedFields).not.toHaveProperty("author_id");
+
+    expect(
+      classifyDocumentProcessingFailure({
+        attemptCount: 1,
+        failureCode: "scanner_suspicious",
+        jobId: "job-scanner",
+        maxAttempts: 3,
+        metadata: { scanner_result: "suspicious" },
+        mimeType: "text/plain",
+      }),
+    ).toMatchObject({ submittedFields: { scannerSignature: null } });
 
     expect(
       classifyDocumentProcessingFailure({
@@ -703,7 +737,13 @@ describe("Manuscript routes", () => {
       failureCode: "scanner_suspicious",
       jobId: "job-scanner",
       maxAttempts: 3,
-      metadata: { scanner_result: "suspicious" },
+      metadata: {
+        scanner: "clamav",
+        scanner_result: "suspicious",
+        scanner_signature: "Eicar-Test-Signature",
+        original_filename: "secret.txt",
+        storage_path: "private/document/path",
+      },
       mimeType: "text/plain",
       now: "2026-05-05T12:00:00.000Z",
     });
@@ -724,6 +764,38 @@ describe("Manuscript routes", () => {
     ).toHaveLength(1);
   });
 
+  it("sanitizes worker metadata with an explicit scanner allowlist", () => {
+    expect(
+      sanitizeWorkerMetadata({
+        scanner: " clamav ",
+        scanner_result: "clean",
+        scanner_version: " 1.4.0 ",
+        scanner_signature: "should-not-store-for-clean",
+        scanner_error_type: "timeout",
+        storage_path: "private/path",
+        signed_url: "https://example.invalid/private-token",
+        original_filename: "secret.txt",
+        author_id: TEST_USER_ID,
+        raw_provider_payload: { result: "clean" },
+      }),
+    ).toEqual({
+      scanner: "clamav",
+      scanner_result: "clean",
+      scanner_version: "1.4.0",
+      scanner_error_type: "timeout",
+    });
+
+    expect(
+      sanitizeWorkerMetadata({
+        scanner_result: "suspicious",
+        scanner_signature: "x".repeat(250),
+      }),
+    ).toEqual({
+      scanner_result: "suspicious",
+      scanner_signature: "x".repeat(200),
+    });
+  });
+
   it("creates admin exceptions only after repeated system/provider failures, plus unexpected runtime errors", () => {
     expect(
       classifyDocumentProcessingFailure({
@@ -736,9 +808,33 @@ describe("Manuscript routes", () => {
 
     expect(
       classifyDocumentProcessingFailure({
+        attemptCount: 1,
+        failureCode: "scanner_failed",
+        maxAttempts: 3,
+        metadata: { scanner_error_type: "timeout" },
+        mimeType: "text/plain",
+      }),
+    ).toMatchObject({ createAdminException: false });
+
+    expect(
+      classifyDocumentProcessingFailure({
         attemptCount: 3,
         failureCode: "embedding_failed",
         maxAttempts: 3,
+        mimeType: "text/plain",
+      }),
+    ).toMatchObject({
+      createAdminException: true,
+      exceptionQueue: "system_failures",
+      riskWarnings: ["repeated_system_or_provider_failure"],
+    });
+
+    expect(
+      classifyDocumentProcessingFailure({
+        attemptCount: 3,
+        failureCode: "scanner_failed",
+        maxAttempts: 3,
+        metadata: { scanner_error_type: "timeout" },
         mimeType: "text/plain",
       }),
     ).toMatchObject({

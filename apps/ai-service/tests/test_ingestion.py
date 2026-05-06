@@ -12,6 +12,7 @@ from app.modules.repositories import (
     InMemoryIngestionRepository,
     ProcessingJobRecord,
 )
+from app.modules.scanner import LocalFakeDocumentScanner
 from app.modules.storage import InMemoryDocumentStorage
 
 
@@ -20,6 +21,7 @@ def make_worker(
     files: dict[str, bytes],
     document: DocumentRecord | None = None,
     config: AiServiceConfig | None = None,
+    scanner: LocalFakeDocumentScanner | None = None,
 ) -> tuple[IngestionWorker, InMemoryIngestionRepository]:
     repository = InMemoryIngestionRepository()
     document = document or DocumentRecord(
@@ -39,6 +41,7 @@ def make_worker(
             vector_index_name=resolved_config.vector_index_name,
         ),
         config=resolved_config,
+        scanner=scanner or LocalFakeDocumentScanner(),
     )
     return worker, repository
 
@@ -54,6 +57,7 @@ def test_processing_failure_codes_match_contract_values() -> None:
         "parser_failed",
         "embedding_failed",
         "scanner_suspicious",
+        "scanner_failed",
         "unexpected_processing_error",
     }
 
@@ -144,7 +148,8 @@ def test_internal_ingestion_endpoint_accepts_valid_local_token() -> None:
 
 def test_worker_reads_text_from_storage_and_stores_bounded_chunks() -> None:
     worker, repository = make_worker(
-        files={"doc-1.txt": b"First paragraph.\n\nSecond paragraph."}
+        files={"doc-1.txt": b"First paragraph.\n\nSecond paragraph."},
+        scanner=LocalFakeDocumentScanner(result="clean"),
     )
 
     result = worker.process_job("job-1")
@@ -154,7 +159,55 @@ def test_worker_reads_text_from_storage_and_stores_bounded_chunks() -> None:
         "First paragraph.\n\nSecond paragraph."
     )
     assert repository.job_metadata["job-1"]["chunk_count"] == 1
+    assert repository.job_metadata["job-1"]["scanner_result"] == "clean"
     assert repository.job_metadata["job-1"]["vector_index_name"] == "local-reference-index"
+
+
+def test_worker_stops_before_parsing_when_scan_is_suspicious() -> None:
+    worker, repository = make_worker(
+        files={"doc-1.txt": b"Sample text"},
+        scanner=LocalFakeDocumentScanner(result="suspicious"),
+    )
+
+    result = worker.process_job("job-1")
+
+    assert result.status == "failed"
+    assert result.category == "suspicious"
+    assert result.failure_code == "scanner_suspicious"
+    assert repository.document_failure_codes["doc-1"] == "scanner_suspicious"
+    assert repository.job_metadata["job-1"]["scanner_result"] == "suspicious"
+    assert repository.chunks_by_document.get("doc-1") is None
+
+
+def test_worker_stops_before_parsing_when_scan_is_quarantined() -> None:
+    worker, repository = make_worker(
+        files={"doc-1.txt": b"Sample text"},
+        scanner=LocalFakeDocumentScanner(result="quarantined"),
+    )
+
+    result = worker.process_job("job-1")
+
+    assert result.status == "failed"
+    assert result.category == "quarantined"
+    assert result.failure_code == "scanner_suspicious"
+    assert repository.job_metadata["job-1"]["scanner_result"] == "quarantined"
+    assert repository.chunks_by_document.get("doc-1") is None
+
+
+def test_worker_maps_scanner_provider_failure_to_system_failure() -> None:
+    worker, repository = make_worker(
+        files={"doc-1.txt": b"Sample text"},
+        scanner=LocalFakeDocumentScanner(result="scanner_failed"),
+    )
+
+    result = worker.process_job("job-1")
+
+    assert result.status == "failed"
+    assert result.category == "system"
+    assert result.failure_code == "scanner_failed"
+    assert repository.document_failure_codes["doc-1"] == "scanner_failed"
+    assert repository.job_metadata["job-1"]["scanner_error_type"] == "local_fake_failure"
+    assert repository.chunks_by_document.get("doc-1") is None
 
 
 def test_worker_returns_safe_failure_for_empty_file() -> None:
