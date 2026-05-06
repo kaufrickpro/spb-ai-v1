@@ -1,8 +1,7 @@
 from fastapi import FastAPI, Header, HTTPException, status
 from pydantic import BaseModel
 
-from app.modules.config import AiServiceConfig
-from app.modules.config import load_config
+from app.modules.config import AiServiceConfig, load_config
 from app.modules.ingestion import IngestionResult
 from app.modules.ingestion_worker import IngestionWorker
 from app.modules.runtime import RuntimeAdapter, create_runtime_adapter

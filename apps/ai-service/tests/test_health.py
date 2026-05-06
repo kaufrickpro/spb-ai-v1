@@ -3,7 +3,6 @@ from fastapi.testclient import TestClient
 from app.main import create_app
 from app.modules.config import AiServiceConfig
 
-
 client = TestClient(create_app(AiServiceConfig(provider_mode="local")))
 
 

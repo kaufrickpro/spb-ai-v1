@@ -4,7 +4,6 @@ from typing import Protocol
 
 from app.modules.ingestion import LOCAL_EMBEDDING_MODEL
 
-
 LOCAL_VECTOR_INDEX_NAME = "local-reference-index"
 
 
@@ -38,7 +37,7 @@ class LocalEmbeddingReferenceProvider:
         chunk_checksum: str,
     ) -> EmbeddingReference:
         stable_suffix = sha256(
-            f"{document_id}:{chunk_index}:{chunk_checksum}".encode("utf-8")
+            f"{document_id}:{chunk_index}:{chunk_checksum}".encode()
         ).hexdigest()[:16]
         return EmbeddingReference(
             vector_index_name=self.vector_index_name,

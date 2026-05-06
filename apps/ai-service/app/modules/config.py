@@ -4,9 +4,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
+ProviderMode = Literal["local", "vertex"]
+
 
 class AiServiceConfig(BaseModel):
-    provider_mode: Literal["local", "vertex"] = Field(default="local")
+    provider_mode: ProviderMode = Field(default="local")
     internal_token: str | None = None
     local_storage_root: Path = Field(default=Path("local-storage"))
     max_upload_bytes: int = Field(default=26_214_400)
@@ -53,7 +55,7 @@ class AiServiceConfig(BaseModel):
 def load_config() -> AiServiceConfig:
     try:
         return AiServiceConfig(
-            provider_mode=os.getenv("AI_PROVIDER_MODE", "local"),
+            provider_mode=parse_provider_mode(os.getenv("AI_PROVIDER_MODE", "local")),
             internal_token=os.getenv("AI_INTERNAL_TOKEN"),
             local_storage_root=Path(os.getenv("LOCAL_STORAGE_ROOT", "local-storage")),
             max_upload_bytes=int(os.getenv("MAX_UPLOAD_BYTES", "26214400")),
@@ -66,3 +68,11 @@ def load_config() -> AiServiceConfig:
         )
     except (ValueError, ValidationError) as exc:
         raise RuntimeError("Invalid AI service configuration") from exc
+
+
+def parse_provider_mode(value: str) -> ProviderMode:
+    if value == "local":
+        return "local"
+    if value == "vertex":
+        return "vertex"
+    raise ValueError("AI_PROVIDER_MODE must be local or vertex")
