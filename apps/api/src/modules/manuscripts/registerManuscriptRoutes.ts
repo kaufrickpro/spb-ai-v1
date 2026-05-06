@@ -192,13 +192,17 @@ export function registerManuscriptRoutes(
         testState,
         { ...input.data, authorId: user.userId },
       );
-      return reply
-        .code(201)
-        .send(
-          UploadSignedUrlResponseSchema.parse(
-            buildUploadUrlResponse(auth, documentId, uploadId, user.userId),
-          ),
-        );
+      return reply.code(201).send(
+        UploadSignedUrlResponseSchema.parse(
+          await buildUploadUrlResponse(auth, {
+            authorId: user.userId,
+            documentId,
+            fileName: input.data.fileName,
+            mimeType: input.data.mimeType,
+            uploadId,
+          }),
+        ),
+      );
     } catch (error) {
       return sendManuscriptServiceError(app, reply, error);
     }
@@ -208,6 +212,10 @@ export function registerManuscriptRoutes(
     "/api/v1/uploads/local/:uploadToken",
     { config: { rawBody: true } },
     async (request, reply) => {
+      if (auth.config.storageProvider === "gcs") {
+        return sendNotFound(reply, "Upload target not found");
+      }
+
       const uploadToken =
         (request.params as { uploadToken?: string }).uploadToken ?? "";
       const tokenData = verifyLocalUploadToken(uploadToken);
@@ -304,6 +312,7 @@ export function registerManuscriptRoutes(
       const document = await completeAuthorDocumentUpload(context, {
         adminTestState,
         authorId: user.userId,
+        config: auth.config,
         documentId,
         testState,
       });
@@ -333,9 +342,27 @@ export function registerManuscriptRoutes(
         authorId: user.userId,
         documentId,
       });
+      const document = await getStoredDocumentRecord(
+        auth,
+        testState,
+        documentId,
+      );
+      if (!document) {
+        return sendNotFound(reply, "Document not found");
+      }
       return reply.send(
         DocumentDownloadUrlResponseSchema.parse(
-          buildDownloadUrlResponse(auth, documentId, user.userId, "author"),
+          await buildDownloadUrlResponse(
+            auth,
+            {
+              authorId: user.userId,
+              documentId,
+              fileName: document.originalFileName,
+              mimeType: document.mimeType,
+              uploadId: document.uploadId,
+            },
+            "author",
+          ),
         ),
       );
     } catch (error) {
@@ -372,6 +399,10 @@ export function registerManuscriptRoutes(
   app.get(
     "/api/v1/documents/local-download/:downloadToken",
     async (request, reply) => {
+      if (auth.config.storageProvider === "gcs") {
+        return sendNotFound(reply, "Document file not found");
+      }
+
       const downloadToken =
         (request.params as { downloadToken?: string }).downloadToken ?? "";
       const tokenData = verifyLocalDownloadToken(downloadToken);

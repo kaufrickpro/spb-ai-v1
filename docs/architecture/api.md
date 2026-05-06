@@ -15,7 +15,8 @@ The browser must not call Supabase service-role APIs, Google Cloud privileged AP
 - Return consistent JSON errors.
 - Use Supabase Auth JWTs for end-user authentication.
 - Use service-role Supabase access only inside trusted server code.
-- `STORAGE_PROVIDER=local` is the only supported Step 8 storage mode. Non-local provider modes fail fast until real GCS wiring is added.
+- `STORAGE_PROVIDER=local` and `DOCUMENT_PROCESSING_PROVIDER=local` are local-development defaults. Staging and production must use `STORAGE_PROVIDER=gcs` and `DOCUMENT_PROCESSING_PROVIDER=cloud_tasks`.
+- GCS signed upload/download URLs are created only by trusted API code after authorization checks. Browsers receive short-lived object URLs only; they never receive GCS credentials, bucket IAM, service-role credentials, or AI-service internal URLs.
 - Validate typed environment configuration at startup and fail fast when required values are missing or provider modes are inconsistent.
 - `API_AUTH_MODE=test` is allowed only for explicit local development. Startup must fail fast if test auth is configured without `APP_CONFIG_MODE=local` or if `NODE_ENV=production`.
 - The API must answer browser CORS preflights for authenticated frontend calls and return `Access-Control-Allow-Origin` for the configured `WEB_APP_URL`.
@@ -64,8 +65,10 @@ Current scaffold:
 - `apps/api/src/modules/admin/profileReviews.ts` keeps the legacy pending-profile route backed by `eligibility_status = 'limited'` and `review_outcome = 'needs_review'`; the primary admin workspace is the exception queue in `apps/api/src/modules/admin/service.ts`.
 - `apps/api/src/modules/admin/bootstrapFirstAdmin.ts` and `apps/api/src/scripts/bootstrapFirstAdmin.ts` own the trusted first-admin bootstrap path backed by a service-role client and email allowlist.
 - `apps/api/src/modules/auth/requestAuth.ts` centralizes bearer-token authentication and admin authorization checks.
-- `apps/api/src/modules/manuscripts/registerManuscriptRoutes.ts` owns the Step 8 manuscript/document lifecycle, including author-only checks, local signed upload targets, local file serving, and test-mode review side effects.
-- `apps/api/src/modules/storage/localTokens.ts` and `apps/api/src/modules/storage/localStorage.ts` own Step 8 local fake signed URLs and ignored `local-uploads/` storage.
+- `apps/api/src/modules/manuscripts/registerManuscriptRoutes.ts` owns the Step 8/9 manuscript/document lifecycle, including author-only checks, local signed upload targets, GCS signed URL responses, local file serving, and test-mode review side effects.
+- `apps/api/src/modules/storage/localTokens.ts` and `apps/api/src/modules/storage/localStorage.ts` own local fake signed URLs and ignored `local-uploads/` storage.
+- `apps/api/src/modules/storage/gcsStorage.ts` owns private GCS object names, signed upload/download URL creation, and server-side object existence checks.
+- `apps/api/src/modules/manuscripts/documentProcessingQueue.ts` owns Cloud Tasks enqueueing for document-processing jobs. The task payload is `{ job_id }` only and Cloud Tasks uses OIDC with the configured invoker service account to call the private AI service.
 - `apps/api/src/lib/http/` contains shared JSON error helpers and the Fastify error handler.
 - `GET /health` and `GET /ready` return the shared health contract.
 - `POST /api/v1/profiles` and `GET /api/v1/profiles/me` support test auth mode and Supabase-backed mode.
@@ -109,11 +112,12 @@ Rules:
 
 - Only authors can create manuscripts.
 - Only authors upload sample documents in v1.
-- `POST /api/v1/uploads/signed-url` creates a pending document record and returns a short-lived local fake signed upload URL in Step 8 local mode.
+- `POST /api/v1/uploads/signed-url` creates a pending document record and returns a short-lived local fake signed upload URL in local mode, or a short-lived private GCS signed upload URL when `STORAGE_PROVIDER=gcs`.
 - `PUT /api/v1/uploads/local/:uploadToken` is a public signed URL target and does not rely on a bearer token.
 - The local signed upload target must accept bytes only while the document is still `pending_upload`, and must verify the request content type and exact byte length against the metadata validated by `POST /api/v1/uploads/signed-url` before writing local storage.
-- `POST /api/v1/documents/:id/complete-upload` returns a conflict when the pending upload is stale, already completed, or the local file is missing. Replacement uploads keep the previous uploaded sample active until completion succeeds; completion atomically creates or reuses exactly one idempotent ingestion job, marks the previous uploaded sample `pending_delete`, and attaches the new sample. If job creation fails, the document must remain pending and unattached.
+- `POST /api/v1/documents/:id/complete-upload` returns a conflict when the pending upload is stale, already completed, or the stored file is missing. Replacement uploads keep the previous uploaded sample active until completion succeeds; completion atomically creates or reuses exactly one idempotent ingestion job, marks the previous uploaded sample `pending_delete`, and attaches the new sample. If job creation fails, the document must remain pending and unattached.
 - Local Step 9 processing is run from trusted API code with `npm run documents:process --workspace apps/api -- <limit>`. The processor selects queued `document_processing_jobs`, claims them, and invokes the internal AI-service ingestion endpoint with `{ job_id }` only. It must skip already-running, succeeded, failed, or cancelled jobs.
+- Staging and production enqueue the idempotent `document_processing_jobs.id` to Cloud Tasks after upload completion. Cloud Tasks calls `POST /internal/ingestion/run` on the private AI Cloud Run service with `{ job_id }` only and an OIDC token for `CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL`. The API must not put manuscript text, signed URLs, user JWTs, service-role keys, or GCS credentials into task payloads.
 - Signed download URLs require ownership, admin access, or accepted intro access.
 
 ### Matching

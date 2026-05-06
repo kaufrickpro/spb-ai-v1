@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Protocol
 
+from google.cloud import storage as gcs_storage
+
 
 class StorageReadError(Exception):
     """Raised when the worker cannot read uploaded bytes through storage."""
@@ -24,6 +26,23 @@ class LocalFileStorage:
         try:
             return path.read_bytes()
         except OSError as exc:
+            raise StorageReadError("Unable to read stored document") from exc
+
+
+class GcsDocumentStorage:
+    def __init__(
+        self,
+        bucket_name: str,
+        client: gcs_storage.Client | None = None,
+    ) -> None:
+        self.bucket_name = bucket_name
+        self.client = client or gcs_storage.Client()
+
+    def read_bytes(self, storage_path: str) -> bytes:
+        try:
+            blob = self.client.bucket(self.bucket_name).blob(storage_path)
+            return blob.download_as_bytes()
+        except Exception as exc:
             raise StorageReadError("Unable to read stored document") from exc
 
 

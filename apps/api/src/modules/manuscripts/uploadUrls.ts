@@ -1,5 +1,9 @@
 import type { AuthDependencies } from "../auth/requestAuth.js";
 import {
+  createGcsSignedDownloadUrl,
+  createGcsSignedUploadUrl,
+} from "../storage/gcsStorage.js";
+import {
   createLocalDownloadToken,
   createLocalUploadToken,
 } from "../storage/localTokens.js";
@@ -11,35 +15,68 @@ export const SUPPORTED_SAMPLE_MIME_TYPES = [
   "text/plain",
 ] as const;
 
-export function buildUploadUrlResponse(
+export async function buildUploadUrlResponse(
   auth: AuthDependencies,
-  documentId: string,
-  uploadId: string,
-  authorId: string,
+  input: {
+    authorId: string;
+    documentId: string;
+    fileName: string;
+    mimeType: string;
+    uploadId: string;
+  },
 ) {
+  if (auth.config.storageProvider === "gcs") {
+    const signed = await createGcsSignedUploadUrl(auth.config, {
+      contentType: input.mimeType,
+      documentId: input.documentId,
+      fileName: input.fileName,
+      uploadId: input.uploadId,
+    });
+    return {
+      uploadId: input.uploadId,
+      documentId: input.documentId,
+      uploadUrl: signed.uploadUrl,
+      expiresAt: signed.expiresAt,
+    };
+  }
+
   const { expiresAt, token } = createLocalUploadToken(
-    documentId,
-    uploadId,
-    authorId,
+    input.documentId,
+    input.uploadId,
+    input.authorId,
   );
 
   return {
-    uploadId,
-    documentId,
+    uploadId: input.uploadId,
+    documentId: input.documentId,
     uploadUrl: `${buildApiBaseUrl(auth)}/api/v1/uploads/local/${token}`,
     expiresAt,
   };
 }
 
-export function buildDownloadUrlResponse(
+export async function buildDownloadUrlResponse(
   auth: AuthDependencies,
-  documentId: string,
-  authorId: string,
+  input: {
+    authorId: string;
+    documentId: string;
+    fileName: string;
+    mimeType: string;
+    uploadId: string;
+  },
   accessType: "author" | "admin",
 ) {
+  if (auth.config.storageProvider === "gcs") {
+    return createGcsSignedDownloadUrl(auth.config, {
+      contentType: input.mimeType,
+      documentId: input.documentId,
+      fileName: input.fileName,
+      uploadId: input.uploadId,
+    });
+  }
+
   const { expiresAt, token } = createLocalDownloadToken(
-    documentId,
-    authorId,
+    input.documentId,
+    input.authorId,
     accessType,
   );
 

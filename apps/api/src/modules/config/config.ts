@@ -2,7 +2,8 @@ import { z } from "zod";
 
 const optionalNonEmptyString = () =>
   z.preprocess(
-    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? undefined : value,
     z.string().min(1).optional(),
   );
 
@@ -21,6 +22,12 @@ const ApiConfigSchema = z.object({
   ]),
   port: z.coerce.number().int().positive(),
   storageProvider: z.enum(["local", "gcs"]),
+  documentProcessingProvider: z.enum(["local", "cloud_tasks"]),
+  googleCloudProject: optionalNonEmptyString(),
+  googleCloudRegion: optionalNonEmptyString(),
+  gcsBucketPrivateUploads: optionalNonEmptyString(),
+  cloudTasksIngestionQueue: optionalNonEmptyString(),
+  cloudTasksServiceAccountEmail: optionalNonEmptyString(),
   webAppUrl: z.string().url(),
   documentScannerMode: z.enum(["local_fake", "real"]),
   documentScannerProvider: optionalNonEmptyString(),
@@ -51,6 +58,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     storageProvider:
       env.STORAGE_PROVIDER ??
       ((env.APP_CONFIG_MODE ?? "local") === "local" ? "local" : "gcs"),
+    documentProcessingProvider:
+      env.DOCUMENT_PROCESSING_PROVIDER ??
+      ((env.APP_CONFIG_MODE ?? "local") === "local" ? "local" : "cloud_tasks"),
+    googleCloudProject: env.GOOGLE_CLOUD_PROJECT,
+    googleCloudRegion: env.GOOGLE_CLOUD_REGION,
+    gcsBucketPrivateUploads: env.GCS_BUCKET_PRIVATE_UPLOADS,
+    cloudTasksIngestionQueue: env.CLOUD_TASKS_INGESTION_QUEUE,
+    cloudTasksServiceAccountEmail: env.CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL,
     webAppUrl: env.WEB_APP_URL ?? "http://localhost:5173",
     documentScannerMode: env.DOCUMENT_SCANNER_MODE ?? "local_fake",
     documentScannerProvider: env.DOCUMENT_SCANNER_PROVIDER,
@@ -119,10 +134,41 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     );
   }
 
-  if (parsed.storageProvider !== "local") {
+  if (
+    parsed.documentProcessingProvider === "local" &&
+    parsed.appConfigMode !== "local"
+  ) {
     throw new Error(
-      `STORAGE_PROVIDER=${parsed.storageProvider} is not implemented yet for Step 8`,
+      "DOCUMENT_PROCESSING_PROVIDER=local is allowed only when APP_CONFIG_MODE=local",
     );
+  }
+
+  if (parsed.storageProvider === "gcs") {
+    z.object({
+      gcsBucketPrivateUploads: z.string().min(1),
+    }).parse(parsed);
+  }
+
+  if (parsed.documentProcessingProvider === "cloud_tasks") {
+    z.object({
+      aiServiceBaseUrl: z.string().url(),
+      cloudTasksIngestionQueue: z.string().min(1),
+      cloudTasksServiceAccountEmail: z.string().email(),
+      googleCloudProject: z.string().min(1),
+      googleCloudRegion: z.string().min(1),
+    }).parse(parsed);
+  }
+
+  if (parsed.appConfigMode !== "local") {
+    if (parsed.storageProvider !== "gcs") {
+      throw new Error("Staging/production must use STORAGE_PROVIDER=gcs");
+    }
+
+    if (parsed.documentProcessingProvider !== "cloud_tasks") {
+      throw new Error(
+        "Staging/production must use DOCUMENT_PROCESSING_PROVIDER=cloud_tasks",
+      );
+    }
   }
 
   return parsed;

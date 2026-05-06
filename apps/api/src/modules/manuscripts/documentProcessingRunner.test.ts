@@ -144,7 +144,8 @@ describe("document processing runner", () => {
     expect(
       adminTestState.reviews.some(
         (review) =>
-          review.entityId === DOCUMENT_ID && review.source === "document_processing",
+          review.entityId === DOCUMENT_ID &&
+          review.source === "document_processing",
       ),
     ).toBe(false);
   });

@@ -209,7 +209,10 @@ def build_local_storage_path(document_id: str, upload_id: str, file_name: str) -
 
 def sanitize_file_name(file_name: str) -> str:
     basename = file_name.split("/")[-1].split("\\")[-1]
-    safe = "".join(char if char.isalnum() or char in "._-" else "-" for char in basename)
+    safe = "".join(
+        char if char.isascii() and (char.isalnum() or char in "._-") else "-"
+        for char in basename
+    )
     return safe.strip("-")[:120]
 
 

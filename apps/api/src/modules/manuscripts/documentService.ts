@@ -1,6 +1,8 @@
 import type { AdminTestState } from "../admin/testState.js";
+import type { ApiConfig } from "../config/config.js";
 import type { AuthorRequestContext } from "./access.js";
-import { assertLocalUploadExists } from "./documentStorage.js";
+import { assertStoredUploadExists } from "./documentStorage.js";
+import { createDocumentProcessingEnqueue } from "./documentProcessingQueue.js";
 import { ManuscriptServiceError } from "./errors.js";
 import {
   buildInitialDocumentIngestionJob,
@@ -15,6 +17,7 @@ export async function completeAuthorDocumentUpload(
   input: {
     adminTestState: AdminTestState;
     authorId: string;
+    config: ApiConfig;
     documentId: string;
     testState: ManuscriptTestState;
   },
@@ -24,13 +27,14 @@ export async function completeAuthorDocumentUpload(
   }
 
   const docRow = await getPendingSupabaseDocument(context, input);
-  await assertLocalUploadExists({
+  await assertStoredUploadExists({
+    config: input.config,
     id: docRow.id,
     originalFileName: docRow.original_file_name,
     uploadId: docRow.upload_id,
   });
 
-  const updatedRow = await completeSupabaseDocumentUploadAndQueueJob(context, {
+  const completion = await completeSupabaseDocumentUploadAndQueueJob(context, {
     ...input,
     documentId: docRow.id,
     fileSizeBytes: Number(docRow.file_size_bytes),
@@ -38,7 +42,12 @@ export async function completeAuthorDocumentUpload(
     originalFileName: docRow.original_file_name,
     uploadId: docRow.upload_id,
   });
-  return mapDbDocument(updatedRow);
+  const enqueue = createDocumentProcessingEnqueue(input.config);
+  if (enqueue) {
+    await enqueue({ jobId: completion.jobId });
+  }
+
+  return mapDbDocument(completion.document);
 }
 
 async function completeTestUploadAndQueueReview(input: {
@@ -96,7 +105,22 @@ async function assertExistingTestUploadWasStored(input: {
     throw new ManuscriptServiceError("not_found", "Document not found");
   }
 
-  await assertLocalUploadExists(document);
+  await assertStoredUploadExists({
+    config: {
+      appConfigMode: "local",
+      authMode: "test",
+      documentProcessingProvider: "local",
+      documentScannerMode: "local_fake",
+      host: "0.0.0.0",
+      logLevel: "silent",
+      port: 4000,
+      storageProvider: "local",
+      webAppUrl: "http://localhost:5173",
+    },
+    id: document.id,
+    originalFileName: document.originalFileName,
+    uploadId: document.uploadId,
+  });
 }
 
 async function getPendingSupabaseDocument(
@@ -172,5 +196,32 @@ async function completeSupabaseDocumentUploadAndQueueJob(
     );
   }
 
-  return data;
+  const jobId = await getDocumentProcessingJobId(context, {
+    documentId: input.documentId,
+    idempotencyKey: ingestionJob.idempotencyKey,
+  });
+
+  return { document: data, jobId };
+}
+
+async function getDocumentProcessingJobId(
+  context: Extract<AuthorRequestContext, { mode: "supabase" }>,
+  input: { documentId: string; idempotencyKey: string },
+): Promise<string> {
+  const { data, error } = await context.serviceDb
+    .from("document_processing_jobs")
+    .select("id")
+    .eq("document_id", input.documentId)
+    .eq("idempotency_key", input.idempotencyKey)
+    .single();
+
+  if (error || !data) {
+    throw new ManuscriptServiceError(
+      "storage",
+      "Failed to resolve queued document processing job",
+      error,
+    );
+  }
+
+  return data.id;
 }

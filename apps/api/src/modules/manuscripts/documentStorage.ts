@@ -1,5 +1,6 @@
 import type { AuthDependencies } from "../auth/requestAuth.js";
 import { createServiceRoleSupabaseClient } from "../supabase/client.js";
+import { hasGcsUpload } from "../storage/gcsStorage.js";
 import { hasLocalUpload } from "../storage/localStorage.js";
 import { ManuscriptServiceError } from "./errors.js";
 import type { ManuscriptTestState } from "./testState.js";
@@ -62,21 +63,26 @@ export async function getStoredDocumentRecord(
   };
 }
 
-export async function assertLocalUploadExists(input: {
+export async function assertStoredUploadExists(input: {
+  config: AuthDependencies["config"];
   id: string;
   originalFileName: string;
   uploadId: string;
 }): Promise<void> {
-  const hasStoredFile = await hasLocalUpload({
+  const storedObject = {
     documentId: input.id,
     fileName: input.originalFileName,
     uploadId: input.uploadId,
-  });
+  };
+  const hasStoredFile =
+    input.config.storageProvider === "gcs"
+      ? await hasGcsUpload(input.config, storedObject)
+      : await hasLocalUpload(storedObject);
 
   if (!hasStoredFile) {
     throw new ManuscriptServiceError(
       "conflict",
-      "The upload token is stale or the local file is missing",
+      "The upload token is stale or the stored file is missing",
     );
   }
 }

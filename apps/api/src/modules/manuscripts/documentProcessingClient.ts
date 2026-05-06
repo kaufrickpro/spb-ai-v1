@@ -8,7 +8,9 @@ export function createAiServiceDocumentProcessingDispatch(
   config: Pick<ApiConfig, "aiInternalToken" | "aiServiceBaseUrl">,
 ): DocumentProcessingDispatch {
   if (!config.aiServiceBaseUrl) {
-    throw new Error("AI_SERVICE_BASE_URL is required to run document processing");
+    throw new Error(
+      "AI_SERVICE_BASE_URL is required to run document processing",
+    );
   }
 
   return async ({ jobId }) => {

@@ -409,8 +409,9 @@ Columns:
 Rules:
 
 - `author_id` must belong to the manuscript owner.
-- Step 8 stores local uploaded bytes under ignored local storage and uses short-lived fake signed URLs.
+- Local development stores uploaded bytes under ignored local storage and uses short-lived fake signed URLs. Staging/production store uploaded bytes in private GCS and use API-issued short-lived signed URLs after authorization checks.
 - Upload completion should queue asynchronous document checking through `document_processing_jobs`; it must not synchronously parse files inside the author request.
+- Staging/production upload completion enqueues the durable `document_processing_jobs.id` to Cloud Tasks. The task payload is `{ job_id }` only; document bytes remain in private storage and service-role/GCS credentials stay server-side.
 - Step 9 processing writes safe `processing_failure_code` values for user-facing recovery. Ordinary user-correctable failures such as empty text, unsupported file type during the text-only phase, too-large extracted text, or corrupt/unreadable files should not create default admin work.
 - Suspicious scanner outcomes, quarantines, validation bypass signals such as file type mismatch, repeated system/provider failures, or unexpected runtime errors become admin exceptions.
 - Successful Step 9 processing stores evidence for later eligibility. Step 10 owns full matching/discovery eligibility.

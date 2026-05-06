@@ -46,7 +46,11 @@ export async function processQueuedSupabaseDocumentProcessingJobs(input: {
   const results: DocumentProcessingRunResult[] = [];
   for (const row of data ?? []) {
     results.push(
-      await processSupabaseDocumentProcessingJob({ db, dispatch, jobId: row.id }),
+      await processSupabaseDocumentProcessingJob({
+        db,
+        dispatch,
+        jobId: row.id,
+      }),
     );
   }
   return results;
@@ -58,7 +62,8 @@ export async function processSupabaseDocumentProcessingJob(input: {
   jobId: string;
 }): Promise<DocumentProcessingRunResult> {
   const job = await getSupabaseJob(input.db, input.jobId);
-  if (!job) return { jobId: input.jobId, status: "skipped", reason: "not_found" };
+  if (!job)
+    return { jobId: input.jobId, status: "skipped", reason: "not_found" };
   if (job.status !== "queued") {
     return { jobId: input.jobId, status: "skipped", reason: "not_queued" };
   }
@@ -69,7 +74,10 @@ export async function processSupabaseDocumentProcessingJob(input: {
   }
   await markSupabaseDocumentProcessing(input.db, job.documentId);
 
-  const result = await dispatchDocumentProcessingJobSafely(input.dispatch, job.id);
+  const result = await dispatchDocumentProcessingJobSafely(
+    input.dispatch,
+    job.id,
+  );
   if (result.status === "succeeded") {
     await markSupabaseJobSucceeded(input.db, job.id, result.metadata);
     await markSupabaseDocumentProcessed(input.db, job.documentId);

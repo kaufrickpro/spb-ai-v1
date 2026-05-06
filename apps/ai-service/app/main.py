@@ -5,7 +5,7 @@ from app.modules.config import AiServiceConfig, load_config
 from app.modules.ingestion import IngestionResult
 from app.modules.ingestion_worker import IngestionWorker, create_local_ingestion_worker
 from app.modules.runtime import RuntimeAdapter, create_runtime_adapter
-from app.modules.storage import LocalFileStorage
+from app.modules.storage import GcsDocumentStorage, LocalFileStorage
 from app.modules.supabase_repository import SupabaseIngestionRepository
 
 
@@ -74,9 +74,16 @@ def create_default_ingestion_worker(config: AiServiceConfig) -> IngestionWorker 
             config.supabase_url,
             config.supabase_service_role_key,
         ),
-        storage=LocalFileStorage(config.local_storage_root),
+        storage=create_document_storage(config),
         config=config,
     )
+
+
+def create_document_storage(config: AiServiceConfig) -> LocalFileStorage | GcsDocumentStorage:
+    if config.storage_provider == "gcs":
+        return GcsDocumentStorage(config.gcs_bucket_private_uploads or "")
+
+    return LocalFileStorage(config.local_storage_root)
 
 
 app = create_app()

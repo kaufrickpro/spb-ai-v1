@@ -1,5 +1,9 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  buildDocumentObjectName,
+  sanitizeDocumentObjectFileName,
+} from "./documentObjects.js";
 
 const LOCAL_UPLOAD_ROOT = path.resolve(process.cwd(), "local-uploads");
 
@@ -9,20 +13,13 @@ type LocalStoredDocument = {
   uploadId: string;
 };
 
-function sanitizeFileName(fileName: string): string {
-  return path
-    .basename(fileName)
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 120);
-}
-
 function getDocumentDir(documentId: string): string {
   return path.join(LOCAL_UPLOAD_ROOT, documentId);
 }
 
 function getStoredPath(input: LocalStoredDocument): string {
-  const safeFileName = sanitizeFileName(input.fileName) || "upload.bin";
+  const safeFileName =
+    sanitizeDocumentObjectFileName(input.fileName) || "upload.bin";
   return path.join(
     getDocumentDir(input.documentId),
     `${input.uploadId}-${safeFileName}`,
@@ -60,4 +57,10 @@ export async function readLocalUpload(
   } catch {
     return null;
   }
+}
+
+export function buildLocalUploadStoragePath(
+  input: LocalStoredDocument,
+): string {
+  return buildDocumentObjectName(input);
 }

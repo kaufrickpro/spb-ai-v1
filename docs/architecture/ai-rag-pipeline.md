@@ -34,13 +34,27 @@ apps/ai-service/
 
 The internal ingestion endpoint must not accept raw document text from the caller. It processes the uploaded object through configured repository, storage, and embedding-reference adapters so local/dev fakes keep the same boundary as staging and production.
 
+In staging and production, Cloud Tasks calls `POST /internal/ingestion/run` with `{ job_id }` only. The task must not include manuscript text, signed URLs, user JWTs, service-role keys, or GCS credentials.
+
 The first Step 9 implementation supports `text/plain` only. Digital PDF, DOCX, and EPUB parsers are planned behind the same parser interface. OCR/Document AI is deferred unless explicitly requested.
 
 ### Environment Split
 
 - Local/dev: local file storage and fake signed URLs stand in for private GCS; the API local processor command `npm run documents:process --workspace apps/api -- <limit>` claims queued jobs and calls the AI service with only `{ job_id }`; the AI service local worker reads Supabase job/document rows, reads bytes from `LOCAL_STORAGE_ROOT`, and writes chunks plus embedding references back to Supabase; fake embeddings write deterministic reference metadata only; AI calls use `AI_INTERNAL_TOKEN`.
-- Staging/production: files live in private GCS; Cloud Tasks calls the private Cloud Run AI service; AI service authentication uses Cloud Run IAM/OIDC; Vertex AI embeddings and Vector Search are wired behind config.
+- Staging/production: files live in private GCS with `STORAGE_PROVIDER=gcs` and `GCS_BUCKET_PRIVATE_UPLOADS`; Cloud Tasks calls the private Cloud Run AI service with OIDC; AI service authentication uses Cloud Run IAM/OIDC; the AI service reads document bytes from private GCS through its service identity, not through public buckets or browser-provided signed URLs. Vertex AI embeddings and Vector Search are wired behind config when that provider slice is implemented.
 - Local/dev may mark scanner metadata as `not_scanned`. Staging/production must configure real malware/safety scanning with `DOCUMENT_SCANNER_MODE=real` and `DOCUMENT_SCANNER_PROVIDER`, or carry a named explicit launch decision in `DOCUMENT_SCANNER_LAUNCH_DECISION_ID` before accepting real user documents. The API and AI service both fail fast when deployed config tries to use `DOCUMENT_SCANNER_MODE=local_fake` without that decision.
+
+Current staging target values:
+
+- GCP project: `spb-ai`
+- Region: `europe-west3`
+- Private manuscript bucket: `spb-ai-staging-manuscripts`
+- Cloud Tasks queue: `document-processing-staging`
+- API Cloud Run service: `spb-api-staging`
+- AI service Cloud Run service: `spb-ai-service-staging`
+- API service account: `spb-api-staging@spb-ai.iam.gserviceaccount.com`
+- AI service account: `spb-ai-service-staging@spb-ai.iam.gserviceaccount.com`
+- Cloud Tasks invoker service account: `spb-cloud-tasks-staging@spb-ai.iam.gserviceaccount.com`
 
 ### Scanner Policy
 

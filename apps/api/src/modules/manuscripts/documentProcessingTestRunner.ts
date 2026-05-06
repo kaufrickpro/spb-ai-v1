@@ -24,8 +24,7 @@ export async function processQueuedTestDocumentProcessingJobs(input: {
 }): Promise<DocumentProcessingRunResult[]> {
   const queuedJobs = input.adminTestState.jobRuns
     .filter(
-      (job) =>
-        job.jobType === "document_ingestion" && job.status === "queued",
+      (job) => job.jobType === "document_ingestion" && job.status === "queued",
     )
     .slice(0, input.limit ?? 10);
 
@@ -82,7 +81,10 @@ export async function processTestDocumentProcessingJob(input: {
     processingFailureCode: null,
   });
 
-  const result = await dispatchDocumentProcessingJobSafely(input.dispatch, job.id);
+  const result = await dispatchDocumentProcessingJobSafely(
+    input.dispatch,
+    job.id,
+  );
   const metadata = sanitizeWorkerMetadata(result.metadata);
 
   if (result.status === "succeeded") {
@@ -106,12 +108,16 @@ export async function processTestDocumentProcessingJob(input: {
     failureCode,
     errorMessage: "Document processing failed",
   });
-  const updatedDocument = updateTestDocument(input.manuscriptTestState, document.id, {
-    processingStatus: "failed",
-    processingFailureCode: failureCode,
-    eligibilityStatus: "limited",
-    reviewOutcome: "needs_review",
-  });
+  const updatedDocument = updateTestDocument(
+    input.manuscriptTestState,
+    document.id,
+    {
+      processingStatus: "failed",
+      processingFailureCode: failureCode,
+      eligibilityStatus: "limited",
+      reviewOutcome: "needs_review",
+    },
+  );
 
   createTestDocumentProcessingAdminException(input.adminTestState, {
     attemptCount: updatedJob.attemptCount ?? 1,
@@ -147,7 +153,9 @@ function updateTestDocument(
   documentId: string,
   patch: Partial<Document>,
 ): Document {
-  const index = state.documents.findIndex((document) => document.id === documentId);
+  const index = state.documents.findIndex(
+    (document) => document.id === documentId,
+  );
   if (index < 0) {
     throw new Error(`Document ${documentId} not found in test state`);
   }
