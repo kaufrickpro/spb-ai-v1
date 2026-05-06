@@ -167,7 +167,7 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 9. Build AI Service Foundation
 
-- Status: in progress. The Step 9 local job-boundary slice is implemented: upload completion queues an idempotent processing job, the AI service has a local `text/plain` worker with repository/storage/embedding adapter boundaries, local fake embedding references are stored as references rather than vectors, admin exception rules are encoded for document processing outcomes, and authors see simple checking/ready/unreadable states.
+- Status: in progress. The Step 9 local job-boundary slice is implemented: upload completion queues an idempotent processing job, the API has a local processor that claims queued jobs and dispatches the AI service by `job_id`, the AI service configures a local `text/plain` worker from Supabase and local storage settings, local fake embedding references are stored as references rather than vectors, admin exception rules are encoded for document processing outcomes, and authors see simple checking/ready/unreadable states.
 - Create FastAPI app with ingestion, retrieval, matching, repositories, and settings modules.
 - Add Pydantic models that match the then-current API contracts for AI-facing requests and responses.
 - Implemented first ingestion slice supports plain text (`text/plain`) only, behind parser/storage/repository/embedding interfaces that can later add digital PDF, DOCX, and EPUB without changing the job flow.
@@ -175,12 +175,12 @@ Use a workflow that makes mistakes cheap and visible:
 - Preserve the production architecture shape in every environment: browser -> Node API -> processing job -> internal AI service/worker. Local development may fake providers, but it must not fake away the job boundary.
 - Production files live in private Google Cloud Storage. Supabase stores document metadata, processing jobs, chunks, embedding references, audit records, and admin exceptions.
 - Local development uses local file storage and fake signed URLs as a GCS-shaped adapter. Staging and production use private GCS objects and short-lived trusted access for the API/AI service path.
-- Local development now has a local AI-service worker/test fake shape for queued jobs; the remaining local integration work is to invoke that worker from the Node API/local processor path and persist results through Supabase-backed repositories. Staging and production use Cloud Tasks to call the private AI service.
+- Local development now has a local AI-service worker/test fake shape for queued jobs and an API-side processor command: `npm run documents:process --workspace apps/api -- <limit>`. The local worker reads queued/running jobs and document metadata through Supabase service-role REST, reads uploaded bytes from `LOCAL_STORAGE_ROOT`, and writes document chunks plus embedding reference records back to Supabase. Staging and production use Cloud Tasks to call the private AI service.
 - Local development uses reference-only fake embedding records. Staging and production wire Vertex AI embeddings and Vertex AI Vector Search behind typed config.
-- Local development may mark scanner metadata as `not_scanned` with a local scanner adapter. Staging and production must either configure real scanning or carry an explicit launch decision before real user documents are accepted.
+- Local development may mark scanner metadata as `not_scanned` with a local fake scanner adapter. Staging and production must either configure `DOCUMENT_SCANNER_MODE=real` with `DOCUMENT_SCANNER_PROVIDER`, or carry a named `DOCUMENT_SCANNER_LAUNCH_DECISION_ID`; the API and AI service fail fast when deployed config silently keeps fake scanner mode.
 - AI service internal calls use a local shared `AI_INTERNAL_TOKEN` in local/dev. Staging and production use private Cloud Run IAM/OIDC.
-- Store bounded extracted chunks in `document_chunks`; never store the original file bytes in Postgres. The local worker has this repository contract; Supabase-backed persistence still needs to be wired for the full local end-to-end loop.
-- Store one active chunk set per document. Re-ingestion replaces the active chunks and embedding records while preserving `document_processing_jobs` history.
+- Store bounded extracted chunks in `document_chunks`; never store the original file bytes in Postgres. The Supabase-backed worker persists only document metadata, chunks, embedding references, job metadata, and status transitions.
+- Store one active chunk set per document. Re-ingestion replaces the active chunks and embedding records through the transactional `public.replace_document_ingestion_outputs(...)` RPC while preserving `document_processing_jobs` history.
 - Store chunk-level embedding references only in `embedding_records`; do not store numeric vector arrays in Postgres.
 - Step 9 marks documents as checked/processed and stores ingestion evidence. Step 10 owns full matching/discovery eligibility.
 - Failed outcomes use stable safe failure codes. Ordinary user-correctable failures such as empty text, unsupported type in the text-only phase, too-large extracted text, and corrupt/unreadable files do not create default admin work.

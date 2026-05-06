@@ -113,6 +113,7 @@ Rules:
 - `PUT /api/v1/uploads/local/:uploadToken` is a public signed URL target and does not rely on a bearer token.
 - The local signed upload target must accept bytes only while the document is still `pending_upload`, and must verify the request content type and exact byte length against the metadata validated by `POST /api/v1/uploads/signed-url` before writing local storage.
 - `POST /api/v1/documents/:id/complete-upload` returns a conflict when the pending upload is stale, already completed, or the local file is missing. Replacement uploads keep the previous uploaded sample active until completion succeeds; completion atomically creates or reuses exactly one idempotent ingestion job, marks the previous uploaded sample `pending_delete`, and attaches the new sample. If job creation fails, the document must remain pending and unattached.
+- Local Step 9 processing is run from trusted API code with `npm run documents:process --workspace apps/api -- <limit>`. The processor selects queued `document_processing_jobs`, claims them, and invokes the internal AI-service ingestion endpoint with `{ job_id }` only. It must skip already-running, succeeded, failed, or cancelled jobs.
 - Signed download URLs require ownership, admin access, or accepted intro access.
 
 ### Matching

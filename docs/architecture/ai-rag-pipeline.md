@@ -38,9 +38,22 @@ The first Step 9 implementation supports `text/plain` only. Digital PDF, DOCX, a
 
 ### Environment Split
 
-- Local/dev: local file storage and fake signed URLs stand in for private GCS; a local processor or test fake runs queued jobs; fake embeddings write deterministic reference metadata only; AI calls use `AI_INTERNAL_TOKEN`.
+- Local/dev: local file storage and fake signed URLs stand in for private GCS; the API local processor command `npm run documents:process --workspace apps/api -- <limit>` claims queued jobs and calls the AI service with only `{ job_id }`; the AI service local worker reads Supabase job/document rows, reads bytes from `LOCAL_STORAGE_ROOT`, and writes chunks plus embedding references back to Supabase; fake embeddings write deterministic reference metadata only; AI calls use `AI_INTERNAL_TOKEN`.
 - Staging/production: files live in private GCS; Cloud Tasks calls the private Cloud Run AI service; AI service authentication uses Cloud Run IAM/OIDC; Vertex AI embeddings and Vector Search are wired behind config.
-- Local/dev may mark scanner metadata as `not_scanned`. Staging/production must configure real malware/safety scanning or carry an explicit launch decision before accepting real user documents.
+- Local/dev may mark scanner metadata as `not_scanned`. Staging/production must configure real malware/safety scanning with `DOCUMENT_SCANNER_MODE=real` and `DOCUMENT_SCANNER_PROVIDER`, or carry a named explicit launch decision in `DOCUMENT_SCANNER_LAUNCH_DECISION_ID` before accepting real user documents. The API and AI service both fail fast when deployed config tries to use `DOCUMENT_SCANNER_MODE=local_fake` without that decision.
+
+### Scanner Policy
+
+`scanner_result = not_scanned` means the uploaded sample has not received a malware or safety scan. In local/dev, this is deterministic fake scanner behavior only and is acceptable because local files are developer fixtures.
+
+In staging and production, `not_scanned` is not a clean result. It is allowed only when the team has made and documented an explicit launch decision named by `DOCUMENT_SCANNER_LAUNCH_DECISION_ID`. Without that decision, staging and production services must not start in fake scanner mode. A real scanner launch instead sets `DOCUMENT_SCANNER_MODE=real` plus a provider name so operators can tell which scanning system owns the decision.
+
+Scanner outcomes map to admin exceptions as follows:
+
+- `clean`: no scanner-driven admin exception.
+- `suspicious`, `malware_suspected`, or `policy_suspicious`: document stays `limited` with `needs_review` and enters the Needs Review queue.
+- `quarantined`, `malware_detected`, or `unsafe`: document becomes `quarantined` with `review_outcome = quarantined` and enters the Quarantine queue.
+- `not_scanned`: local/dev fake result, or a deployed explicit launch exception; it must not be treated as clean for launch readiness.
 
 ### Ingestion Result Policy
 

@@ -54,6 +54,8 @@ supabase/migrations/20260504065907_step9_ingestion_foundation.sql
 
 They create `public.profiles`, `public.author_profiles`, `public.publisher_profiles`, `public.admin_users`, `public.manuscripts`, `public.documents`, `public.admin_reviews`, `public.admin_audit_logs`, admin operations tables, `public.document_processing_jobs`, `public.document_chunks`, and `public.embedding_records`, plus supporting helper/trigger functions, constraints, indexes, and owner/admin RLS policies.
 
+Step 9 reprocessing uses `public.replace_document_ingestion_outputs(...)` as a service-role-only RPC. It replaces one document's active `document_chunks` and chunk-scoped `embedding_records` in one database transaction, while preserving `public.document_processing_jobs` history and keeping original file bytes out of Postgres.
+
 Do not create the full V1 schema upfront. Matching, intro requests, billing, and the broader discovery/runtime tables should still arrive in later vertical slices. Larger future domains may split schema and RLS into separate migrations when review clarity matters.
 
 Every future schema change must be introduced with a new migration. Never make manual dashboard-only schema edits without backfilling a migration.

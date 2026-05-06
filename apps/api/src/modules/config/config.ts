@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+const optionalNonEmptyString = () =>
+  z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().min(1).optional(),
+  );
+
 const ApiConfigSchema = z.object({
   appConfigMode: z.enum(["local", "staging", "production"]),
   authMode: z.enum(["test", "supabase"]),
@@ -16,6 +22,9 @@ const ApiConfigSchema = z.object({
   port: z.coerce.number().int().positive(),
   storageProvider: z.enum(["local", "gcs"]),
   webAppUrl: z.string().url(),
+  documentScannerMode: z.enum(["local_fake", "real"]),
+  documentScannerProvider: optionalNonEmptyString(),
+  documentScannerLaunchDecisionId: optionalNonEmptyString(),
   // Used to construct the JWKS endpoint: ${supabaseUrl}/auth/v1/.well-known/jwks.json
   // No JWT secret is needed — token verification uses the public key from JWKS.
   supabaseUrl: z.string().url().optional(),
@@ -23,6 +32,10 @@ const ApiConfigSchema = z.object({
   supabaseAnonKey: z.string().min(1).optional(),
   // Service-role key used only by trusted server-side admin/bootstrap paths.
   supabaseServiceRoleKey: z.string().min(1).optional(),
+  // Internal AI service endpoint used by local processors and production task workers.
+  aiServiceBaseUrl: z.string().url().optional(),
+  // Shared local/dev bearer token for trusted API -> AI service calls.
+  aiInternalToken: z.string().min(1).optional(),
 });
 
 export type ApiConfig = z.infer<typeof ApiConfigSchema>;
@@ -39,9 +52,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       env.STORAGE_PROVIDER ??
       ((env.APP_CONFIG_MODE ?? "local") === "local" ? "local" : "gcs"),
     webAppUrl: env.WEB_APP_URL ?? "http://localhost:5173",
+    documentScannerMode: env.DOCUMENT_SCANNER_MODE ?? "local_fake",
+    documentScannerProvider: env.DOCUMENT_SCANNER_PROVIDER,
+    documentScannerLaunchDecisionId: env.DOCUMENT_SCANNER_LAUNCH_DECISION_ID,
     supabaseUrl: env.SUPABASE_URL,
     supabaseAnonKey: env.SUPABASE_ANON_KEY,
     supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
+    aiServiceBaseUrl: env.AI_SERVICE_BASE_URL,
+    aiInternalToken: env.AI_INTERNAL_TOKEN,
   });
 
   // Fail fast: supabase mode requires the project URL, anon key, and trusted service-role key.
@@ -71,6 +89,26 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     if (errors.length > 0) {
       throw new Error(
         `API_AUTH_MODE=test is allowed only in local development: ${errors.join(", ")}`,
+      );
+    }
+  }
+
+  if (parsed.appConfigMode !== "local") {
+    if (
+      parsed.documentScannerMode === "local_fake" &&
+      !parsed.documentScannerLaunchDecisionId
+    ) {
+      throw new Error(
+        "Staging/production cannot use DOCUMENT_SCANNER_MODE=local_fake without DOCUMENT_SCANNER_LAUNCH_DECISION_ID",
+      );
+    }
+
+    if (
+      parsed.documentScannerMode === "real" &&
+      !parsed.documentScannerProvider
+    ) {
+      throw new Error(
+        "DOCUMENT_SCANNER_PROVIDER is required when DOCUMENT_SCANNER_MODE=real",
       );
     }
   }

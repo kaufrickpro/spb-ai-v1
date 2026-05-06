@@ -55,6 +55,55 @@ describe("loadConfig", () => {
     ).toThrow();
   });
 
+  it("rejects fake scanner mode in deployed config without a launch decision", () => {
+    expect(() =>
+      loadConfig({
+        API_AUTH_MODE: "supabase",
+        APP_CONFIG_MODE: "staging",
+        NODE_ENV: "development",
+        STORAGE_PROVIDER: "gcs",
+        WEB_APP_URL: "https://example.com",
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_ANON_KEY: "anon",
+        SUPABASE_SERVICE_ROLE_KEY: "service",
+        DOCUMENT_SCANNER_MODE: "local_fake",
+      }),
+    ).toThrow(/DOCUMENT_SCANNER_LAUNCH_DECISION_ID/);
+  });
+
+  it("requires a provider name for real scanner mode in deployed config", () => {
+    expect(() =>
+      loadConfig({
+        API_AUTH_MODE: "supabase",
+        APP_CONFIG_MODE: "staging",
+        NODE_ENV: "development",
+        STORAGE_PROVIDER: "gcs",
+        WEB_APP_URL: "https://example.com",
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_ANON_KEY: "anon",
+        SUPABASE_SERVICE_ROLE_KEY: "service",
+        DOCUMENT_SCANNER_MODE: "real",
+      }),
+    ).toThrow(/DOCUMENT_SCANNER_PROVIDER/);
+  });
+
+  it("accepts explicit scanner launch decision before hitting storage provider guard", () => {
+    expect(() =>
+      loadConfig({
+        API_AUTH_MODE: "supabase",
+        APP_CONFIG_MODE: "staging",
+        NODE_ENV: "development",
+        STORAGE_PROVIDER: "gcs",
+        WEB_APP_URL: "https://example.com",
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_ANON_KEY: "anon",
+        SUPABASE_SERVICE_ROLE_KEY: "service",
+        DOCUMENT_SCANNER_MODE: "local_fake",
+        DOCUMENT_SCANNER_LAUNCH_DECISION_ID: "ADR-STEP9-SCANNER-LAUNCH-DECISION",
+      }),
+    ).toThrow(/is not implemented yet for Step 8/);
+  });
+
   it("rejects local storage outside local app config mode", () => {
     expect(() =>
       loadConfig({
@@ -66,6 +115,7 @@ describe("loadConfig", () => {
         SUPABASE_URL: "https://example.supabase.co",
         SUPABASE_ANON_KEY: "anon",
         SUPABASE_SERVICE_ROLE_KEY: "service",
+        DOCUMENT_SCANNER_LAUNCH_DECISION_ID: "ADR-STEP9-SCANNER-LAUNCH-DECISION",
       }),
     ).toThrow(/STORAGE_PROVIDER=local is allowed only/);
   });
@@ -81,6 +131,7 @@ describe("loadConfig", () => {
         SUPABASE_URL: "https://example.supabase.co",
         SUPABASE_ANON_KEY: "anon",
         SUPABASE_SERVICE_ROLE_KEY: "service",
+        DOCUMENT_SCANNER_LAUNCH_DECISION_ID: "ADR-STEP9-SCANNER-LAUNCH-DECISION",
       }),
     ).toThrow(/is not implemented yet for Step 8/);
   });

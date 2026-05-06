@@ -2,6 +2,7 @@ import pytest
 
 from app.modules.config import AiServiceConfig
 from app.modules.runtime import create_runtime_adapter
+from app.modules.supabase_repository import build_local_storage_path
 
 
 def test_local_mode_requires_no_vertex_settings() -> None:
@@ -37,3 +38,46 @@ def test_config_requires_positive_limits() -> None:
 def test_config_requires_embedding_reference_settings() -> None:
     with pytest.raises(ValueError):
         AiServiceConfig(provider_mode="local", vector_index_name=" ")
+
+
+def test_deployed_config_rejects_fake_scanner_without_launch_decision() -> None:
+    with pytest.raises(ValueError, match="DOCUMENT_SCANNER_LAUNCH_DECISION_ID"):
+        AiServiceConfig(app_config_mode="staging", document_scanner_mode="local_fake")
+
+
+def test_deployed_config_allows_fake_scanner_with_named_launch_decision() -> None:
+    config = AiServiceConfig(
+        app_config_mode="production",
+        document_scanner_mode="local_fake",
+        document_scanner_launch_decision_id="ADR-STEP9-SCANNER-LAUNCH-DECISION",
+    )
+
+    assert config.document_scanner_launch_decision_id == (
+        "ADR-STEP9-SCANNER-LAUNCH-DECISION"
+    )
+
+
+def test_deployed_real_scanner_requires_provider_name() -> None:
+    with pytest.raises(ValueError, match="DOCUMENT_SCANNER_PROVIDER"):
+        AiServiceConfig(app_config_mode="staging", document_scanner_mode="real")
+
+
+def test_deployed_real_scanner_config_is_explicit() -> None:
+    config = AiServiceConfig(
+        app_config_mode="staging",
+        document_scanner_mode="real",
+        document_scanner_provider="gcs-malware-scanner",
+    )
+
+    assert config.document_scanner_provider == "gcs-malware-scanner"
+
+
+def test_local_storage_path_matches_api_upload_layout() -> None:
+    assert (
+        build_local_storage_path(
+            document_id="doc-1",
+            upload_id="upload-1",
+            file_name="../Sample Draft!.txt",
+        )
+        == "doc-1/upload-1-Sample-Draft-.txt"
+    )

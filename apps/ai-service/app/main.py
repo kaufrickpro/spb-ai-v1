@@ -3,8 +3,10 @@ from pydantic import BaseModel
 
 from app.modules.config import AiServiceConfig, load_config
 from app.modules.ingestion import IngestionResult
-from app.modules.ingestion_worker import IngestionWorker
+from app.modules.ingestion_worker import IngestionWorker, create_local_ingestion_worker
 from app.modules.runtime import RuntimeAdapter, create_runtime_adapter
+from app.modules.storage import LocalFileStorage
+from app.modules.supabase_repository import SupabaseIngestionRepository
 
 
 class HealthResponse(BaseModel):
@@ -23,6 +25,7 @@ def create_app(
 ) -> FastAPI:
     resolved_config = config or load_config()
     runtime = runtime_adapter or create_runtime_adapter(resolved_config)
+    resolved_worker = ingestion_worker or create_default_ingestion_worker(resolved_config)
     app = FastAPI(title="AI Service", version="0.1.0")
 
     @app.get("/health", response_model=HealthResponse)
@@ -40,12 +43,12 @@ def create_app(
         authorization: str | None = Header(default=None),
     ) -> IngestionResult:
         require_internal_auth(resolved_config, authorization)
-        if ingestion_worker is None:
+        if resolved_worker is None:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Ingestion worker is not configured",
             )
-        return ingestion_worker.process_job(request.job_id)
+        return resolved_worker.process_job(request.job_id)
 
     return app
 
@@ -60,6 +63,20 @@ def require_internal_auth(config: AiServiceConfig, authorization: str | None) ->
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid internal token",
         )
+
+
+def create_default_ingestion_worker(config: AiServiceConfig) -> IngestionWorker | None:
+    if not config.supabase_url or not config.supabase_service_role_key:
+        return None
+
+    return create_local_ingestion_worker(
+        repository=SupabaseIngestionRepository(
+            config.supabase_url,
+            config.supabase_service_role_key,
+        ),
+        storage=LocalFileStorage(config.local_storage_root),
+        config=config,
+    )
 
 
 app = create_app()

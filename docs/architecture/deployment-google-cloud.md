@@ -60,6 +60,7 @@ Environment domains:
 | Sentry project/alert routing    | Mustafa | Use projects `spb-ai-web`, `spb-ai-api`, and `spb-ai-ai-service`; tag environments as `staging` and `production`; route initial alerts to email and add Slack later.                                                  | Sentry auth tokens in CI secrets or Secret Manager; DSNs in env config as appropriate.              | Decided |
 | Sentry release naming           | Mustafa | Use `web@<git-sha>`, `api@<git-sha>`, and `ai-service@<git-sha>`.                                                                                                                                                     | Sentry release/source-map upload token in CI secrets only.                                          | Decided |
 | GitHub `main` branch protection | Mustafa | Require PRs, passing CI, up-to-date branch before merge, at least one approval, resolved conversations, no force pushes, and no direct pushes.                                                                        | GitHub admin credentials and PATs outside the repo.                                                 | Decided |
+| Document scanner launch posture | Mustafa | Local uses `DOCUMENT_SCANNER_MODE=local_fake` and produces `scanner_result=not_scanned`. Staging/production must set `DOCUMENT_SCANNER_MODE=real` plus `DOCUMENT_SCANNER_PROVIDER`, or set a named `DOCUMENT_SCANNER_LAUNCH_DECISION_ID` before real user documents are accepted. | Scanner provider credentials and launch-decision records stay outside committed files.              | Open    |
 
 Each environment should have separate:
 
@@ -100,6 +101,7 @@ Required service config:
 - Cloud Tasks queue names.
 - AI service URL.
 - Vertex AI project, region, index, and endpoint identifiers.
+- Document scanner mode/provider, or an explicit scanner launch decision ID for staging/production.
 - Sentry DSNs for frontend, API, and AI service.
 - Sentry auth token for release/source-map upload in CI only.
 - Supabase Auth custom SMTP configuration, preferably Resend SMTP, for signup confirmation, password reset, invites, and future OTP/magic-link emails.
