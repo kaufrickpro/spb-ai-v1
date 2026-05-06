@@ -57,8 +57,9 @@ Enable Sentry in:
 
 Configure by environment:
 
-- separate projects or environment tags for local, staging, and production
-- release/version tags on every deployment
+- Sentry projects: `spb-ai-web`, `spb-ai-api`, and `spb-ai-ai-service`
+- environment tags: `staging` and `production`
+- release names on every deployment: `web@<git-sha>`, `api@<git-sha>`, and `ai-service@<git-sha>`
 - source maps uploaded for frontend releases without exposing source maps publicly
 - PII scrubbing before events leave the app
 
@@ -117,6 +118,8 @@ Initial alerts:
 - GCS upload failures
 - Supabase database connection errors
 
+Initial Sentry alerts route to email. Add Slack routing later when the team has a shared Slack workspace. Google Cloud Monitoring remains responsible for infrastructure alerts and uptime signals.
+
 ## Release And CI Gates
 
 Required gates:
@@ -142,5 +145,4 @@ Do not duplicate every debug log line into audit logs. Sentry and structured log
 ## Open Questions
 
 - What uptime target should production aim for at launch?
-- Do you want Sentry alerts routed to Slack/email, or Google Cloud console alerts only?
 - What is the acceptable target latency for matching?

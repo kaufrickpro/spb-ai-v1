@@ -167,25 +167,25 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 9. Build AI Service Foundation
 
-- Status: in progress. First implementation decision record must be updated before code changes continue.
+- Status: in progress. The Step 9 local job-boundary slice is implemented: upload completion queues an idempotent processing job, the AI service has a local `text/plain` worker with repository/storage/embedding adapter boundaries, local fake embedding references are stored as references rather than vectors, admin exception rules are encoded for document processing outcomes, and authors see simple checking/ready/unreadable states.
 - Create FastAPI app with ingestion, retrieval, matching, repositories, and settings modules.
 - Add Pydantic models that match the then-current API contracts for AI-facing requests and responses.
-- Implement the first ingestion slice with plain text (`text/plain`) only, behind parser interfaces that can later add digital PDF, DOCX, and EPUB without changing the job flow.
-- Upload completion must create or reuse an idempotent `document_processing_jobs` row and move the document into an async checking state. Do not perform user-facing ingestion directly inside the upload request.
+- Implemented first ingestion slice supports plain text (`text/plain`) only, behind parser/storage/repository/embedding interfaces that can later add digital PDF, DOCX, and EPUB without changing the job flow.
+- Upload completion creates or reuses an idempotent `document_processing_jobs` row and moves the document into an async checking state. User-facing upload completion must continue to avoid inline ingestion.
 - Preserve the production architecture shape in every environment: browser -> Node API -> processing job -> internal AI service/worker. Local development may fake providers, but it must not fake away the job boundary.
 - Production files live in private Google Cloud Storage. Supabase stores document metadata, processing jobs, chunks, embedding references, audit records, and admin exceptions.
 - Local development uses local file storage and fake signed URLs as a GCS-shaped adapter. Staging and production use private GCS objects and short-lived trusted access for the API/AI service path.
-- Local development uses a local processor or inline test fake to run queued jobs. Staging and production use Cloud Tasks to call the private AI service.
-- Local development uses reference-only fake embedding records. Staging and production wire Vertex AI embeddings and Vertex AI Vector Search behind config.
+- Local development now has a local AI-service worker/test fake shape for queued jobs; the remaining local integration work is to invoke that worker from the Node API/local processor path and persist results through Supabase-backed repositories. Staging and production use Cloud Tasks to call the private AI service.
+- Local development uses reference-only fake embedding records. Staging and production wire Vertex AI embeddings and Vertex AI Vector Search behind typed config.
 - Local development may mark scanner metadata as `not_scanned` with a local scanner adapter. Staging and production must either configure real scanning or carry an explicit launch decision before real user documents are accepted.
 - AI service internal calls use a local shared `AI_INTERNAL_TOKEN` in local/dev. Staging and production use private Cloud Run IAM/OIDC.
-- Store bounded extracted chunks in `document_chunks`; never store the original file bytes in Postgres.
+- Store bounded extracted chunks in `document_chunks`; never store the original file bytes in Postgres. The local worker has this repository contract; Supabase-backed persistence still needs to be wired for the full local end-to-end loop.
 - Store one active chunk set per document. Re-ingestion replaces the active chunks and embedding records while preserving `document_processing_jobs` history.
 - Store chunk-level embedding references only in `embedding_records`; do not store numeric vector arrays in Postgres.
 - Step 9 marks documents as checked/processed and stores ingestion evidence. Step 10 owns full matching/discovery eligibility.
-- Failed outcomes use stable safe failure codes. Ordinary user-correctable failures such as empty text, unsupported type in the text-only phase, too-large extracted text, and corrupt/unreadable files should not create default admin work.
+- Failed outcomes use stable safe failure codes. Ordinary user-correctable failures such as empty text, unsupported type in the text-only phase, too-large extracted text, and corrupt/unreadable files do not create default admin work.
 - Admin exceptions are narrow: suspicious scanner results, quarantine, file type mismatches that indicate validation bypass, repeated system/provider failures after automatic retries, and unexpected runtime errors.
-- Author-facing UI must use simple Turkish/English copy and avoid technical terms such as ingestion, chunking, embeddings, parser, job, provider, GCS, Cloud Tasks, or pipeline.
+- Author-facing UI uses simple Turkish/English copy and avoids technical terms such as ingestion, chunking, embeddings, parser, job, provider, GCS, Cloud Tasks, or pipeline.
 - Add `/health` and `/ready` endpoints for container and Cloud Run checks.
 
 ### 10. Build Matching Vertical Slice
@@ -228,7 +228,7 @@ Use a workflow that makes mistakes cheap and visible:
 - Send transactional emails for profile decisions, manuscript decisions, intro request updates, and subscription updates.
 - Verify Resend webhook signatures before processing delivery events.
 - Do not email manuscript text, document chunks, signed URLs, raw PayTR payloads, or unreleased contact details.
-- Keep Supabase Auth emails out of this adapter. Auth lifecycle emails are configured in Supabase custom SMTP, preferably with Resend SMTP on a dedicated auth sender such as `no-reply@auth.your-domain.com`.
+- Keep Supabase Auth emails out of this adapter. Auth lifecycle emails are configured in Supabase custom SMTP through Resend SMTP using dedicated auth senders such as `no-reply@auth.spb-ai.dev` for production and `no-reply@auth.staging.spb-ai.dev` for staging.
 
 ### 15. Build Frontend Product Screens
 
@@ -244,6 +244,9 @@ Use a workflow that makes mistakes cheap and visible:
 - Add structured JSON logs with `timestamp`, `service`, `environment`, `request_id`, `user_id`, `job_id`, `event`, `status`, and `duration_ms`.
 - Propagate `request_id` across frontend, API, Cloud Tasks, AI service, and database writes.
 - Enable Sentry for frontend, API, and AI service with environment/release tags.
+- Use Sentry projects `spb-ai-web`, `spb-ai-api`, and `spb-ai-ai-service`; tag deployed events with `staging` or `production`.
+- Align release names with the deployed service and git SHA: `web@<git-sha>`, `api@<git-sha>`, and `ai-service@<git-sha>`.
+- Route initial Sentry alerts to email, with Slack routing deferred until the team has a shared Slack workspace.
 - Scrub manuscript text, document chunks, signed URLs, PayTR secrets, Resend secrets, service-role keys, and unreleased contact details.
 - Track API latency/errors, onboarding completion, automated eligibility outcomes, exception-review time, upload failures, AI job failures, match latency, PayTR failures, Resend failures, quota denials, and intro acceptance.
 - Use Sentry MCP after staging is configured to inspect issues, traces, releases, and alert quality without exposing sensitive payloads.
@@ -254,8 +257,11 @@ Use a workflow that makes mistakes cheap and visible:
 - Add Artifact Registry repositories for container images.
 - Add Cloud Tasks queues, GCS buckets, Secret Manager secrets, IAM, monitoring, DNS/domain mapping, and service accounts.
 - Keep separate local, staging, and production configuration.
+- Use `https://spb-ai.dev` as the canonical production URL, redirect `https://www.spb-ai.dev` to the apex domain, and use `https://staging.spb-ai.dev` for staging.
+- Use private manuscript buckets `spb-ai-prod-manuscripts` and `spb-ai-staging-manuscripts`; all upload/download access must go through API authorization checks and short-lived signed URLs.
 - Use Frankfurt-aligned GCP regions where service support allows.
-- Configure Resend SPF, DKIM, and DMARC for the sender domain.
+- Configure Resend SPF, DKIM, and DMARC for auth senders `no-reply@auth.spb-ai.dev` and `no-reply@auth.staging.spb-ai.dev`.
+- Configure Resend SPF, DKIM, and DMARC for product senders `support@mail.spb-ai.dev` and `support@mail.staging.spb-ai.dev`.
 - Use Google Cloud MCP for read-only deployed resource inspection where available; use Terraform for all planned infrastructure changes.
 
 ### 18. Containerize Services
@@ -292,6 +298,7 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 21. Staging Rollout
 
+- Use `https://staging.spb-ai.dev` as the staging app URL and `https://staging.spb-ai.dev/auth/callback` as the staging app callback URL.
 - Deploy infrastructure to staging.
 - Run migrations and seeds.
 - Build and push container images for web, API, and AI service to Artifact Registry.
@@ -304,7 +311,8 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 22. Production Launch
 
-- Configure production domain and Resend sender domain.
+- Configure production domain `https://spb-ai.dev`, redirect `https://www.spb-ai.dev` to the apex domain, and use `https://spb-ai.dev/auth/callback` as the production app callback URL.
+- Configure production Resend sender domains for Supabase Auth and API-owned product email.
 - Apply production infrastructure.
 - Run migrations.
 - Seed taxonomy and production plans.
@@ -313,6 +321,7 @@ Use a workflow that makes mistakes cheap and visible:
 - Deploy production containers to Cloud Run.
 - Enable PayTR production credentials.
 - Enable Sentry production alerts.
+- Protect GitHub `main` with required pull requests, passing CI, up-to-date branch before merge, at least one approval, resolved conversations, no force pushes, and no direct pushes.
 - Run production smoke tests.
 - Monitor onboarding, auto-approval/exception rates, payments, jobs, matching, email delivery, and error rates during launch.
 

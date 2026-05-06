@@ -39,6 +39,28 @@ Use at least:
 - staging
 - production
 
+Environment domains:
+
+- production: `https://spb-ai.dev`
+- production `www`: redirect `https://www.spb-ai.dev` to `https://spb-ai.dev`
+- staging: `https://staging.spb-ai.dev`
+
+## Production Setup Decision Register
+
+| Blocker | Owner | Decision | Secret Location | Status |
+| --- | --- | --- | --- | --- |
+| Product name | Mustafa | Smart Publishing Bridge | N/A | Decided |
+| Production domain | Mustafa | Canonical production URL is `https://spb-ai.dev`; redirect `https://www.spb-ai.dev` to the apex domain. | N/A | Decided |
+| Staging domain | Mustafa | Use `https://staging.spb-ai.dev`. | N/A | Decided |
+| Production app callback URLs | Mustafa | Production app URL `https://spb-ai.dev`; production auth callback `https://spb-ai.dev/auth/callback`; staging app URL `https://staging.spb-ai.dev`; staging auth callback `https://staging.spb-ai.dev/auth/callback`. | N/A | Decided |
+| GCS bucket naming/configuration | Mustafa | Use separate private manuscript buckets: production `spb-ai-prod-manuscripts`; staging `spb-ai-staging-manuscripts`. | GCP IAM/service credentials in Secret Manager, not docs or GitHub issues. | Decided |
+| GCS object access policy | Mustafa | No public reads or object listing. All manuscript upload/download access goes through API authorization checks and short-lived signed URLs. | GCP IAM/service credentials in Secret Manager, not docs or GitHub issues. | Decided |
+| Supabase Auth SMTP sender | Mustafa | Use Resend SMTP with production sender `no-reply@auth.spb-ai.dev` and staging sender `no-reply@auth.staging.spb-ai.dev`. | Resend SMTP/API credentials in Supabase SMTP settings or Secret Manager, not docs or GitHub issues. | Decided |
+| API-owned product email sender | Mustafa | Use Resend product senders: production `support@mail.spb-ai.dev`; staging `support@mail.staging.spb-ai.dev`. | Resend API keys and webhook secrets in Secret Manager, not docs or GitHub issues. | Decided |
+| Sentry project/alert routing | Mustafa | Use projects `spb-ai-web`, `spb-ai-api`, and `spb-ai-ai-service`; tag environments as `staging` and `production`; route initial alerts to email and add Slack later. | Sentry auth tokens in CI secrets or Secret Manager; DSNs in env config as appropriate. | Decided |
+| Sentry release naming | Mustafa | Use `web@<git-sha>`, `api@<git-sha>`, and `ai-service@<git-sha>`. | Sentry release/source-map upload token in CI secrets only. | Decided |
+| GitHub `main` branch protection | Mustafa | Require PRs, passing CI, up-to-date branch before merge, at least one approval, resolved conversations, no force pushes, and no direct pushes. | GitHub admin credentials and PATs outside the repo. | Decided |
+
 Each environment should have separate:
 
 - Supabase project or schema strategy
@@ -83,6 +105,15 @@ Required service config:
 - Supabase Auth custom SMTP configuration, preferably Resend SMTP, for signup confirmation, password reset, invites, and future OTP/magic-link emails.
 - Resend API key, sender domain, and webhook secret for API-owned product emails.
 
+Environment-specific values:
+
+- production app URL: `https://spb-ai.dev`
+- production auth callback: `https://spb-ai.dev/auth/callback`
+- staging app URL: `https://staging.spb-ai.dev`
+- staging auth callback: `https://staging.spb-ai.dev/auth/callback`
+- production manuscript bucket: `spb-ai-prod-manuscripts`
+- staging manuscript bucket: `spb-ai-staging-manuscripts`
+
 Configuration rules:
 
 - Each service validates typed configuration at startup and fails fast on missing required values.
@@ -93,10 +124,23 @@ Configuration rules:
 Email domain configuration:
 
 - Configure SPF, DKIM, and DMARC for each Resend sender domain.
-- Use a dedicated auth sender such as `no-reply@auth.your-domain.com` for Supabase Auth emails.
-- Use a separate product email sender domain or from-address for API-owned transactional email where practical.
+- Use dedicated auth senders for Supabase Auth emails: production `no-reply@auth.spb-ai.dev`; staging `no-reply@auth.staging.spb-ai.dev`.
+- Use separate product email senders for API-owned transactional email: production `support@mail.spb-ai.dev`; staging `support@mail.staging.spb-ai.dev`.
 - Use separate sender domains or subdomains for staging and production where practical.
 - Keep transactional email templates versioned in code or configuration.
+
+Storage configuration:
+
+- Manuscript buckets must stay private.
+- Do not allow public reads or public object listing.
+- All manuscript upload and download access must go through API authorization checks and short-lived signed URLs.
+
+Sentry configuration:
+
+- Use Sentry projects `spb-ai-web`, `spb-ai-api`, and `spb-ai-ai-service`.
+- Tag events and releases with `staging` or `production`.
+- Name releases as `web@<git-sha>`, `api@<git-sha>`, and `ai-service@<git-sha>`.
+- Route initial Sentry alerts to email. Add Slack routing later when the team has a shared Slack workspace.
 
 ## Deployment Flow
 
@@ -115,12 +159,9 @@ Email domain configuration:
 - Pull requests run lint, typecheck, tests, and contract checks.
 - Staging deploys run migrations, integration tests, E2E smoke tests, image scanning, and Terraform validation.
 - Production deploys require manual approval, migration review, rollback notes, image tag verification, and smoke tests after rollout.
+- Protect `main` with required pull requests, passing CI, up-to-date branch before merge, at least one approval, resolved conversations, no force pushes, and no direct pushes.
 
 ## Open Questions
 
-- What is the production domain?
-- Do you want separate staging and production domains?
 - Which Supabase region/project will be used?
 - Should infrastructure be single-project or separate GCP projects for staging and production?
-- What auth email sender domain and from-address should Resend SMTP use?
-- What product email sender domain and from-address should the API Resend adapter use?

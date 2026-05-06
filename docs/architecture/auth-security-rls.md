@@ -51,7 +51,8 @@ Preferred SMTP provider:
 - host: `smtp.resend.com`
 - port: `465`
 - username: `resend`
-- sender: `no-reply@auth.your-domain.com` or the environment-specific verified auth sender
+- production sender: `no-reply@auth.spb-ai.dev`
+- staging sender: `no-reply@auth.staging.spb-ai.dev`
 
 Rules:
 
@@ -63,7 +64,7 @@ Rules:
 
 OAuth environment rule:
 
-- The app callback URL is environment-specific and must switch from `http://localhost:5173/auth/callback` in development to `https://your-domain/auth/callback` in production.
+- The app callback URL is environment-specific: local uses `http://localhost:5173/auth/callback`, staging uses `https://staging.spb-ai.dev/auth/callback`, and production uses `https://spb-ai.dev/auth/callback`.
 - Supabase Auth `Site URL` and allowed redirect URLs must follow the same environment-specific app domain.
 - Provider callbacks such as Google should continue to point to the Supabase project callback URL, for example `https://ipqmdjsxedffetotemil.supabase.co/auth/v1/callback`, unless the Supabase project itself changes.
 
@@ -111,6 +112,11 @@ For implementation simplicity and safety, expose unlocked contact details throug
 
 Manuscript samples live in private Google Cloud Storage.
 
+Environment buckets:
+
+- staging: `spb-ai-staging-manuscripts`
+- production: `spb-ai-prod-manuscripts`
+
 Access rules:
 
 - author owner can access own files
@@ -119,6 +125,8 @@ Access rules:
 - In Step 8 local mode, upload/download URLs are short-lived tokenized API URLs backed by ignored local storage. They are public signed targets, not bearer-authenticated API calls.
 
 The browser should receive short-lived signed URLs from the Node API. Do not make GCS buckets public.
+
+GCS manuscript buckets must not allow public reads or public object listing. All manuscript upload and download access must go through API authorization checks and short-lived signed URLs.
 
 ## RLS Principles
 

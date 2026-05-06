@@ -138,7 +138,8 @@ The first authenticated completion surface now starts in signup. Signup uses one
 The frontend owns the app callback route:
 
 - local: `http://localhost:5173/auth/callback`
-- production: `https://your-domain/auth/callback`
+- staging: `https://staging.spb-ai.dev/auth/callback`
+- production: `https://spb-ai.dev/auth/callback`
 
 Supabase Auth URL Configuration must always use the app domain for:
 
@@ -146,6 +147,11 @@ Supabase Auth URL Configuration must always use the app domain for:
 - allowed redirect URLs
 
 Do not leave `localhost:5173` values in production auth configuration. Production builds must switch those values to the public domain before release testing.
+
+Canonical production URL:
+
+- Use `https://spb-ai.dev`.
+- Redirect `https://www.spb-ai.dev` to `https://spb-ai.dev`.
 
 For Google social auth, keep the distinction clear:
 

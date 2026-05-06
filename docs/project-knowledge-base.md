@@ -6,8 +6,19 @@ This file is the local quick-reference knowledge base for the publisher-author S
 
 ## Current Status
 
-- Last updated: 2026-05-04
-- Current phase: Step 9 (AI Service Foundation) is starting from the ingestion job boundary. Step 8 upload remains the route surface; upload completion now feeds an async document checking flow instead of becoming a synchronous AI operation. Signup remains profile-first: users must complete the 3-step `/signup` wizard before a marketplace profile is created, and `/signup/complete` is only a compatibility redirect back to `/signup`.
+- Last updated: 2026-05-06
+- Current phase: Step 9 (AI Service Foundation) is in progress with the local text/plain ingestion slice implemented behind the job boundary. Step 8 upload remains the route surface; upload completion creates or reuses an idempotent `document_processing_jobs` row, moves the document into async checking, and leaves actual processing to an internal AI service/worker. Signup remains profile-first: users must complete the 3-step `/signup` wizard before a marketplace profile is created, and `/signup/complete` is only a compatibility redirect back to `/signup`.
+- Recently changed for Step 9: upload completion now uses the service-role `public.complete_document_upload(...)` RPC to atomically attach the completed sample, queue a document processing job, and leave repeated completion attempts idempotent at the job layer without running ingestion inline.
+- Recently changed for Step 9: the AI service now has a local job-based `text/plain` ingestion worker with repository/storage/embedding adapter boundaries, deterministic paragraph-aware chunking, bounded extracted text/chunk counts, and reference-only local embedding records instead of numeric vectors in Postgres.
+- Recently changed for Step 9: document processing failures are classified so ordinary user-correctable file problems stay out of admin queues, while suspicious scanner results, quarantine, validation bypass signals, repeated system/provider failures, and unexpected runtime errors can create safe admin exceptions.
+- Recently changed for Step 9: author manuscript screens now show simple document checking states in Turkish and English ("Checking your sample", "Sample ready", and "We couldn't read this file") without exposing ingestion, chunking, embedding, parser, provider, GCS, Cloud Tasks, or pipeline terminology.
+- Recently changed: `npm run check:harness` now includes project-specific guardrails for package barrel entrypoints, frontend imports from server-only/provider internals, and high-confidence secret or signed URL patterns in repository files.
+- Recently decided for production setup: product name is Smart Publishing Bridge; canonical production URL is `https://spb-ai.dev`; `https://www.spb-ai.dev` redirects to the apex domain; staging uses `https://staging.spb-ai.dev`.
+- Recently decided for production setup: auth callbacks are `https://spb-ai.dev/auth/callback` for production and `https://staging.spb-ai.dev/auth/callback` for staging. Supabase Auth Site URL and allowed redirect URL settings must use those environment-specific app URLs.
+- Recently decided for production setup: manuscript files use separate private GCS buckets, `spb-ai-prod-manuscripts` and `spb-ai-staging-manuscripts`; all upload/download access goes through API authorization checks and short-lived signed URLs.
+- Recently decided for production setup: Supabase Auth lifecycle emails use Resend SMTP from `no-reply@auth.spb-ai.dev` in production and `no-reply@auth.staging.spb-ai.dev` in staging. API-owned product email uses `support@mail.spb-ai.dev` in production and `support@mail.staging.spb-ai.dev` in staging.
+- Recently decided for production setup: Sentry uses three projects (`spb-ai-web`, `spb-ai-api`, `spb-ai-ai-service`), environment tags `staging` and `production`, release names `web@<git-sha>`, `api@<git-sha>`, and `ai-service@<git-sha>`, and initial alert routing by email with Slack added later.
+- Recently decided for production setup: protect GitHub `main` with required PRs, passing CI, up-to-date branch before merge, at least one approval, resolved conversations, no force pushes, and no direct pushes.
 - Recently fixed: user-scoped Supabase writes can no longer self-promote
   marketplace profile eligibility; profile creation and onboarding auto-approval
   now use trusted API service-role writes while owner RLS remains available for
@@ -46,8 +57,8 @@ This file is the local quick-reference knowledge base for the publisher-author S
 - Recently fixed: the legacy admin profile decision endpoint now resolves a pending profile review and routes through the audited admin review decision workflow; repeated or non-pending profile decisions are rejected.
 - Recently fixed: public auth callbacks and signup now keep staff identities out of marketplace flows; staff sessions that hit `/auth/callback` are signed out and sent to `/admin/login?reason=staff`, while `/signup` redirects `allowed`, `mfa_required`, and `revoked` staff states away from the wizard.
 - Recently fixed: dashboard, admin feeds, legal routes, match/discovery placeholder routes, manuscript sample loading states, and upload controls now distinguish loading/error/empty states instead of rendering misleading fallbacks.
-- Next recommended step: finish the Step 9 docs-first implementation, then implement the ingestion API/worker flow against `document_processing_jobs`, `document_chunks`, and `embedding_records` without reworking the Step 8 route surface.
-- Known blockers: real GCS bucket configuration, ingestion worker plumbing, product name/domain, production prices and quotas, embedding model choice, account deletion flow, Resend auth SMTP sender/domain, Resend product email sender domain/from-address, Sentry alert routing, final production OAuth domain values, and remote GitHub branch protection are still open.
+- Next recommended step: finish Step 9 by wiring the Node API/local processor path to invoke the AI-service worker for queued `document_processing_jobs`, persist worker results into Supabase-backed `document_chunks` and `embedding_records`, and verify the full local upload -> queued job -> processed/failed document loop end to end.
+- Known blockers: actual GCP bucket provisioning/IAM, production Cloud Tasks/private Cloud Run invocation, Supabase-backed AI-service repositories, embedding model choice, malware/scanner launch decision, production prices and quotas, account deletion flow, Resend domain verification and secret entry, Sentry project creation/secret entry, and remote GitHub branch protection enforcement are still open.
 
 ## Product Snapshot
 
@@ -161,7 +172,7 @@ Browser
 - Admin MFA: an admin membership alone is not sufficient for protected admin routes; the current session must also satisfy MFA.
 - Config: all services validate typed config at startup and fail fast on missing values or mismatched provider modes. The API config no longer requires `supabaseJwtSecret`; Supabase mode only requires `supabaseUrl` (used to derive the JWKS endpoint).
 - JWT verification: use JWKS (`jose` library) in the API auth middleware, not the legacy symmetric JWT secret. Require issuer `${SUPABASE_URL}/auth/v1` and audience `authenticated`.
-- OAuth deployment rule: app callback URLs are environment-specific. Development uses `http://localhost:5173/auth/callback`; production must switch to `https://your-domain/auth/callback` in frontend config, backend config, and Supabase Auth URL Configuration before release testing.
+- OAuth deployment rule: app callback URLs are environment-specific. Development uses `http://localhost:5173/auth/callback`; staging uses `https://staging.spb-ai.dev/auth/callback`; production uses `https://spb-ai.dev/auth/callback`. Frontend config, backend config, and Supabase Auth URL Configuration must use the matching environment URL before release testing.
 - AI limits: start with 25 MB files, 250,000 extracted characters, 300 chunks, 25 candidates, 5-minute ingestion timeout, and 60-second matching timeout.
 - Rate limits: start with 10 match runs per user/hour, 3 match runs per manuscript/hour, 20 upload signed URLs per user/hour, 10 intro requests per user/day, and 10 auth-sensitive attempts per IP/10 minutes.
 - Retention: orphan uploads 24 hours, rejected samples 30 days, requested file deletion within 7 days, audit tombstones 2 years.
@@ -617,14 +628,11 @@ Build the design system around:
 
 ## Open Questions
 
-- What is the product name and domain?
 - Should Turkish be the default UI language?
 - Should public pages prioritize SEO or remain SPA-rendered for launch?
 - What are the first production subscription prices and quota limits?
 - Which embedding model should be used for Turkish and English content?
 - Should users be able to delete accounts themselves in v1, or request deletion through support?
-- What sender domain and from-address should Resend use?
-- Do you want Sentry alerts routed to Slack/email, or Google Cloud console alerts only?
 
 ## Source Documents
 

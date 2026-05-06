@@ -2,7 +2,7 @@
 
 ## Product Summary
 
-This platform is a bilingual Turkish/English SaaS marketplace for authors and publishers in Türkiye. Authors upload manuscript metadata and sample files. Publishers define acquisition preferences. The platform uses RAG-backed matching to recommend publishers for manuscripts and lets either side send an intro request. After an intro request is accepted, contact details and the manuscript sample are unlocked.
+Smart Publishing Bridge is a bilingual Turkish/English SaaS marketplace for authors and publishers in Türkiye. Authors upload manuscript metadata and sample files. Publishers define acquisition preferences. The platform uses RAG-backed matching to recommend publishers for manuscripts and lets either side send an intro request. After an intro request is accepted, contact details and the manuscript sample are unlocked.
 
 V1 is discovery-only. Do not implement contracts, escrow, royalties, commission accounting, organization accounts, publisher imprints, in-app chat, AI-generated fit reports, report jobs, PDF report exports, or Google ADK workflows.
 
@@ -71,7 +71,6 @@ Browser
 
 ## Open Questions
 
-- What is the product name and domain?
 - Should public pages be SEO-heavy enough to justify SSR later, or is SPA-only acceptable for launch?
 - What are the first production subscription prices and quota limits?
 - Which admin users should exist at launch?

@@ -17,8 +17,8 @@ Use Codex-visible MCP tools when they are available in the current session. If a
 | Context7     | ⚠️ Needs API Key | `@upstash/context7-mcp@latest` via npx, requires `--api-key` from [context7.com](https://context7.com)                                                                 |
 | Supabase     | ⚠️ Needs PAT     | Configure a Supabase Personal Access Token from [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) in the active local MCP config. |
 | Playwright   | ✅ Configured    | `@playwright/mcp@latest` via npx, no auth required                                                                                                                     |
-| GitHub       | ⚠️ Needs PAT     | Configure a GitHub PAT with `repo` and `read:org` scopes in the active local MCP config. Uses official npx package `@modelcontextprotocol/server-github`.              |
-| Sentry       | ⏳ Deferred      | Configure once Sentry project is created                                                                                                                               |
+| GitHub       | ⚠️ Needs PAT     | Configure a GitHub PAT with `repo` and `read:org` scopes in the active local MCP config. Uses official npx package `@modelcontextprotocol/server-github`. `main` should be protected with required PRs, passing CI, one approval, resolved conversations, no force pushes, and no direct pushes. |
+| Sentry       | ⏳ Deferred      | Configure once Sentry projects `spb-ai-web`, `spb-ai-api`, and `spb-ai-ai-service` are created. Initial alerts route to email; Slack can be added later.                |
 | Google Cloud | ⏳ Deferred      | Configure once GCP project is provisioned                                                                                                                              |
 
 Legacy local editor setups may still use `~/Library/Application Support/Claude/claude_desktop_config.json`. Treat that as an editor-specific fallback, not the primary Codex setup path.
@@ -160,7 +160,7 @@ Use this checklist while bootstrapping a local machine:
 - [ ] Supabase MCP configured — replace `REPLACE_WITH_YOUR_SUPABASE_PAT` with a real PAT from [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens).
 - [x] Playwright MCP configured in the active local MCP config — ready, no auth needed.
 - [ ] GitHub MCP configured — replace `REPLACE_WITH_YOUR_GITHUB_PAT` with a real PAT (scopes: `repo`, `read:org`).
-- [ ] Sentry MCP — deferred until Sentry project is created.
+- [ ] Sentry MCP — deferred until Sentry projects `spb-ai-web`, `spb-ai-api`, and `spb-ai-ai-service` are created.
 - [ ] Google Cloud MCP — deferred until GCP project is provisioned.
 - Keep all MCP credentials out of this repository and local `.env.example` files.
 - Document the fallback path (official docs, CLI, SDK, console) for each unavailable MCP server.
