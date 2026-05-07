@@ -417,6 +417,692 @@
         }
       }
     },
+    "/api/v1/profiles/me/match-visible-contacts": {
+      "put": {
+        "operationId": "profiles_updateMatchVisibleContacts",
+        "tags": ["profiles"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "publicEmail": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "nullable": true
+                  },
+                  "publicPhone": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 40,
+                    "nullable": true
+                  },
+                  "websiteUrl": {},
+                  "socialLinks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048
+                        },
+                        "visible": {
+                          "type": "boolean",
+                          "default": false
+                        }
+                      },
+                      "required": ["label", "url"],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 8,
+                    "default": []
+                  },
+                  "visibility": {
+                    "type": "object",
+                    "properties": {
+                      "publicEmail": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "publicPhone": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "websiteUrl": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "socialLinks": {
+                        "type": "boolean",
+                        "default": false
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["websiteUrl", "visibility"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "settings": {
+                      "type": "object",
+                      "properties": {
+                        "publicEmail": {
+                          "type": "string",
+                          "maxLength": 254,
+                          "nullable": true
+                        },
+                        "publicPhone": {
+                          "type": "string",
+                          "minLength": 3,
+                          "maxLength": 40,
+                          "nullable": true
+                        },
+                        "websiteUrl": {},
+                        "socialLinks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 40
+                              },
+                              "url": {
+                                "type": "string",
+                                "format": "uri",
+                                "maxLength": 2048
+                              },
+                              "visible": {
+                                "type": "boolean",
+                                "default": false
+                              }
+                            },
+                            "required": ["label", "url"],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 8,
+                          "default": []
+                        },
+                        "visibility": {
+                          "type": "object",
+                          "properties": {
+                            "publicEmail": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "publicPhone": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "websiteUrl": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "socialLinks": {
+                              "type": "boolean",
+                              "default": false
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["websiteUrl", "visibility"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["settings"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/publishers": {
+      "get": {
+        "operationId": "profiles_publicPublishers",
+        "tags": ["profiles"],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "publishers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "logoUrl": {},
+                          "websiteUrl": {}
+                        },
+                        "required": ["id", "name", "logoUrl", "websiteUrl"],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["publishers"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/publishers/{publisherProfileId}": {
+      "get": {
+        "operationId": "profiles_publisherProfile",
+        "tags": ["profiles"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "publisherProfileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "publisher": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "logoUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048,
+                          "nullable": true
+                        },
+                        "websiteUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048,
+                          "nullable": true
+                        },
+                        "about": {
+                          "type": "string",
+                          "maxLength": 1200,
+                          "nullable": true
+                        },
+                        "editorialFocus": {
+                          "type": "string",
+                          "maxLength": 1200,
+                          "nullable": true
+                        },
+                        "lookingFor": {
+                          "type": "string",
+                          "maxLength": 1200,
+                          "nullable": true
+                        },
+                        "acceptedGenres": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          }
+                        },
+                        "acceptedLanguages": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["tr", "en"]
+                          }
+                        },
+                        "acceptedAudienceCategories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          }
+                        },
+                        "acceptedManuscriptForms": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          }
+                        },
+                        "acceptsUnsolicited": {
+                          "type": "boolean"
+                        },
+                        "submissionGuidelines": {
+                          "type": "string",
+                          "maxLength": 2000,
+                          "nullable": true
+                        },
+                        "excludedTopics": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          }
+                        },
+                        "editorWishlist": {
+                          "type": "string",
+                          "maxLength": 2000,
+                          "nullable": true
+                        },
+                        "imprintTone": {
+                          "type": "string",
+                          "maxLength": 1000,
+                          "nullable": true
+                        },
+                        "marketPositioning": {
+                          "type": "string",
+                          "maxLength": 1000,
+                          "nullable": true
+                        },
+                        "recentAcquisitions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          }
+                        },
+                        "bestSellingBooks": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          }
+                        },
+                        "contact": {
+                          "type": "object",
+                          "properties": {
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 40,
+                              "nullable": true
+                            },
+                            "websiteUrl": {
+                              "type": "string",
+                              "format": "uri",
+                              "maxLength": 2048,
+                              "nullable": true
+                            },
+                            "socialLinks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "maxLength": 2048
+                                  }
+                                },
+                                "required": ["label", "url"],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 8
+                            }
+                          },
+                          "required": [
+                            "email",
+                            "phone",
+                            "websiteUrl",
+                            "socialLinks"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "logoUrl",
+                        "websiteUrl",
+                        "about",
+                        "editorialFocus",
+                        "lookingFor",
+                        "acceptedGenres",
+                        "acceptedLanguages",
+                        "acceptedAudienceCategories",
+                        "acceptedManuscriptForms",
+                        "acceptsUnsolicited",
+                        "submissionGuidelines",
+                        "excludedTopics",
+                        "editorWishlist",
+                        "imprintTone",
+                        "marketPositioning",
+                        "recentAcquisitions",
+                        "bestSellingBooks",
+                        "contact"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["publisher"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/authors/{authorProfileId}": {
+      "get": {
+        "operationId": "profiles_authorProfile",
+        "tags": ["profiles"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "authorProfileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "author": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "displayName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "photoUrl": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2048,
+                          "nullable": true
+                        },
+                        "biography": {
+                          "type": "string",
+                          "maxLength": 1000,
+                          "nullable": true
+                        },
+                        "styleStatement": {
+                          "type": "string",
+                          "maxLength": 1000,
+                          "nullable": true
+                        },
+                        "influences": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          }
+                        },
+                        "contact": {
+                          "type": "object",
+                          "properties": {
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 40,
+                              "nullable": true
+                            },
+                            "websiteUrl": {
+                              "type": "string",
+                              "format": "uri",
+                              "maxLength": 2048,
+                              "nullable": true
+                            },
+                            "socialLinks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "maxLength": 2048
+                                  }
+                                },
+                                "required": ["label", "url"],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 8
+                            }
+                          },
+                          "required": [
+                            "email",
+                            "phone",
+                            "websiteUrl",
+                            "socialLinks"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "manuscripts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "genre": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                              },
+                              "manuscriptForm": {
+                                "type": "string",
+                                "maxLength": 80,
+                                "nullable": true
+                              },
+                              "shortTeaser": {
+                                "type": "string",
+                                "maxLength": 500,
+                                "nullable": true
+                              },
+                              "logline": {
+                                "type": "string",
+                                "maxLength": 500,
+                                "nullable": true
+                              },
+                              "synopsis": {
+                                "type": "string",
+                                "maxLength": 2000,
+                                "nullable": true
+                              },
+                              "access": {
+                                "type": "string",
+                                "enum": ["full", "requestable_teaser"]
+                              },
+                              "requestStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "none",
+                                  "pending",
+                                  "approved",
+                                  "rejected"
+                                ],
+                                "default": "none"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "genre",
+                              "manuscriptForm",
+                              "shortTeaser",
+                              "access"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "displayName",
+                        "photoUrl",
+                        "biography",
+                        "styleStatement",
+                        "influences",
+                        "contact",
+                        "manuscripts"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["author"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/access": {
       "get": {
         "operationId": "admin_access",
@@ -2294,6 +2980,85 @@
         }
       }
     },
+    "/api/v1/admin/publishers/{publisherProfileId}/public-directory": {
+      "post": {
+        "operationId": "admin_publicDirectoryDecision",
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "publisherProfileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["approved", "hidden", "rejected"]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  }
+                },
+                "required": ["status"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "publisherProfileId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": ["approved", "hidden", "rejected"]
+                    }
+                  },
+                  "required": ["publisherProfileId", "status"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/manuscripts": {
       "get": {
         "operationId": "manuscripts_list",
@@ -2359,6 +3124,95 @@
                             "type": "integer",
                             "minimum": 0,
                             "nullable": true
+                          },
+                          "logline": {
+                            "type": "string",
+                            "maxLength": 500,
+                            "nullable": true
+                          },
+                          "subgenres": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            },
+                            "maxItems": 8
+                          },
+                          "audienceCategories": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            },
+                            "maxItems": 8
+                          },
+                          "manuscriptForm": {
+                            "type": "string",
+                            "maxLength": 80,
+                            "nullable": true
+                          },
+                          "compTitles": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 160
+                            },
+                            "maxItems": 8
+                          },
+                          "declaredThemes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            },
+                            "maxItems": 12
+                          },
+                          "declaredContentWarnings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "maxItems": 12
+                          },
+                          "arcSummary": {
+                            "type": "string",
+                            "maxLength": 2000,
+                            "nullable": true
+                          },
+                          "chapterSummaries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "summary": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 1000
+                                }
+                              },
+                              "required": ["title", "summary"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 30
+                          },
+                          "shortTeaser": {
+                            "type": "string",
+                            "maxLength": 500,
+                            "nullable": true
+                          },
+                          "requestable": {
+                            "type": "boolean"
                           },
                           "status": {
                             "type": "string",
@@ -2466,49 +3320,7 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "title": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
-                  },
-                  "genre": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 80
-                  },
-                  "language": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 10,
-                    "default": "tr"
-                  },
-                  "wordCount": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "nullable": true
-                  },
-                  "synopsis": {
-                    "type": "string",
-                    "maxLength": 2000,
-                    "nullable": true
-                  },
-                  "targetAgeMin": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "nullable": true
-                  },
-                  "targetAgeMax": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "nullable": true
-                  }
-                },
-                "required": ["title", "genre"],
-                "additionalProperties": false
-              }
+              "schema": {}
             }
           }
         },
@@ -2565,6 +3377,95 @@
                           "type": "integer",
                           "minimum": 0,
                           "nullable": true
+                        },
+                        "logline": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "subgenres": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 8
+                        },
+                        "audienceCategories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 8
+                        },
+                        "manuscriptForm": {
+                          "type": "string",
+                          "maxLength": 80,
+                          "nullable": true
+                        },
+                        "compTitles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          },
+                          "maxItems": 8
+                        },
+                        "declaredThemes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 12
+                        },
+                        "declaredContentWarnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "maxItems": 12
+                        },
+                        "arcSummary": {
+                          "type": "string",
+                          "maxLength": 2000,
+                          "nullable": true
+                        },
+                        "chapterSummaries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "summary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "required": ["title", "summary"],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 30
+                        },
+                        "shortTeaser": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "requestable": {
+                          "type": "boolean"
                         },
                         "status": {
                           "type": "string",
@@ -2733,6 +3634,95 @@
                           "minimum": 0,
                           "nullable": true
                         },
+                        "logline": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "subgenres": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 8
+                        },
+                        "audienceCategories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 8
+                        },
+                        "manuscriptForm": {
+                          "type": "string",
+                          "maxLength": 80,
+                          "nullable": true
+                        },
+                        "compTitles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          },
+                          "maxItems": 8
+                        },
+                        "declaredThemes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 12
+                        },
+                        "declaredContentWarnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "maxItems": 12
+                        },
+                        "arcSummary": {
+                          "type": "string",
+                          "maxLength": 2000,
+                          "nullable": true
+                        },
+                        "chapterSummaries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "summary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "required": ["title", "summary"],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 30
+                        },
+                        "shortTeaser": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "requestable": {
+                          "type": "boolean"
+                        },
                         "status": {
                           "type": "string",
                           "enum": [
@@ -2886,6 +3876,95 @@
                     "type": "integer",
                     "minimum": 0,
                     "nullable": true
+                  },
+                  "logline": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  },
+                  "subgenres": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "maxItems": 8
+                  },
+                  "audienceCategories": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "maxItems": 8
+                  },
+                  "manuscriptForm": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "nullable": true
+                  },
+                  "compTitles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "maxItems": 8
+                  },
+                  "declaredThemes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "maxItems": 12
+                  },
+                  "declaredContentWarnings": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "maxItems": 12
+                  },
+                  "arcSummary": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "nullable": true
+                  },
+                  "chapterSummaries": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "summary": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        }
+                      },
+                      "required": ["title", "summary"],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 30
+                  },
+                  "shortTeaser": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  },
+                  "requestable": {
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
@@ -2946,6 +4025,95 @@
                           "type": "integer",
                           "minimum": 0,
                           "nullable": true
+                        },
+                        "logline": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "subgenres": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 8
+                        },
+                        "audienceCategories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 8
+                        },
+                        "manuscriptForm": {
+                          "type": "string",
+                          "maxLength": 80,
+                          "nullable": true
+                        },
+                        "compTitles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          },
+                          "maxItems": 8
+                        },
+                        "declaredThemes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 12
+                        },
+                        "declaredContentWarnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "maxItems": 12
+                        },
+                        "arcSummary": {
+                          "type": "string",
+                          "maxLength": 2000,
+                          "nullable": true
+                        },
+                        "chapterSummaries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "summary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "required": ["title", "summary"],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 30
+                        },
+                        "shortTeaser": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "requestable": {
+                          "type": "boolean"
                         },
                         "status": {
                           "type": "string",
@@ -3022,6 +4190,1597 @@
                     }
                   },
                   "required": ["manuscript"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/manuscripts/{manuscriptId}": {
+      "get": {
+        "operationId": "manuscripts_profile",
+        "tags": ["manuscripts"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manuscriptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "manuscript": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "author": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "photoUrl": {
+                              "type": "string",
+                              "format": "uri",
+                              "maxLength": 2048,
+                              "nullable": true
+                            },
+                            "biography": {
+                              "type": "string",
+                              "maxLength": 1000,
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "displayName",
+                            "photoUrl",
+                            "biography"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "logline": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "synopsis": {
+                          "type": "string",
+                          "maxLength": 2000,
+                          "nullable": true
+                        },
+                        "primaryGenre": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "subgenres": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          }
+                        },
+                        "audienceCategories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          }
+                        },
+                        "manuscriptForm": {
+                          "type": "string",
+                          "maxLength": 80,
+                          "nullable": true
+                        },
+                        "compTitles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          }
+                        },
+                        "declaredThemes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          }
+                        },
+                        "declaredContentWarnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          }
+                        },
+                        "arcSummary": {
+                          "type": "string",
+                          "maxLength": 2000,
+                          "nullable": true
+                        },
+                        "chapterSummaries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "summary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "required": ["title", "summary"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "shortTeaser": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "wordCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "nullable": true
+                        },
+                        "language": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 10
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "author",
+                        "title",
+                        "logline",
+                        "synopsis",
+                        "primaryGenre",
+                        "subgenres",
+                        "audienceCategories",
+                        "manuscriptForm",
+                        "compTitles",
+                        "declaredThemes",
+                        "declaredContentWarnings",
+                        "arcSummary",
+                        "chapterSummaries",
+                        "shortTeaser",
+                        "wordCount",
+                        "language"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["manuscript"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manuscripts/{manuscriptId}/access-requests": {
+      "post": {
+        "operationId": "manuscripts_requestAccess",
+        "tags": ["manuscripts"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manuscriptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "authorProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "publisherProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "publisherName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["pending", "approved", "rejected"]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "manuscriptId",
+                        "manuscriptTitle",
+                        "authorProfileId",
+                        "authorName",
+                        "publisherProfileId",
+                        "publisherName",
+                        "status",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["request"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manuscript-access-requests": {
+      "get": {
+        "operationId": "manuscripts_listAccessRequests",
+        "tags": ["manuscripts"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "manuscriptId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "manuscriptTitle": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "authorProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "authorName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "publisherProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "publisherName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["pending", "approved", "rejected"]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "manuscriptId",
+                          "manuscriptTitle",
+                          "authorProfileId",
+                          "authorName",
+                          "publisherProfileId",
+                          "publisherName",
+                          "status",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["requests"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manuscript-access-requests/{requestId}/approve": {
+      "post": {
+        "operationId": "manuscripts_approveAccessRequest",
+        "tags": ["manuscripts"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "authorProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "publisherProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "publisherName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["pending", "approved", "rejected"]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "manuscriptId",
+                        "manuscriptTitle",
+                        "authorProfileId",
+                        "authorName",
+                        "publisherProfileId",
+                        "publisherName",
+                        "status",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["request"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manuscript-access-requests/{requestId}/reject": {
+      "post": {
+        "operationId": "manuscripts_rejectAccessRequest",
+        "tags": ["manuscripts"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "authorProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "publisherProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "publisherName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["pending", "approved", "rejected"]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "manuscriptId",
+                        "manuscriptTitle",
+                        "authorProfileId",
+                        "authorName",
+                        "publisherProfileId",
+                        "publisherName",
+                        "status",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["request"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/matches/run": {
+      "post": {
+        "operationId": "matches_run",
+        "tags": ["matches"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "author_to_publisher",
+                            "publisher_to_manuscript"
+                          ]
+                        },
+                        "requesterProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "sourceManuscriptId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "nullable": true
+                        },
+                        "sourcePublisherProfileId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "nullable": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["running", "succeeded", "failed"]
+                        },
+                        "stale": {
+                          "type": "boolean"
+                        },
+                        "candidateCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "failureCode": {
+                          "type": "string",
+                          "maxLength": 80,
+                          "nullable": true
+                        },
+                        "inputFingerprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "sourceTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "direction",
+                        "requesterProfileId",
+                        "sourceManuscriptId",
+                        "sourcePublisherProfileId",
+                        "status",
+                        "stale",
+                        "candidateCount",
+                        "failureCode",
+                        "inputFingerprint",
+                        "sourceTitle",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "candidates": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "runId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "rank": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "candidateProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "candidateManuscriptId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "candidateType": {
+                            "type": "string",
+                            "enum": ["publisher", "manuscript"]
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "subtitle": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "nullable": true
+                          },
+                          "scoreBand": {
+                            "type": "string",
+                            "enum": ["strong", "moderate", "weak"]
+                          },
+                          "axisBands": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string",
+                              "enum": ["strong", "moderate", "weak"]
+                            }
+                          },
+                          "explanation": {
+                            "type": "string",
+                            "maxLength": 1200,
+                            "nullable": true
+                          },
+                          "fitReasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "maxItems": 8
+                          },
+                          "riskReasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "maxItems": 8
+                          },
+                          "profilePath": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "manuscriptProfilePath": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "runId",
+                          "rank",
+                          "candidateProfileId",
+                          "candidateManuscriptId",
+                          "candidateType",
+                          "title",
+                          "subtitle",
+                          "scoreBand",
+                          "axisBands",
+                          "explanation",
+                          "fitReasons",
+                          "riskReasons",
+                          "profilePath",
+                          "manuscriptProfilePath"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["run", "candidates"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/matches": {
+      "get": {
+        "operationId": "matches_list",
+        "tags": ["matches"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "runs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "author_to_publisher",
+                              "publisher_to_manuscript"
+                            ]
+                          },
+                          "requesterProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "sourceManuscriptId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "sourcePublisherProfileId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["running", "succeeded", "failed"]
+                          },
+                          "stale": {
+                            "type": "boolean"
+                          },
+                          "candidateCount": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "failureCode": {
+                            "type": "string",
+                            "maxLength": 80,
+                            "nullable": true
+                          },
+                          "inputFingerprint": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "sourceTitle": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "direction",
+                          "requesterProfileId",
+                          "sourceManuscriptId",
+                          "sourcePublisherProfileId",
+                          "status",
+                          "stale",
+                          "candidateCount",
+                          "failureCode",
+                          "inputFingerprint",
+                          "sourceTitle",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["runs"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profile/history": {
+      "get": {
+        "operationId": "matches_profileHistory",
+        "tags": ["matches"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "runs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "author_to_publisher",
+                              "publisher_to_manuscript"
+                            ]
+                          },
+                          "requesterProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "sourceManuscriptId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "sourcePublisherProfileId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["running", "succeeded", "failed"]
+                          },
+                          "stale": {
+                            "type": "boolean"
+                          },
+                          "candidateCount": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "failureCode": {
+                            "type": "string",
+                            "maxLength": 80,
+                            "nullable": true
+                          },
+                          "inputFingerprint": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "sourceTitle": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "direction",
+                          "requesterProfileId",
+                          "sourceManuscriptId",
+                          "sourcePublisherProfileId",
+                          "status",
+                          "stale",
+                          "candidateCount",
+                          "failureCode",
+                          "inputFingerprint",
+                          "sourceTitle",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["runs"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/matches/{matchRunId}": {
+      "get": {
+        "operationId": "matches_get",
+        "tags": ["matches"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "matchRunId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "author_to_publisher",
+                            "publisher_to_manuscript"
+                          ]
+                        },
+                        "requesterProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "sourceManuscriptId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "nullable": true
+                        },
+                        "sourcePublisherProfileId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "nullable": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["running", "succeeded", "failed"]
+                        },
+                        "stale": {
+                          "type": "boolean"
+                        },
+                        "candidateCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "failureCode": {
+                          "type": "string",
+                          "maxLength": 80,
+                          "nullable": true
+                        },
+                        "inputFingerprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "sourceTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "direction",
+                        "requesterProfileId",
+                        "sourceManuscriptId",
+                        "sourcePublisherProfileId",
+                        "status",
+                        "stale",
+                        "candidateCount",
+                        "failureCode",
+                        "inputFingerprint",
+                        "sourceTitle",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "candidates": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "runId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "rank": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "candidateProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "candidateManuscriptId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "candidateType": {
+                            "type": "string",
+                            "enum": ["publisher", "manuscript"]
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "subtitle": {
+                            "type": "string",
+                            "maxLength": 200,
+                            "nullable": true
+                          },
+                          "scoreBand": {
+                            "type": "string",
+                            "enum": ["strong", "moderate", "weak"]
+                          },
+                          "axisBands": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string",
+                              "enum": ["strong", "moderate", "weak"]
+                            }
+                          },
+                          "explanation": {
+                            "type": "string",
+                            "maxLength": 1200,
+                            "nullable": true
+                          },
+                          "fitReasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "maxItems": 8
+                          },
+                          "riskReasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "maxItems": 8
+                          },
+                          "profilePath": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "manuscriptProfilePath": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240,
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "runId",
+                          "rank",
+                          "candidateProfileId",
+                          "candidateManuscriptId",
+                          "candidateType",
+                          "title",
+                          "subtitle",
+                          "scoreBand",
+                          "axisBands",
+                          "explanation",
+                          "fitReasons",
+                          "riskReasons",
+                          "profilePath",
+                          "manuscriptProfilePath"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["run", "candidates"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/matches/{matchRunId}/candidates/{candidateId}": {
+      "get": {
+        "operationId": "matches_candidate",
+        "tags": ["matches"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "matchRunId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "candidateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "author_to_publisher",
+                            "publisher_to_manuscript"
+                          ]
+                        },
+                        "requesterProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "sourceManuscriptId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "nullable": true
+                        },
+                        "sourcePublisherProfileId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "nullable": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["running", "succeeded", "failed"]
+                        },
+                        "stale": {
+                          "type": "boolean"
+                        },
+                        "candidateCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "failureCode": {
+                          "type": "string",
+                          "maxLength": 80,
+                          "nullable": true
+                        },
+                        "inputFingerprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "sourceTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "direction",
+                        "requesterProfileId",
+                        "sourceManuscriptId",
+                        "sourcePublisherProfileId",
+                        "status",
+                        "stale",
+                        "candidateCount",
+                        "failureCode",
+                        "inputFingerprint",
+                        "sourceTitle",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "candidate": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "runId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "rank": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "candidateProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "candidateManuscriptId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "nullable": true
+                        },
+                        "candidateType": {
+                          "type": "string",
+                          "enum": ["publisher", "manuscript"]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "subtitle": {
+                          "type": "string",
+                          "maxLength": 200,
+                          "nullable": true
+                        },
+                        "scoreBand": {
+                          "type": "string",
+                          "enum": ["strong", "moderate", "weak"]
+                        },
+                        "axisBands": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string",
+                            "enum": ["strong", "moderate", "weak"]
+                          }
+                        },
+                        "explanation": {
+                          "type": "string",
+                          "maxLength": 1200,
+                          "nullable": true
+                        },
+                        "fitReasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "maxItems": 8
+                        },
+                        "riskReasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 240
+                          },
+                          "maxItems": 8
+                        },
+                        "profilePath": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "manuscriptProfilePath": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240,
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "runId",
+                        "rank",
+                        "candidateProfileId",
+                        "candidateManuscriptId",
+                        "candidateType",
+                        "title",
+                        "subtitle",
+                        "scoreBand",
+                        "axisBands",
+                        "explanation",
+                        "fitReasons",
+                        "riskReasons",
+                        "profilePath",
+                        "manuscriptProfilePath"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["run", "candidate"],
                   "additionalProperties": false
                 }
               }

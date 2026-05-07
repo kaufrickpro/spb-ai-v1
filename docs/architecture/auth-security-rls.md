@@ -102,11 +102,13 @@ Contact details are sensitive:
 - website URL
 - social links
 
-They are visible to:
+Private account contact fields are visible to:
 
 - the owner
 - admins
 - the accepted intro counterparty
+
+Explicit owner-approved match-visible contact fields may be exposed through access-checked app profile routes after match retrieval or approved manuscript access. Do not infer match visibility from a stored contact value existing.
 
 For implementation simplicity and safety, expose unlocked contact details through the Node API instead of direct browser table reads if RLS becomes complex.
 

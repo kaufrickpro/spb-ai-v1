@@ -18,10 +18,11 @@ export const manuscriptKeys = {
 
 // ─── List manuscripts ─────────────────────────────────────────────────────────
 
-export function useManuscripts() {
+export function useManuscripts(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: manuscriptKeys.list(),
     queryFn: () => webApiClient.request(ApiRoutes.manuscripts.list),
+    enabled: options.enabled ?? true,
   });
 }
 

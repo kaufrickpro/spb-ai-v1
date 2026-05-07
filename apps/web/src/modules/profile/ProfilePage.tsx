@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
 import { useAdminSurface } from "../admin/useAdminSurface";
@@ -6,6 +7,7 @@ import { getApiErrorMessage } from "../api/client";
 import { PlatformHeader } from "../layout/PlatformHeader";
 import { WEB_ROUTES } from "../routing/routes";
 import { useMarketplaceProfile } from "./useMarketplaceProfile";
+import { useUpdateMatchVisibleContacts } from "../profiles/useProfileSurfaces";
 
 function buildInitials(displayName: string) {
   return displayName
@@ -20,6 +22,11 @@ export function ProfilePage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const adminSurface = useAdminSurface();
+  const updateContacts = useUpdateMatchVisibleContacts();
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [publicEmail, setPublicEmail] = useState("");
+  const [showWebsite, setShowWebsite] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
   const profileQuery = useMarketplaceProfile({
     enabled: !adminSurface.isLoading && !adminSurface.hasAdminAccess,
   });
@@ -161,6 +168,79 @@ export function ProfilePage() {
             <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
               {t("profile.placeholder.nextStep")}
             </div>
+
+            <form
+              className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                updateContacts.mutate({
+                  publicEmail: publicEmail || null,
+                  publicPhone: null,
+                  websiteUrl: websiteUrl || null,
+                  socialLinks: [],
+                  visibility: {
+                    publicEmail: showEmail,
+                    publicPhone: false,
+                    websiteUrl: showWebsite,
+                    socialLinks: false,
+                  },
+                });
+              }}
+            >
+              <h2 className="text-sm font-semibold text-slate-900">
+                {t("profile.matchVisible.title")}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {t("profile.matchVisible.description")}
+              </p>
+              <label className="mt-4 block text-sm font-medium text-slate-700">
+                {t("profile.matchVisible.website")}
+                <input
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  onChange={(event) => setWebsiteUrl(event.target.value)}
+                  placeholder="https://example.com"
+                  value={websiteUrl}
+                />
+              </label>
+              <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  checked={showWebsite}
+                  onChange={(event) => setShowWebsite(event.target.checked)}
+                  type="checkbox"
+                />
+                {t("profile.matchVisible.showWebsite")}
+              </label>
+              <label className="mt-4 block text-sm font-medium text-slate-700">
+                {t("profile.matchVisible.email")}
+                <input
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  onChange={(event) => setPublicEmail(event.target.value)}
+                  placeholder="submissions@example.com"
+                  type="email"
+                  value={publicEmail}
+                />
+              </label>
+              <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  checked={showEmail}
+                  onChange={(event) => setShowEmail(event.target.checked)}
+                  type="checkbox"
+                />
+                {t("profile.matchVisible.showEmail")}
+              </label>
+              <button
+                className="mt-4 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                disabled={updateContacts.isPending}
+                type="submit"
+              >
+                {t("profile.matchVisible.save")}
+              </button>
+              {updateContacts.isSuccess ? (
+                <p className="mt-3 text-sm text-emerald-700">
+                  {t("profile.matchVisible.saved")}
+                </p>
+              ) : null}
+            </form>
           </div>
         </section>
       </main>

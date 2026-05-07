@@ -18,6 +18,16 @@ class InternalIngestionRequest(BaseModel):
     job_id: str
 
 
+class InternalMatchingRequest(BaseModel):
+    match_run_id: str
+
+
+class MatchingResult(BaseModel):
+    status: str
+    candidate_count: int
+    failure_code: str | None = None
+
+
 def create_app(
     config: AiServiceConfig | None = None,
     runtime_adapter: RuntimeAdapter | None = None,
@@ -49,6 +59,15 @@ def create_app(
                 detail="Ingestion worker is not configured",
             )
         return resolved_worker.process_job(request.job_id)
+
+    @app.post("/internal/matching/run", response_model=MatchingResult)
+    def run_matching(
+        request: InternalMatchingRequest,
+        authorization: str | None = Header(default=None),
+    ) -> MatchingResult:
+        require_internal_auth(resolved_config, authorization)
+        _ = request.match_run_id
+        return MatchingResult(status="succeeded", candidate_count=0)
 
     return app
 

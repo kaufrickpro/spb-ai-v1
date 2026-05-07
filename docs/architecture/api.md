@@ -61,11 +61,14 @@ Current scaffold:
 - `apps/api/src/modules/config/loadEnvFile.ts` loads `apps/api/.env` before config validation so local dev restarts keep the same environment.
 - `apps/api/src/modules/health/registerHealthRoutes.ts` owns health and readiness routes.
 - `apps/api/src/modules/profiles/registerProfileRoutes.ts` owns profile route wiring; `apps/api/src/modules/profiles/service.ts` owns the profile onboarding invariant that an authenticated non-admin user creates exactly one marketplace profile and completes role-specific onboarding details through the atomic profile details RPC.
+- Step 10 profile surfaces in `apps/api/src/modules/profiles/` are split by responsibility: public publisher directory decisions, match-visible contact settings, access policy helpers, and publisher/author profile page read models. `matchProfileService.ts` stays as a small route-facing barrel.
 - `apps/api/src/modules/admin/registerAdminRoutes.ts` owns admin route wiring; `apps/api/src/modules/admin/service.ts` owns admin read-model aggregation and review decision workflow behavior.
 - `apps/api/src/modules/admin/profileReviews.ts` keeps the legacy pending-profile route backed by `eligibility_status = 'limited'` and `review_outcome = 'needs_review'`; the primary admin workspace is the exception queue in `apps/api/src/modules/admin/service.ts`.
 - `apps/api/src/modules/admin/bootstrapFirstAdmin.ts` and `apps/api/src/scripts/bootstrapFirstAdmin.ts` own the trusted first-admin bootstrap path backed by a service-role client and email allowlist.
 - `apps/api/src/modules/auth/requestAuth.ts` centralizes bearer-token authentication and admin authorization checks.
 - `apps/api/src/modules/manuscripts/registerManuscriptRoutes.ts` owns the Step 8/9 manuscript/document lifecycle, including author-only checks, local signed upload targets, GCS signed URL responses, local file serving, and test-mode review side effects.
+- Step 10 manuscript profile access in `apps/api/src/modules/manuscripts/` is split into manuscript profile page reads, manuscript access request workflow, shared DB access helpers, and a focused error type. `profileAccessService.ts` stays as a small route-facing barrel.
+- Step 10 matching in `apps/api/src/modules/matching/` is split by responsibility: `service.ts` is the small route-facing dispatcher, `testMatchingService.ts` owns local fixture behavior, `supabaseMatchingService.ts` owns trusted Supabase run lifecycle and authorization gates, `tracerCandidates.ts` owns deterministic tracer candidate/grant persistence, and mapper/snapshot modules keep response shaping and safe input fingerprints isolated.
 - `apps/api/src/modules/storage/localTokens.ts` and `apps/api/src/modules/storage/localStorage.ts` own local fake signed URLs and ignored `local-uploads/` storage.
 - `apps/api/src/modules/storage/gcsStorage.ts` owns private GCS object names, signed upload/download URL creation, and server-side object existence checks.
 - `apps/api/src/modules/manuscripts/documentProcessingQueue.ts` owns Cloud Tasks enqueueing for document-processing jobs. The task payload is `{ job_id }` only and Cloud Tasks uses OIDC with the configured invoker service account to call the private AI service.
@@ -126,15 +129,34 @@ Rules:
 - `GET /api/v1/matches`
 - `GET /api/v1/matches/:matchRunId`
 - `GET /api/v1/matches/:matchRunId/candidates/:candidateId`
+- `GET /api/v1/profile/history`
+- `GET /api/v1/profiles/publishers/:publisherProfileId`
+- `GET /api/v1/profiles/authors/:authorProfileId`
+- `GET /api/v1/profiles/manuscripts/:manuscriptId`
+- `GET /api/v1/public/publishers`
+- `POST /api/v1/manuscripts/:manuscriptId/access-requests`
+- `GET /api/v1/manuscript-access-requests`
+- `POST /api/v1/manuscript-access-requests/:requestId/approve`
+- `POST /api/v1/manuscript-access-requests/:requestId/reject`
 
 Rules:
 
 - Match runs are rate-limited but not monthly quota-limited.
-- Matches are always tied to a manuscript.
-- Full match visibility requires eligible profile/manuscript/document state, successful ingestion, and entitlement checks.
+- Step 10 supports both `author_to_publisher` and `publisher_to_manuscript` runs. Author-to-publisher runs are tied to one manuscript; publisher-to-manuscript runs use the publisher's general profile.
+- The current Step 10 tracer implementation creates durable match runs, calls the private AI service with only `{ match_run_id }`, and persists deterministic safe candidates so the product path is usable while real retrieval/scoring is built.
+- Full match visibility requires eligible profile state, eligible manuscript/document state where a manuscript is the source or candidate, successful sample processing for manuscript candidates, publisher discoverability, and entitlement checks.
+- The Node API owns authorization, eligibility, rate limits, run creation, persistence, response validation, and role-based redaction.
+- The FastAPI AI service owns three-axis retrieval/scoring, soft-constraint penalties, ranking, safe snippet selection, and real Vertex/Gemini explanation generation.
+- The AI service is called with trusted identifiers such as `{ match_run_id }` and loads data through service-role repositories. Browser requests must not include raw manuscript text, signed URLs, provider credentials, or AI-service internals.
 - API returns explanation fields, not raw model internals.
-- Candidate detail returns stored explanation data and source snippets; it does not generate a separate report.
-- Match runs and candidates must store algorithm/version metadata for auditability.
+- Candidate detail returns stored explanation data, structured score details, penalties, and source snippets; it does not generate a separate report.
+- Match runs and candidates must store algorithm/version metadata, input fingerprints, and compact safe input snapshots for auditability and stale-run badges.
+- Rematch creates a new run. Previous runs remain available in profile history.
+- Full profile pages are match-revealed app resources, not public profiles. Access must be granted by owner/admin status, stored match candidate, approved manuscript access request, or later accepted intro.
+- Stored match visibility currently flows through `profile_access_grants`; later `match_candidates` writes should create those grants instead of broadening table RLS for raw profile/manuscript tables.
+- Public `/publishers` returns only admin-approved publisher logo, name, and valid `https` website. It must not expose full publisher profile details or marketplace-only matching data.
+- Manuscript access requests are manual and publisher/manuscript-specific. Approval unlocks only the manuscript profile page for the requesting publisher; it does not unlock private contact details, sample download, or full manuscript text.
+- Owner-approved match-visible contact fields may appear on match-revealed profile pages. Private account email/phone, staff/editor contact, sample URLs, and full manuscripts remain locked until a later accepted intro or explicit owner-visible setting permits them.
 
 ### Discovery
 
@@ -156,7 +178,7 @@ V1 discovery filters:
 Rules:
 
 - Limited, blocked, quarantined, or otherwise ineligible profiles/manuscripts never appear.
-- Contact details and sample URLs are excluded unless an accepted intro unlock exists.
+- Private contact details and sample URLs are excluded unless an accepted intro unlock exists. Owner-approved match-visible contact fields are exposed only through access-checked profile detail routes.
 - Discovery ordering must not use paid plan status as a hidden relevance boost.
 
 ### Intro Requests

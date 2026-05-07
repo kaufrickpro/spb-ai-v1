@@ -38,6 +38,8 @@ export function mapDbAuthorDetails(
     biography: row.biography,
     primaryGenre: row.primary_genre,
     writingLanguages: row.writing_languages,
+    styleStatement: row.style_statement ?? null,
+    influences: row.influences ?? [],
   });
 }
 
@@ -46,8 +48,23 @@ export function mapDbPublisherDetails(
 ): ProfileDetails {
   return ProfileDetailsSchema.parse({
     role: "publisher",
+    publisherName: row.publisher_name ?? null,
+    logoUrl: row.logo_url ?? null,
+    websiteUrl: row.website_url ?? null,
     focusGenres: row.focus_genres,
     preferredLanguages: row.preferred_languages,
     acceptsUnsolicited: row.accepts_unsolicited,
+    about: row.biography ?? null,
+    editorialFocus: row.editorial_note ?? null,
+    lookingFor: row.what_we_are_looking_for ?? null,
+    acceptedAudienceCategories: row.accepted_audience_categories ?? [],
+    acceptedManuscriptForms: row.accepted_manuscript_forms ?? [],
+    submissionGuidelines: row.submission_guidelines ?? null,
+    recentAcquisitions: row.recent_acquisitions ?? [],
+    bestSellingBooks: row.best_selling_books ?? [],
+    excludedTopics: row.excluded_topics ?? [],
+    editorWishlist: row.editor_wishlist ?? null,
+    imprintTone: row.imprint_tone ?? null,
+    marketPositioning: row.market_positioning ?? null,
   });
 }

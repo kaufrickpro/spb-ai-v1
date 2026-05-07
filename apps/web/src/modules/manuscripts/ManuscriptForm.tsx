@@ -33,6 +33,32 @@ export function ManuscriptForm({
     defaultValues?.wordCount?.toString() ?? "",
   );
   const [synopsis, setSynopsis] = useState(defaultValues?.synopsis ?? "");
+  const [logline, setLogline] = useState(defaultValues?.logline ?? "");
+  const [subgenres, setSubgenres] = useState(
+    defaultValues?.subgenres?.join(", ") ?? "",
+  );
+  const [audienceCategories, setAudienceCategories] = useState(
+    defaultValues?.audienceCategories?.join(", ") ?? "",
+  );
+  const [manuscriptForm, setManuscriptForm] = useState(
+    defaultValues?.manuscriptForm ?? "",
+  );
+  const [compTitles, setCompTitles] = useState(
+    defaultValues?.compTitles?.join(", ") ?? "",
+  );
+  const [declaredThemes, setDeclaredThemes] = useState(
+    defaultValues?.declaredThemes?.join(", ") ?? "",
+  );
+  const [declaredContentWarnings, setDeclaredContentWarnings] = useState(
+    defaultValues?.declaredContentWarnings?.join(", ") ?? "",
+  );
+  const [arcSummary, setArcSummary] = useState(defaultValues?.arcSummary ?? "");
+  const [shortTeaser, setShortTeaser] = useState(
+    defaultValues?.shortTeaser ?? "",
+  );
+  const [requestable, setRequestable] = useState(
+    defaultValues?.requestable ?? false,
+  );
   const [targetAgeMin, setTargetAgeMin] = useState<string>(
     defaultValues?.targetAgeMin?.toString() ?? "",
   );
@@ -59,6 +85,16 @@ export function ManuscriptForm({
       language: language.trim(),
       wordCount: wordCount ? Number(wordCount) : undefined,
       synopsis: synopsis.trim() || undefined,
+      logline: logline.trim() || undefined,
+      subgenres: splitCsv(subgenres),
+      audienceCategories: splitCsv(audienceCategories),
+      manuscriptForm: manuscriptForm.trim() || undefined,
+      compTitles: splitCsv(compTitles),
+      declaredThemes: splitCsv(declaredThemes),
+      declaredContentWarnings: splitCsv(declaredContentWarnings),
+      arcSummary: arcSummary.trim() || undefined,
+      shortTeaser: shortTeaser.trim() || undefined,
+      requestable,
       targetAgeMin: targetAgeMin ? Number(targetAgeMin) : undefined,
       targetAgeMax: targetAgeMax ? Number(targetAgeMax) : undefined,
     });
@@ -198,6 +234,105 @@ export function ManuscriptForm({
         />
       </div>
 
+      <div className="sm:col-span-2">
+        <label htmlFor="manuscript-logline" className={labelClass}>
+          {t("manuscripts.form.logline")}
+        </label>
+        <input
+          id="manuscript-logline"
+          type="text"
+          maxLength={500}
+          value={logline}
+          onChange={(e) => setLogline(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+
+      <TextInput
+        id="manuscript-subgenres"
+        inputClass={inputClass}
+        label={t("manuscripts.form.subgenres")}
+        labelClass={labelClass}
+        onChange={setSubgenres}
+        value={subgenres}
+      />
+      <TextInput
+        id="manuscript-audience"
+        inputClass={inputClass}
+        label={t("manuscripts.form.audienceCategories")}
+        labelClass={labelClass}
+        onChange={setAudienceCategories}
+        value={audienceCategories}
+      />
+      <TextInput
+        id="manuscript-form"
+        inputClass={inputClass}
+        label={t("manuscripts.form.manuscriptForm")}
+        labelClass={labelClass}
+        onChange={setManuscriptForm}
+        value={manuscriptForm}
+      />
+      <TextInput
+        id="manuscript-comp-titles"
+        inputClass={inputClass}
+        label={t("manuscripts.form.compTitles")}
+        labelClass={labelClass}
+        onChange={setCompTitles}
+        value={compTitles}
+      />
+      <TextInput
+        id="manuscript-themes"
+        inputClass={inputClass}
+        label={t("manuscripts.form.declaredThemes")}
+        labelClass={labelClass}
+        onChange={setDeclaredThemes}
+        value={declaredThemes}
+      />
+      <TextInput
+        id="manuscript-warnings"
+        inputClass={inputClass}
+        label={t("manuscripts.form.declaredContentWarnings")}
+        labelClass={labelClass}
+        onChange={setDeclaredContentWarnings}
+        value={declaredContentWarnings}
+      />
+
+      <div className="sm:col-span-2">
+        <label htmlFor="manuscript-arc" className={labelClass}>
+          {t("manuscripts.form.arcSummary")}
+        </label>
+        <textarea
+          id="manuscript-arc"
+          rows={4}
+          maxLength={2000}
+          value={arcSummary}
+          onChange={(e) => setArcSummary(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+
+      <div className="sm:col-span-2">
+        <label htmlFor="manuscript-teaser" className={labelClass}>
+          {t("manuscripts.form.shortTeaser")}
+        </label>
+        <textarea
+          id="manuscript-teaser"
+          rows={3}
+          maxLength={500}
+          value={shortTeaser}
+          onChange={(e) => setShortTeaser(e.target.value)}
+          className={inputClass}
+        />
+        <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
+          <input
+            checked={requestable}
+            onChange={(e) => setRequestable(e.target.checked)}
+            type="checkbox"
+          />
+          {t("manuscripts.form.requestable")}
+        </label>
+      </div>
+
       {/* Actions */}
       <div className="flex gap-3 sm:col-span-2">
         <button
@@ -219,5 +354,43 @@ export function ManuscriptForm({
         )}
       </div>
     </form>
+  );
+}
+
+function splitCsv(value: string): string[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function TextInput({
+  id,
+  inputClass,
+  label,
+  labelClass,
+  onChange,
+  value,
+}: {
+  id: string;
+  inputClass: string;
+  label: string;
+  labelClass: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className={labelClass}>
+        {label}
+      </label>
+      <input
+        id={id}
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={inputClass}
+      />
+    </div>
   );
 }

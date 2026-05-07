@@ -6,8 +6,19 @@ This file is the local quick-reference knowledge base for the publisher-author S
 
 ## Current Status
 
-- Last updated: 2026-05-06
-- Current phase: Step 9 (AI Service Foundation) is complete for the foundation slice; the next product build slice is Step 10 (Matching Vertical Slice). The local text/plain ingestion slice, production-shaped job/storage dispatch, admin exception policy, reprocessing output replacement, Step 9c scanner slice, staging env templates, and ADR 0008 scanner launch posture are implemented behind the job boundary. Step 8 upload remains the route surface; upload completion creates or reuses an idempotent `document_processing_jobs` row, moves the document into async checking, and leaves actual processing to the local document processor plus internal AI service/worker. Signup remains profile-first: users must complete the 3-step `/signup` wizard before a marketplace profile is created, and `/signup/complete` is only a compatibility redirect back to `/signup`.
+- Last updated: 2026-05-07
+- Current phase: Step 10 tracer matching is partially implemented for GitHub issues #47-#51. Step 10 Phase 0 remains implemented for GitHub issues #40-#45. Step 9 remains complete for ingestion/scanner foundations. Full production AI scoring, Vertex/Gemini explanations, Vector Search retrieval, and rich ranking quality are still future work.
+- Recently changed for Step 10 / GitHub issues #47-#51: added manuscript matching input fields end-to-end for owner create/edit/detail flows, including logline, subgenres, audience categories, manuscript form, comp titles, themes, content warnings, arc summary, chapter summaries, short teaser, and requestability. Requestable author-profile teasers now avoid synopsis/logline leakage and expose only title, genre, manuscript form, teaser, and request state before approval.
+- Recently changed for Step 10 / GitHub issues #47-#51: added publisher matching/profile fields for publisher onboarding details and profile read models, including display name overrides, logo/website, biography/about, editorial focus, looking-for text, accepted genres/audiences/forms, submission guidelines, excluded topics, wishlist, recent acquisitions, best sellers, imprint tone, and positioning. Public directory output remains limited to admin-approved logo/name/https website.
+- Recently changed for Step 10 / GitHub issues #47-#51: added a forward matching migration with remaining input columns plus `match_signal_sources`, `match_runs`, and `match_candidates`; existing remote databases must apply `supabase/migrations/20260507124500_step10_matching_runs.sql` after the Phase 0 migration.
+- Recently changed for Step 10 / GitHub issues #47-#51: added shared matching contracts/OpenAPI, `POST /api/v1/matches/run`, `GET /api/v1/matches`, `GET /api/v1/profile/history`, run detail, and candidate detail routes. Author-to-publisher and publisher-to-manuscript tracer runs now create new stored runs, enforce role/eligibility/sample/rate-limit gates, call the private AI service with `{ match_run_id }`, persist deterministic safe tracer candidates, and create match-candidate profile access grants.
+- Recently changed for Step 10 / GitHub issues #47-#51: refactored the API matching service from one large file into focused modules for the route-facing dispatcher, local test behavior, Supabase lifecycle gates, deterministic tracer candidate persistence, database mappers, and safe input snapshots. The run history read is capped to the newest 50 runs per viewer.
+- Recently changed for Step 10 / GitHub issues #47-#51: `/app/matches`, `/app/profile/history`, and match candidate detail now render stored runs and candidates with profile/manuscript links. The AI service exposes a private `/internal/matching/run` endpoint that accepts only `{ match_run_id }` and is currently a placeholder result boundary.
+- Recently changed for Step 10 Phase 0 / GitHub issues #40-#45: added a forward Supabase migration for match-visible contact fields, public publisher directory status, profile display fields, manuscript profile/requestability fields, `profile_access_grants`, and `manuscript_access_requests`. Existing remote databases must apply `supabase/migrations/20260507103000_step10_profile_access_foundation.sql`.
+- Recently changed for Step 10 Phase 0: `/publishers` now uses a logged-out-safe public API that returns only admin-approved eligible publisher logo, name, and `https` website. Admins can approve/hide/reject public directory visibility separately from marketplace eligibility.
+- Recently changed for Step 10 Phase 0: users can save explicit match-visible contact settings from `/app/profile`; profile response mappers only return fields whose visibility flag is enabled and never infer visibility from a stored value existing.
+- Recently changed for Step 10 Phase 0: authenticated app-only publisher, author, and manuscript profile pages now use access-checked API read models. They redact private account contact, sample downloads, full manuscript text, admin state, internal scores, and document internals.
+- Recently changed for Step 10 Phase 0: eligible publishers can request access to requestable manuscripts by authors they have discovered through a stored match access grant. Authors approve/reject from `/app/requests`; approval unlocks only the specific manuscript profile, not private contact, sample download, or accepted-intro privileges.
 - Recently changed for Step 9: upload completion now uses the service-role `public.complete_document_upload(...)` RPC to atomically attach the completed sample, queue a document processing job, and leave repeated completion attempts idempotent at the job layer without running ingestion inline.
 - Recently changed for Step 9: the API now has a local document processing runner, exposed through `npm run documents:process --workspace apps/api -- <limit>`, that claims queued `document_processing_jobs`, dispatches the AI service using only `{ job_id }`, records safe succeeded/failed transitions, and skips already-running or completed jobs.
 - Recently changed for Step 9: the AI service now configures its local job-based `text/plain` ingestion worker from `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `LOCAL_STORAGE_ROOT`, with repository/storage/embedding adapter boundaries, deterministic paragraph-aware chunking, bounded extracted text/chunk counts, and reference-only local embedding records instead of numeric vectors in Postgres.
@@ -22,7 +33,15 @@ This file is the local quick-reference knowledge base for the publisher-author S
 - Recently changed for Step 9: the production-shaped document processing path now has explicit API config and adapters for private GCS signed upload/download URLs, Cloud Tasks enqueueing with `{ job_id }` only, and private AI-service Cloud Run OIDC invocation expectations. Local mode still uses local storage, fake signed URLs, and the local processor command.
 - Recently changed for Step 9: the AI service now has an explicit storage provider config. Local reads from `LOCAL_STORAGE_ROOT`; staging/production require `STORAGE_PROVIDER=gcs`, `GCS_BUCKET_PRIVATE_UPLOADS`, Supabase service-role repository settings, and private GCS reads through the service identity.
 - Recently changed for Step 9: local validation now has focused repeatable coverage. `npm run test --workspace apps/api -- localDocumentProcessingFlow` verifies author manuscript creation, sample upload, upload completion, queued processing, processed/failed document query states, and no default admin exception for user-correctable failures. `cd apps/ai-service && uv run pytest tests/test_local_validation_flow.py` verifies the local worker writes chunks and reference-only embedding records for successful text samples and records safe failure state for empty files. Step 9c scanner coverage lives in `cd apps/ai-service && uv run pytest tests/test_config.py tests/test_ingestion.py tests/test_scanner.py tests/test_local_validation_flow.py`, plus focused API/UI/contract tests.
-- Recently decided for Step 10: real Vertex embeddings and Vertex AI Vector Search are not Step 9 completion criteria. Step 10 should build local fake vector retrieval first, then add real Vertex embedding/upsert/query wiring once the matching loop exists.
+- Recently decided for Step 10: use the three-axis matching model in ADR 0009. Manuscripts produce separate `premise`, `voice`, and `arc` signals; publishers provide `guidelines`, optional `wishlist`, and optional `catalog` signals. Only platform eligibility/availability/rate-limit checks are hard gates; genre, audience, manuscript form, word count, and exclusion-topic conflicts become large penalties and watch-outs.
+- Recently decided for Step 10: support both author-to-publisher and publisher-to-manuscript runs in the first matching slice. Publisher runs use the general publisher profile in V1; specific editor wishlist or custom acquisition-query runs are deferred to V1.5.
+- Recently decided for Step 10: generate real Vertex/Gemini LLM explanations during match runs for the top 10 visible candidates. Store up to 25 candidates; ranks 11-25 remain inspectable through structured details without a required LLM paragraph.
+- Recently decided for Step 10: every rematch creates a new match run. Prior runs stay visible in profile history and are marked stale when match-relevant manuscript or publisher fingerprints change.
+- Recently decided for Step 10 Phase 0: before scoring work, build match-revealed profile surfaces and access rules. Full publisher, author, and manuscript profiles are authenticated app pages unlocked by stored match candidates, approved manuscript access requests, owner/admin access, or later accepted intro; they are not truly public profiles.
+- Recently decided for Step 10 Phase 0: logged-out `/publishers` is a public directory only. It shows admin-approved eligible publisher logo, name, and valid `https` website, with no full profile links, matching data, guidelines, wishlists, acquisitions, or contact details.
+- Recently decided for Step 10 Phase 0: publishers who discovered an author through matching can manually request access to another requestable manuscript by that author. Author approval is publisher/manuscript-specific and unlocks only the manuscript profile, not private contact, sample download, or full manuscript text.
+- Recently decided for Step 10 Phase 0: match-visible contact fields are explicit owner-approved fields. Public websites/submission channels may show after match or approved manuscript access, but private account contact and sample files remain behind later accepted intro rules.
+- Recently decided for Step 10: real Vertex embeddings and Vertex AI Vector Search are not Step 9 completion criteria. Step 10 must keep numeric vectors out of Postgres and store only vector references and bounded signal metadata; production retrieval remains Vertex AI Vector Search behind provider adapters.
 - Recently changed: `npm run check:harness` now includes project-specific guardrails for package barrel entrypoints, frontend imports from server-only/provider internals, and high-confidence secret or signed URL patterns in repository files.
 - Recently decided for production setup: product name is Smart Publishing Bridge; canonical production URL is `https://spb-ai.dev`; `https://www.spb-ai.dev` redirects to the apex domain; staging uses `https://staging.spb-ai.dev`.
 - Recently decided for production setup: auth callbacks are `https://spb-ai.dev/auth/callback` for production and `https://staging.spb-ai.dev/auth/callback` for staging. Supabase Auth Site URL and allowed redirect URL settings must use those environment-specific app URLs.
@@ -68,8 +87,8 @@ This file is the local quick-reference knowledge base for the publisher-author S
 - Recently fixed: the legacy admin profile decision endpoint now resolves a pending profile review and routes through the audited admin review decision workflow; repeated or non-pending profile decisions are rejected.
 - Recently fixed: public auth callbacks and signup now keep staff identities out of marketplace flows; staff sessions that hit `/auth/callback` are signed out and sent to `/admin/login?reason=staff`, while `/signup` redirects `allowed`, `mfa_required`, and `revoked` staff states away from the wizard.
 - Recently fixed: dashboard, admin feeds, legal routes, match/discovery placeholder routes, manuscript sample loading states, and upload controls now distinguish loading/error/empty states instead of rendering misleading fallbacks.
-- Next recommended step: start Step 10 by implementing the matching vertical slice with a local fake vector retrieval adapter before real Vertex wiring.
-- Known blockers: actual GCP bucket provisioning/IAM, production Cloud Tasks/private Cloud Run invocation, Step 10 real Vertex embedding/vector-search implementation, private malware/scanner endpoint for production and real-user staging uploads, production prices and quotas, account deletion flow, Resend domain verification and secret entry, Sentry project creation/secret entry, and remote GitHub branch protection enforcement are still open.
+- Next recommended step: replace the deterministic Step 10 tracer candidate generator with real AI-service retrieval/scoring and bounded Vertex/Gemini explanations while preserving the `{ match_run_id }` private boundary.
+- Known blockers: actual GCP bucket provisioning/IAM, production Cloud Tasks/private Cloud Run invocation, Step 10 real Vertex embedding/vector-search implementation, Vertex/Gemini explanation provider configuration, private malware/scanner endpoint for production and real-user staging uploads, production prices and quotas, account deletion flow, Resend domain verification and secret entry, Sentry project creation/secret entry, and remote GitHub branch protection enforcement are still open.
 
 ## Product Snapshot
 
@@ -160,7 +179,7 @@ Browser
 - Profiles, manuscripts, and documents can become eligible automatically when required checks pass.
 - Manuscripts need valid metadata, an eligible processed sample document, successful ingestion, and `eligibility_status = 'eligible'` before full discovery, matching, and intro request actions.
 - Manual admin review is reserved for `needs_review`, `quarantined`, reported, failed, or staff-overridden items.
-- Intro requests are request-based; contact details and manuscript samples unlock only after acceptance.
+- Intro requests are request-based; private contact details and manuscript samples unlock only after acceptance. Match-revealed profiles may show explicit owner-approved public/match-visible contact fields.
 - Paid plans must not secretly boost relevance scores.
 - Match runs are rate-limited for abuse prevention, not monthly subscription-quota gated.
 - Intro request quota is consumed when the request is sent.
@@ -172,7 +191,7 @@ Browser
 - Admin identity: store admin access in `public.admin_users`, not `public.profiles`, so admin accounts do not enter marketplace signup/profile completion.
 - RLS: write acceptance tests for owner access, cross-user denial, discovery hiding, accepted-intro unlocks, admin access, and payment-event protection.
 - Discovery: V1 filters are role/type, eligibility status, genre, language, target age, city/country, accepts unsolicited, processing status, and created date.
-- Matching auditability: store `matching_algorithm_version`, `filter_version`, `embedding_model`, and `explanation_version`.
+- Matching auditability: store `matching_algorithm_version`, `constraint_policy_version`, `weight_profile`, `embedding_model`, `explanation_version`, and explanation provider metadata.
 - Idempotency: use provider event IDs, unique pending intro constraints, match request keys, document processing state, and usage source event keys.
 - Quotas: consume quota transactionally with the action that creates usage.
 - Files: use explicit lifecycle states, retention timestamps, tombstones, and scheduled cleanup for orphan/deleted GCS objects.
@@ -200,7 +219,7 @@ The product shell should still read as one multi-function platform, not as a dis
 Primary route groups:
 
 - Public: `/`, `/features`, `/pricing`, `/publishers`, `/authors`, `/editorial`, `/works`, `/login`, `/signup`, `/auth/callback`, `/forgot-password`, `/terms`, `/privacy`, `/kvkk`, `/cookies`
-- App: `/onboarding` (compatibility redirect), `/app/dashboard`, `/app/manuscripts`, `/app/matches`, `/app/matches/:matchRunId/candidates/:candidateId`, `/app/discover/authors`, `/app/discover/publishers`, `/app/requests`, `/app/profile`, `/app/billing`, `/app/settings`
+- App: `/onboarding` (compatibility redirect), `/app/dashboard`, `/app/manuscripts`, `/app/matches`, `/app/matches/:matchRunId/candidates/:candidateId`, `/app/discover/authors`, `/app/discover/publishers`, `/app/requests`, `/app/profile`, `/app/profile/history`, `/app/profiles/publishers/:publisherProfileId`, `/app/profiles/authors/:authorProfileId`, `/app/profiles/manuscripts/:manuscriptId`, `/app/billing`, `/app/settings`
 - Admin: `/admin`, `/admin/reviews`, `/admin/trust-safety`, `/admin/jobs`, `/admin/payments`, `/admin/audit-logs`, `/admin/settings`
 
 UX rules:
@@ -211,7 +230,7 @@ UX rules:
 - Keep a consistent top-level header across public pages and pre-profile-completion authenticated pages.
 - Prefer tables, filters, tabs, dialogs, forms, and dense detail pages.
 - Avoid decorative UI that reduces scannability.
-- Do not expose raw contact details until accepted intro unlock.
+- Do not expose private account contact details until accepted intro unlock. Match-revealed profiles may show explicit owner-approved match-visible contact fields.
 - Do not put Resend API keys or server email logic in the frontend.
 - Configure Sentry with environment/release tags and scrub sensitive fields.
 
@@ -328,31 +347,36 @@ OCR/Document AI is deferred unless explicitly requested.
 
 Matching flow:
 
-1. Validate manuscript and publisher eligibility.
-2. Retrieve candidate publishers from Vertex AI Vector Search.
-3. Apply hard filters for genre, excluded genres, language, target age, accepted formats, and structured content limits.
-4. Re-rank with business rules.
-5. Generate fit reasons, risk reasons, source snippets, and score band.
-6. Store match runs and candidates.
+1. Validate platform gates: requester access, eligibility, processed sample availability for manuscript candidates, publisher discoverability, entitlement, and rate limits.
+2. Run three semantic retrieval paths for manuscript `premise`, `voice`, and `arc`, then merge candidates.
+3. Score against publisher `guidelines`, optional `wishlist`, and optional `catalog`, normalizing across available publisher signals.
+4. Apply structured penalties for genre, audience, manuscript form, word count, and exclusion-topic conflicts; do not remove candidates with broad editorial hard filters.
+5. Hide final scores below `0.35`, store up to 25 candidates, and generate real Vertex/Gemini one-paragraph explanations for the top 10.
+6. Store match runs, candidates, fingerprints, input snapshots, score breakdowns, penalties, safe snippets, and explanation metadata.
 
 Persist version metadata on match outputs:
 
 - matching algorithm version
-- filter version
+- constraint policy version
 - embedding model
 - explanation version
+- explanation model
+- weight profile
 
 Match details must include:
 
 - score band
+- premise, voice, and arc bands
+- one-paragraph LLM explanation for top-10 candidates
 - strong fit reasons
 - weak fit or mismatch reasons
-- shared genres
+- penalties and watch-outs
 - source snippets
 - publisher preference context
 - manuscript metadata comparison
+- intro request CTA state
 
-AI-generated fit reports, report agents, PDF exports, and Google ADK workflows are deferred to V1.5.
+AI-generated fit reports, report agents, PDF exports, Google ADK workflows, comp-title catalog resolution, and specific editor-wishlist query runs are deferred to V1.5.
 
 ## Data Knowledge
 

@@ -188,6 +188,26 @@ export function ManuscriptDetailPage() {
                 label={t("manuscripts.form.targetAgeMax")}
                 value={manuscript.targetAgeMax?.toString() ?? "—"}
               />
+              <MetaField
+                label={t("manuscripts.form.manuscriptForm")}
+                value={manuscript.manuscriptForm ?? "—"}
+              />
+              <MetaField
+                label={t("manuscripts.form.requestable")}
+                value={manuscript.requestable ? "Yes" : "No"}
+              />
+              <MetaField
+                label={t("manuscripts.form.subgenres")}
+                value={manuscript.subgenres?.join(", ") || "—"}
+              />
+              <MetaField
+                label={t("manuscripts.form.audienceCategories")}
+                value={manuscript.audienceCategories?.join(", ") || "—"}
+              />
+              <MetaField
+                label={t("manuscripts.form.declaredThemes")}
+                value={manuscript.declaredThemes?.join(", ") || "—"}
+              />
               {manuscript.synopsis && (
                 <div className="col-span-2 sm:col-span-3">
                   <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -197,6 +217,24 @@ export function ManuscriptDetailPage() {
                     {manuscript.synopsis}
                   </dd>
                 </div>
+              )}
+              {manuscript.logline && (
+                <TextBlock
+                  label={t("manuscripts.form.logline")}
+                  value={manuscript.logline}
+                />
+              )}
+              {manuscript.arcSummary && (
+                <TextBlock
+                  label={t("manuscripts.form.arcSummary")}
+                  value={manuscript.arcSummary}
+                />
+              )}
+              {manuscript.shortTeaser && (
+                <TextBlock
+                  label={t("manuscripts.form.shortTeaser")}
+                  value={manuscript.shortTeaser}
+                />
               )}
             </dl>
           )}
@@ -211,6 +249,16 @@ export function ManuscriptDetailPage() {
                   language: manuscript.language,
                   wordCount: manuscript.wordCount ?? undefined,
                   synopsis: manuscript.synopsis ?? undefined,
+                  logline: manuscript.logline ?? undefined,
+                  subgenres: manuscript.subgenres,
+                  audienceCategories: manuscript.audienceCategories,
+                  manuscriptForm: manuscript.manuscriptForm ?? undefined,
+                  compTitles: manuscript.compTitles,
+                  declaredThemes: manuscript.declaredThemes,
+                  declaredContentWarnings: manuscript.declaredContentWarnings,
+                  arcSummary: manuscript.arcSummary ?? undefined,
+                  shortTeaser: manuscript.shortTeaser ?? undefined,
+                  requestable: manuscript.requestable,
                   targetAgeMin: manuscript.targetAgeMin ?? undefined,
                   targetAgeMax: manuscript.targetAgeMax ?? undefined,
                 }}
@@ -353,6 +401,19 @@ function MetaField({ label, value }: { label: string; value: string }) {
         {label}
       </dt>
       <dd className="mt-0.5 text-sm text-slate-800">{value}</dd>
+    </div>
+  );
+}
+
+function TextBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="col-span-2 sm:col-span-3">
+      <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+        {value}
+      </dd>
     </div>
   );
 }

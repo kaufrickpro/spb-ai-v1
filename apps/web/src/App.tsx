@@ -17,6 +17,7 @@ import {
 } from "./modules/auth/AuthGuard";
 import { WEB_ROUTES } from "./modules/routing/routes";
 import { HomePage } from "./modules/marketing/HomePage";
+import { PublicPublishersPage } from "./modules/marketing/PublicPublishersPage";
 import { AdminDashboardPage } from "./modules/admin/AdminDashboardPage";
 import { AdminProfileReviewsPage } from "./modules/admin/AdminProfileReviewsPage";
 import { AdminAuditLogsPage } from "./modules/admin/AdminAuditLogsPage";
@@ -29,13 +30,21 @@ import { AppPlaceholderPage } from "./modules/layout/AppPlaceholderPage";
 import { AdminSettingsPage } from "./modules/admin/AdminSettingsPage";
 import { ProfilePage } from "./modules/profile/ProfilePage";
 import { LegalPage } from "./modules/legal/LegalPage";
+import {
+  AuthorProfileSurfacePage,
+  ManuscriptProfileSurfacePage,
+  PublisherProfileSurfacePage,
+} from "./modules/profiles/ProfileSurfacePages";
+import { RequestsPage } from "./modules/requests/RequestsPage";
+import { MatchesPage } from "./modules/matches/MatchesPage";
+import { MatchCandidatePage } from "./modules/matches/MatchCandidatePage";
 
 export function App() {
   return (
     <Routes>
       <Route path={WEB_ROUTES.root} element={<HomePage />} />
       <Route path={WEB_ROUTES.features} element={<HomePage />} />
-      <Route path={WEB_ROUTES.publishers} element={<HomePage />} />
+      <Route path={WEB_ROUTES.publishers} element={<PublicPublishersPage />} />
       <Route path={WEB_ROUTES.authors} element={<HomePage />} />
       <Route path={WEB_ROUTES.editorial} element={<HomePage />} />
       <Route path={WEB_ROUTES.works} element={<HomePage />} />
@@ -183,10 +192,7 @@ export function App() {
         path={WEB_ROUTES.matches}
         element={
           <AuthGuard>
-            <AppPlaceholderPage
-              titleKey="appNav.matches"
-              descriptionKey="appPages.matches.description"
-            />
+            <MatchesPage />
           </AuthGuard>
         }
       />
@@ -194,10 +200,7 @@ export function App() {
         path={WEB_ROUTES.matchCandidate}
         element={
           <AuthGuard>
-            <AppPlaceholderPage
-              titleKey="appPages.matchCandidate.title"
-              descriptionKey="appPages.matchCandidate.description"
-            />
+            <MatchCandidatePage />
           </AuthGuard>
         }
       />
@@ -227,10 +230,7 @@ export function App() {
         path={WEB_ROUTES.requests}
         element={
           <AuthGuard>
-            <AppPlaceholderPage
-              titleKey="appNav.requests"
-              descriptionKey="appPages.requests.description"
-            />
+            <RequestsPage />
           </AuthGuard>
         }
       />
@@ -250,6 +250,38 @@ export function App() {
         element={
           <AuthGuard>
             <ProfilePage />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path={WEB_ROUTES.profileHistory}
+        element={
+          <AuthGuard>
+            <MatchesPage />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path={WEB_ROUTES.publisherProfile}
+        element={
+          <AuthGuard>
+            <PublisherProfileSurfacePage />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path={WEB_ROUTES.authorProfile}
+        element={
+          <AuthGuard>
+            <AuthorProfileSurfacePage />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path={WEB_ROUTES.manuscriptProfile}
+        element={
+          <AuthGuard>
+            <ManuscriptProfileSurfacePage />
           </AuthGuard>
         }
       />

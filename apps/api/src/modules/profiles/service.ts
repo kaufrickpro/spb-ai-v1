@@ -217,11 +217,81 @@ export async function completeMarketplaceOnboardingDetails(input: {
       p_actor_user_id: input.user.userId,
       p_biography:
         input.details.role === "author" ? input.details.biography : null,
+      p_style_statement:
+        input.details.role === "author"
+          ? (input.details.styleStatement ?? null)
+          : null,
+      p_influences:
+        input.details.role === "author"
+          ? (input.details.influences ?? [])
+          : null,
       p_focus_genres:
         input.details.role === "publisher" ? input.details.focusGenres : null,
       p_preferred_languages:
         input.details.role === "publisher"
           ? input.details.preferredLanguages
+          : null,
+      p_publisher_name:
+        input.details.role === "publisher"
+          ? (input.details.publisherName ?? null)
+          : null,
+      p_logo_url:
+        input.details.role === "publisher"
+          ? (input.details.logoUrl ?? null)
+          : null,
+      p_website_url:
+        input.details.role === "publisher"
+          ? (input.details.websiteUrl ?? null)
+          : null,
+      p_publisher_biography:
+        input.details.role === "publisher"
+          ? (input.details.about ?? null)
+          : null,
+      p_editorial_note:
+        input.details.role === "publisher"
+          ? (input.details.editorialFocus ?? null)
+          : null,
+      p_what_we_are_looking_for:
+        input.details.role === "publisher"
+          ? (input.details.lookingFor ?? null)
+          : null,
+      p_accepted_primary_genres:
+        input.details.role === "publisher" ? input.details.focusGenres : null,
+      p_accepted_audience_categories:
+        input.details.role === "publisher"
+          ? (input.details.acceptedAudienceCategories ?? [])
+          : null,
+      p_accepted_manuscript_forms:
+        input.details.role === "publisher"
+          ? (input.details.acceptedManuscriptForms ?? [])
+          : null,
+      p_submission_guidelines:
+        input.details.role === "publisher"
+          ? (input.details.submissionGuidelines ?? null)
+          : null,
+      p_recent_acquisitions:
+        input.details.role === "publisher"
+          ? (input.details.recentAcquisitions ?? [])
+          : null,
+      p_best_selling_books:
+        input.details.role === "publisher"
+          ? (input.details.bestSellingBooks ?? [])
+          : null,
+      p_excluded_topics:
+        input.details.role === "publisher"
+          ? (input.details.excludedTopics ?? [])
+          : null,
+      p_editor_wishlist:
+        input.details.role === "publisher"
+          ? (input.details.editorWishlist ?? null)
+          : null,
+      p_imprint_tone:
+        input.details.role === "publisher"
+          ? (input.details.imprintTone ?? null)
+          : null,
+      p_market_positioning:
+        input.details.role === "publisher"
+          ? (input.details.marketPositioning ?? null)
           : null,
       p_primary_genre:
         input.details.role === "author" ? input.details.primaryGenre : null,

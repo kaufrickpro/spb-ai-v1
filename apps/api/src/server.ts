@@ -16,6 +16,9 @@ import { createManuscriptTestState } from "./modules/manuscripts/testState.js";
 import type { ManuscriptTestState } from "./modules/manuscripts/testState.js";
 import { createProfileTestState } from "./modules/profiles/testState.js";
 import type { ProfileTestState } from "./modules/profiles/testState.js";
+import { registerMatchingRoutes } from "./modules/matching/registerMatchingRoutes.js";
+import { createMatchingTestState } from "./modules/matching/testState.js";
+import type { MatchingTestState } from "./modules/matching/testState.js";
 
 type BuildAppOptions = {
   config: ApiConfig;
@@ -24,6 +27,7 @@ type BuildAppOptions = {
   testState?: {
     admin?: AdminTestState;
     manuscripts?: ManuscriptTestState;
+    matching?: MatchingTestState;
     profiles?: ProfileTestState;
   };
 };
@@ -81,6 +85,8 @@ export function buildApp({
     injectedTestState?.manuscripts ?? createManuscriptTestState();
   const profileTestState =
     injectedTestState?.profiles ?? createProfileTestState();
+  const matchingTestState =
+    injectedTestState?.matching ?? createMatchingTestState();
 
   app.addHook("onRequest", async (request, reply) => {
     const requestOrigin = request.headers.origin;
@@ -106,16 +112,24 @@ export function buildApp({
   });
 
   registerHealthRoutes(app);
-  registerProfileRoutes(app, auth, profileTestState);
+  registerProfileRoutes(app, auth, profileTestState, manuscriptTestState);
   registerAdminRoutes(app, {
     auth,
     manuscriptTestState,
+    profileTestState,
     testState,
   });
   registerManuscriptRoutes(app, {
     auth,
     adminTestState: testState,
+    profileTestState,
     testState: manuscriptTestState,
+  });
+  registerMatchingRoutes(app, {
+    auth,
+    manuscriptTestState,
+    profileTestState,
+    testState: matchingTestState,
   });
   registerErrorHandler(app);
 

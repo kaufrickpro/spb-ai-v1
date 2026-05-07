@@ -45,6 +45,14 @@ export function sendConflict(
   return sendApiError(reply, 409, code, message);
 }
 
+export function sendTooManyRequests(
+  reply: FastifyReply,
+  code: string,
+  message: string,
+) {
+  return sendApiError(reply, 429, code, message);
+}
+
 export function sendValidationError(
   reply: FastifyReply,
   message: string,

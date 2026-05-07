@@ -40,6 +40,10 @@ describe("web route map", () => {
       "/app/discover/publishers",
       "/app/requests",
       "/app/profile",
+      "/app/profile/history",
+      "/app/profiles/publishers/:publisherProfileId",
+      "/app/profiles/authors/:authorProfileId",
+      "/app/profiles/manuscripts/:manuscriptId",
       "/app/billing",
       "/app/settings",
     ]);

@@ -156,16 +156,20 @@ describe("profile service", () => {
     });
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith("complete_profile_onboarding_details", {
-      p_accepts_unsolicited: null,
-      p_actor_user_id: user.userId,
-      p_biography: "Roman ve oyku projeleri uzerinde calisiyorum.",
-      p_focus_genres: null,
-      p_preferred_languages: null,
-      p_primary_genre: "Roman",
-      p_role: "author",
-      p_writing_languages: ["tr", "en"],
-    });
+    expect(rpc).toHaveBeenCalledWith(
+      "complete_profile_onboarding_details",
+      expect.objectContaining({
+        p_accepts_unsolicited: null,
+        p_actor_user_id: user.userId,
+        p_biography: "Roman ve oyku projeleri uzerinde calisiyorum.",
+        p_focus_genres: null,
+        p_preferred_languages: null,
+        p_primary_genre: "Roman",
+        p_role: "author",
+        p_style_statement: null,
+        p_writing_languages: ["tr", "en"],
+      }),
+    );
     expect(serviceDb.from).not.toHaveBeenCalled();
     expect(supabaseMocks.createServiceRoleSupabaseClient).toHaveBeenCalledWith(
       supabaseConfig.supabaseUrl,

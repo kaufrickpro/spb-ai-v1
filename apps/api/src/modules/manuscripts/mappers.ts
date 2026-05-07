@@ -22,6 +22,26 @@ export function mapDbManuscript(row: Record<string, unknown>): Manuscript {
       row["target_age_max"] !== null && row["target_age_max"] !== undefined
         ? Number(row["target_age_max"])
         : null,
+    logline: (row["logline"] as string | null) ?? null,
+    subgenres: ((row["subgenres"] as string[] | null) ?? []).filter(Boolean),
+    audienceCategories: (
+      (row["audience_categories"] as string[] | null) ?? []
+    ).filter(Boolean),
+    manuscriptForm: (row["manuscript_form"] as string | null) ?? null,
+    compTitles: ((row["comp_titles"] as string[] | null) ?? []).filter(Boolean),
+    declaredThemes: ((row["declared_themes"] as string[] | null) ?? []).filter(
+      Boolean,
+    ),
+    declaredContentWarnings: (
+      (row["declared_content_warnings"] as string[] | null) ?? []
+    ).filter(Boolean),
+    arcSummary: (row["arc_summary"] as string | null) ?? null,
+    chapterSummaries: Array.isArray(row["chapter_summaries"])
+      ? (row["chapter_summaries"] as Manuscript["chapterSummaries"])
+      : [],
+    shortTeaser: (row["profile_teaser"] as string | null) ?? null,
+    requestable:
+      row["author_profile_visibility"] === "requestable_from_author_profile",
     status: row["status"] as Manuscript["status"],
     adminReviewStatus: row[
       "admin_review_status"

@@ -64,6 +64,10 @@ Authenticated routes:
 - `/app/discover/publishers`
 - `/app/requests`
 - `/app/profile`
+- `/app/profile/history`
+- `/app/profiles/publishers/:publisherProfileId`
+- `/app/profiles/authors/:authorProfileId`
+- `/app/profiles/manuscripts/:manuscriptId`
 - `/app/billing`
 - `/app/settings`
 
@@ -162,17 +166,37 @@ For Google social auth, keep the distinction clear:
 
 Authors create and manage manuscripts, upload sample files, and view eligibility/processing status.
 
+### Public Publisher Directory
+
+`/publishers` is a logged-out-safe publisher directory. It shows only admin-approved publisher logo, publisher name, and valid `https` website. It must not link to full publisher profiles or expose genres, guidelines, wishlists, acquisitions, matching data, contact details, or marketplace-only profile fields.
+
 ### Matches
 
-Show ranked publisher recommendations for a selected manuscript. Cards must include score band, fit reasons, risk reasons, shared genres, source snippets, intro request CTA, and match detail CTA.
+Show the active matching workspace for both roles. Authors can run publisher matches for a selected manuscript. Publishers can run manuscript matches from their general publisher profile. Cards must include score band, premise/voice/arc bands, fit reasons, watch-outs, source snippets, intro request CTA state, and match detail CTA.
+
+Top-10 candidates show a stored one-paragraph LLM explanation generated during the match run. Ranks 11-25 remain inspectable through structured details without requiring an LLM paragraph.
 
 ### Match Detail
 
-Show stored candidate explanation data: full fit reasons, mismatch/risk reasons, shared genres, source snippets, publisher preference context, manuscript metadata comparison, and intro request state. Do not generate a separate report.
+Show stored candidate explanation data in a user-friendly details dropdown: one-paragraph explanation when present, premise/voice/arc bands, good signs, watch-outs, safe source snippets, publisher preference context, manuscript metadata comparison, and intro request state. Do not generate a separate report from the frontend or on detail open.
+
+### Match-Revealed Profiles
+
+Full profile pages are authenticated app pages, not public profiles. Candidate names in match results may link to app-only profile pages when the viewer has access through a stored match candidate, approved manuscript access request, owner access, admin access, or later accepted intro.
+
+Publisher profile pages show publisher name, logo, website, biography/about, editorial section, what they are looking for, accepted matching fields, submission guidelines, recent acquisitions, best-selling books, and owner-approved match-visible contact fields. They must not show private editor contact, hidden admin state, billing state, or internal scores.
+
+Author profile pages show author photo, biography, "My style", influences, owner-approved match-visible contact fields, and manuscripts visible to the viewer. Matched or access-approved manuscripts may show full profile cards. Other author manuscripts may show only requestable teasers when the author opted into requestability for that manuscript.
+
+Manuscript profile pages show manuscript title, logline, synopsis, primary genre, subgenres, audience categories, manuscript form, declared themes, arc/summary display, and a compact author card linking back to the author profile. They must not show full manuscript text, full sample downloads, private notes, private account contact, or exact internal scores from match access alone.
+
+### Profile History
+
+`/app/profile/history` stores durable user history. Step 10 ships this with match runs only. Show latest runs first, include direction, source manuscript or publisher profile, created date, status, stale badge, candidate count, view results action, and rematch action. Rematch creates a new run and leaves older stale runs visible.
 
 ### Requests
 
-Show sent and received intro requests. Accepted requests reveal contact details and sample-file access.
+Show sent and received intro requests plus manuscript access requests. Manuscript access requests let an eligible publisher who discovered an author through matching ask to view another requestable manuscript profile. Author approval unlocks that manuscript profile only for the requesting publisher. Accepted intro requests remain the deeper relationship unlock for private contact details and sample-file access.
 
 ### Admin
 
@@ -187,7 +211,7 @@ Support exception review, quarantine, reports, system failures, jobs, payment ev
 - Use tabs for dense detail pages.
 - Use dialogs for approval, rejection, quarantine, restore, and confirmation flows.
 - Avoid decorative layouts that reduce scannability.
-- Do not expose raw contact details until an intro request is accepted.
+- Do not expose private account contact details until an intro request is accepted. Match-revealed profiles may show only explicit owner-approved match-visible contact fields.
 - Do not put Resend API keys or server email logic in the frontend.
 - Configure Sentry with environment and release tags, and scrub sensitive user/document fields from captured events.
 - Keep loading, empty, error, and permission-denied states explicit.

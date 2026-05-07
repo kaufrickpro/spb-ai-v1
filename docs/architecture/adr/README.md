@@ -12,6 +12,7 @@ This folder contains short decision records for major technical choices.
 - [ADR 6: Use Resend For Transactional Email](0006-use-resend-for-transactional-email.md)
 - [ADR 7: Simplify V1 And Lock Risk Guardrails](0007-simplify-v1-and-lock-risk-guardrails.md)
 - [ADR 8: Temporary Staging Document Scanner Posture](0008-temporary-staging-document-scanner-posture.md)
+- [ADR 9: Use Three-Axis Matching With Soft Constraints](0009-three-axis-soft-constraint-matching.md)
 
 Use this format:
 

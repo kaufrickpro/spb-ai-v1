@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   type CompleteOnboardingDetailsRequest,
+  type MatchVisibleContactSettings,
   type Profile,
   type ProfileDetails,
   ProfileResponseSchema,
@@ -14,11 +15,25 @@ export type ProfileTestState = {
       details: ProfileDetails | null;
     }
   >;
+  matchVisibleContactsByProfileId: Map<string, MatchVisibleContactSettings>;
+  publicDirectoryStatusByProfileId: Map<
+    string,
+    "approved" | "hidden" | "rejected"
+  >;
+  profileAccessGrants: Array<{
+    viewerUserId: string;
+    targetProfileId: string;
+    source: "match_candidate" | "manuscript_access";
+    manuscriptId?: string;
+  }>;
 };
 
 export function createProfileTestState(): ProfileTestState {
   return {
     profilesByUserId: new Map(),
+    matchVisibleContactsByProfileId: new Map(),
+    publicDirectoryStatusByProfileId: new Map(),
+    profileAccessGrants: [],
   };
 }
 
@@ -52,6 +67,33 @@ export function createTestProfile(
   const record = { profile, details: null as null };
   state.profilesByUserId.set(userId, record);
   return record;
+}
+
+export function addTestProfileAccessGrant(
+  state: ProfileTestState,
+  grant: ProfileTestState["profileAccessGrants"][number],
+) {
+  state.profileAccessGrants.push(grant);
+}
+
+export function findTestProfileById(
+  state: ProfileTestState,
+  profileId: string,
+): { profile: Profile; details: ProfileDetails | null } | null {
+  for (const record of state.profilesByUserId.values()) {
+    if (record.profile.id === profileId) {
+      return record;
+    }
+  }
+
+  return null;
+}
+
+export function findTestProfileByUserId(
+  state: ProfileTestState,
+  userId: string,
+): { profile: Profile; details: ProfileDetails | null } | null {
+  return state.profilesByUserId.get(userId) ?? null;
 }
 
 export function getTestProfile(

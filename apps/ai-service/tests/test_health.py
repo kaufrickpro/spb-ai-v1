@@ -36,6 +36,21 @@ def test_ready_endpoint_reports_runtime_not_ready() -> None:
     assert response.json() == {"status": "not_ready", "service": "ai-service"}
 
 
+def test_internal_matching_endpoint_accepts_trusted_run_id_only() -> None:
+    app = create_app(AiServiceConfig(provider_mode="local"))
+    response = TestClient(app).post(
+        "/internal/matching/run",
+        json={"match_run_id": "10000000-0000-4000-8000-000000000001"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "succeeded",
+        "candidate_count": 0,
+        "failure_code": None,
+    }
+
+
 def test_default_ingestion_worker_uses_local_supabase_settings() -> None:
     worker = create_default_ingestion_worker(
         AiServiceConfig(

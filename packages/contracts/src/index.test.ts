@@ -25,6 +25,8 @@ import {
   ProfileResponseSchema,
   DocumentProcessingFailureCodeSchema,
   DocumentSchema,
+  MatchRunRequestSchema,
+  MatchRunResponseSchema,
 } from "./index";
 
 const now = "2026-04-30T10:00:00.000Z";
@@ -82,6 +84,55 @@ describe("first-slice API contracts", () => {
 
     expect(author.role).toBe("author");
     expect(publisher.role).toBe("publisher");
+  });
+
+  it("accepts match run requests and stored candidate responses", () => {
+    const request = MatchRunRequestSchema.parse({
+      direction: "author_to_publisher",
+      manuscriptId: id,
+    });
+    const response = MatchRunResponseSchema.parse({
+      run: {
+        id,
+        direction: request.direction,
+        requesterProfileId: userId,
+        sourceManuscriptId: id,
+        sourcePublisherProfileId: null,
+        status: "succeeded",
+        stale: false,
+        candidateCount: 1,
+        failureCode: null,
+        inputFingerprint: "abc123",
+        sourceTitle: "Gece Yarısı Şehri",
+        createdAt: now,
+        updatedAt: now,
+      },
+      candidates: [
+        {
+          id: "00000000-0000-4000-8000-000000000003",
+          runId: id,
+          rank: 1,
+          candidateProfileId: userId,
+          candidateManuscriptId: null,
+          candidateType: "publisher",
+          title: "İstanbul Kitapları",
+          subtitle: "Publisher profile",
+          scoreBand: "strong",
+          axisBands: {
+            premise: "strong",
+            voice: "moderate",
+            arc: "moderate",
+          },
+          explanation: "A bounded explanation.",
+          fitReasons: ["Genre overlap."],
+          riskReasons: [],
+          profilePath: "/app/profiles/publishers/example",
+          manuscriptProfilePath: null,
+        },
+      ],
+    });
+
+    expect(response.candidates[0]?.candidateType).toBe("publisher");
   });
 
   it("rejects client-created admin profiles", () => {
@@ -457,6 +508,7 @@ describe("first-slice API contracts", () => {
       "profiles",
       "admin",
       "manuscripts",
+      "matches",
       "uploads",
       "documents",
     ]);
@@ -527,6 +579,7 @@ describe("first-slice API contracts", () => {
       "/api/v1/admin/payments/health",
       "/api/v1/admin/pending-profiles",
       "/api/v1/admin/profiles/{profileId}/decision",
+      "/api/v1/admin/publishers/{publisherProfileId}/public-directory",
       "/api/v1/admin/reviews",
       "/api/v1/admin/reviews/{reviewId}",
       "/api/v1/admin/reviews/{reviewId}/decision",
@@ -534,11 +587,25 @@ describe("first-slice API contracts", () => {
       "/api/v1/documents/{id}",
       "/api/v1/documents/{id}/complete-upload",
       "/api/v1/documents/{id}/download-url",
+      "/api/v1/manuscript-access-requests",
+      "/api/v1/manuscript-access-requests/{requestId}/approve",
+      "/api/v1/manuscript-access-requests/{requestId}/reject",
       "/api/v1/manuscripts",
       "/api/v1/manuscripts/{id}",
+      "/api/v1/manuscripts/{manuscriptId}/access-requests",
+      "/api/v1/matches",
+      "/api/v1/matches/run",
+      "/api/v1/matches/{matchRunId}",
+      "/api/v1/matches/{matchRunId}/candidates/{candidateId}",
+      "/api/v1/profile/history",
       "/api/v1/profiles",
+      "/api/v1/profiles/authors/{authorProfileId}",
+      "/api/v1/profiles/manuscripts/{manuscriptId}",
       "/api/v1/profiles/me",
+      "/api/v1/profiles/me/match-visible-contacts",
       "/api/v1/profiles/me/onboarding-details",
+      "/api/v1/profiles/publishers/{publisherProfileId}",
+      "/api/v1/public/publishers",
       "/api/v1/uploads/local/{uploadToken}",
       "/api/v1/uploads/signed-url",
       "/health",

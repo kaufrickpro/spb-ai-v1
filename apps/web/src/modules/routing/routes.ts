@@ -31,6 +31,10 @@ export const WEB_ROUTES = {
   requests: "/app/requests",
   billing: "/app/billing",
   profile: "/app/profile",
+  profileHistory: "/app/profile/history",
+  publisherProfile: "/app/profiles/publishers/:publisherProfileId",
+  authorProfile: "/app/profiles/authors/:authorProfileId",
+  manuscriptProfile: "/app/profiles/manuscripts/:manuscriptId",
   settings: "/app/settings",
   admin: "/admin",
   adminMfa: "/admin/mfa",
@@ -74,6 +78,10 @@ export const DOCUMENTED_APP_ROUTES = [
   WEB_ROUTES.discoverPublishers,
   WEB_ROUTES.requests,
   WEB_ROUTES.profile,
+  WEB_ROUTES.profileHistory,
+  WEB_ROUTES.publisherProfile,
+  WEB_ROUTES.authorProfile,
+  WEB_ROUTES.manuscriptProfile,
   WEB_ROUTES.billing,
   WEB_ROUTES.settings,
 ] as const;
@@ -113,6 +121,10 @@ export const APP_REGISTERED_ROUTE_PATHS = [
   WEB_ROUTES.requests,
   WEB_ROUTES.billing,
   WEB_ROUTES.profile,
+  WEB_ROUTES.profileHistory,
+  WEB_ROUTES.publisherProfile,
+  WEB_ROUTES.authorProfile,
+  WEB_ROUTES.manuscriptProfile,
   WEB_ROUTES.settings,
   WEB_ROUTES.adminReviews,
   WEB_ROUTES.adminUsers,
@@ -134,6 +146,18 @@ export function matchCandidatePath(input: {
   candidateId: string;
 }): string {
   return `/app/matches/${input.matchRunId}/candidates/${input.candidateId}`;
+}
+
+export function publisherProfilePath(publisherProfileId: string): string {
+  return `/app/profiles/publishers/${publisherProfileId}`;
+}
+
+export function authorProfilePath(authorProfileId: string): string {
+  return `/app/profiles/authors/${authorProfileId}`;
+}
+
+export function manuscriptProfilePath(manuscriptId: string): string {
+  return `/app/profiles/manuscripts/${manuscriptId}`;
 }
 
 export function onboardingDetailsPath(role: "author" | "publisher"): string {

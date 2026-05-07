@@ -180,7 +180,7 @@ Use a workflow that makes mistakes cheap and visible:
 - The production-shaped Step 9B plumbing is wired behind config and adapters: staging/production require `DOCUMENT_PROCESSING_PROVIDER=cloud_tasks`, private GCS storage, Cloud Tasks queue config, and an AI service URL; local development keeps `DOCUMENT_PROCESSING_PROVIDER=local`, local storage, and fake signed URLs.
 - Cloud Tasks document-processing tasks carry only `{ job_id }` and use OIDC with the configured Cloud Tasks invoker service account to call the private AI Cloud Run service. Browser/frontend code never receives service-role credentials, GCS privileged access, or AI-service internal URLs.
 - The API can issue private GCS signed upload/download URLs when `STORAGE_PROVIDER=gcs`; the AI service can read private GCS objects through its service identity when `STORAGE_PROVIDER=gcs` and `GCS_BUCKET_PRIVATE_UPLOADS` are configured.
-- Local development uses reference-only fake embedding records. Step 9 intentionally stops at embedding references; Step 10 owns fake vector retrieval first, then real Vertex AI embeddings and Vertex AI Vector Search wiring.
+- Local development uses reference-only fake embedding records. Step 9 intentionally stops at embedding references; Step 10 owns the full three-axis matching model, with real Vertex/Gemini match explanations and Vertex AI embeddings/Vector Search behind provider adapters as the production retrieval path.
 - Step 9c implements the scanner issue set (#34-#39): `scanner_failed` is part of the shared contract/schema/AI enum, the AI worker runs a `DocumentScanner` boundary before UTF-8 decoding or parsing, local development/tests can simulate `not_scanned`, `clean`, `suspicious`, `quarantined`, and `scanner_failed`, and real scanning uses `DOCUMENT_SCANNER_PROVIDER=http-clamav` with `DOCUMENT_SCANNER_ENDPOINT`, `DOCUMENT_SCANNER_TOKEN`, and `DOCUMENT_SCANNER_TIMEOUT_SECONDS`.
 - Scanner outcomes are fail-closed. `clean` continues ingestion. `suspicious` and `quarantined` stop before parsing with `scanner_suspicious`, write no chunks or embeddings, and route to Needs Review or Quarantine. Provider errors, timeouts, malformed payloads, and unknown response values fail as retryable `scanner_failed`.
 - Scanner metadata must stay safe and bounded: `scanner`, `scanner_result`, `scanner_version`, `scanner_signature`, and `scanner_error_type` only. API/admin sanitizers must not preserve manuscript text, chunks, original filenames, storage paths, signed URLs, author IDs, tokens, or raw provider payloads.
@@ -198,13 +198,21 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 10. Build Matching Vertical Slice
 
-- Implement eligibility checks for `eligibility_status = 'eligible'`, valid profile/manuscript/document data, successful ingestion, and entitlement/rate limits.
-- Retrieve candidate publishers using the local fake vector adapter first.
-- After the fake matching loop works, add the real Vertex embedding provider and Vertex AI Vector Search upsert/query path. Keep numeric vectors out of Postgres; store only `vector_index_name`, `vector_datapoint_id`, model, and safe metadata in `embedding_records`.
-- Apply hard filters for genre, excluded genres, language, age range, accepted formats, and structured content limits.
-- Store `match_runs` and `match_candidates`.
-- Return score band, fit reasons, risk reasons, shared genres, source snippets, intro CTA state, and match detail CTA state.
+- Status: Step 10 Phase 0 profile/access foundation is implemented for GitHub issues #40-#45. GitHub issues #47-#51 are partially implemented as a tracer matching slice: author/publisher matching input fields, durable match run/candidate records, profile history, author-to-publisher and publisher-to-manuscript run APIs, private AI-service `{ match_run_id }` boundary, deterministic safe candidate persistence, and basic match UI are in place. Real retrieval/scoring quality, Vertex/Gemini explanations, and production Vector Search remain future work.
+- Phase 0: build the profile/access foundation before matching. Add match-revealed publisher, author, and manuscript profile pages; public `/publishers` directory with only admin-approved logo/name/website; owner-approved match-visible contact fields; manual manuscript access requests; and admin public directory approval.
+- Implement both author-to-publisher and publisher-to-manuscript match runs.
+- Keep hard gates narrow: requester authorization, eligible profile/manuscript where applicable, successful processed sample for manuscript candidates, discoverable publisher profile, entitlement checks, and rate limits.
+- Add matching-required author fields: primary genre, subgenres, audience categories, manuscript form, logline, synopsis, and either arc summary or chapter summaries. Collect optional comp titles, declared themes, and declared content warnings.
+- Add matching-required publisher fields: publisher name, accepted primary genres, accepted audience categories, accepted manuscript forms, and submission guidelines. Keep editor wishlist and recent acquisitions optional.
+- Use three manuscript semantic axes: `premise`, `voice`, and `arc`. Use publisher semantic signals: `guidelines`, optional `wishlist`, and optional `catalog`.
+- Track semantic signal freshness in `match_signal_sources`; keep numeric vectors out of Postgres and store only vector references in `embedding_records`.
+- Apply genre, audience, manuscript-form, word-count, and exclusion-topic conflicts as penalties and watch-outs, not broad hard filters.
+- Retrieve more candidates than are shown, hide final scores below `0.35`, store up to 25 visible candidates, and generate real Vertex/Gemini LLM explanations for the top 10.
+- Store `match_runs` and `match_candidates` with fingerprints, input snapshots, score breakdowns, penalties, safe snippets, explanation metadata, and stale-run support.
+- Return score band, axis bands, one-paragraph explanation when present, fit reasons, risk reasons, snippets, intro CTA state, and match detail CTA state.
+- Expose prior match runs under profile history. Rematch always creates a new run; old runs remain visible and may be marked stale.
 - Ensure subscription plan never secretly boosts relevance.
+- The detailed Step 10 implementation plan lives in `docs/step-10-matching-implementation-plan.md`.
 
 ### 11. Build Intro Requests And Contact Unlock
 
@@ -233,7 +241,6 @@ Use a workflow that makes mistakes cheap and visible:
 ### 14. Build Notifications And Email
 
 - Implement in-app notifications first.
-- Add Resend adapter with local stub first, real Resend later.
 - Send transactional emails for profile decisions, manuscript decisions, intro request updates, and subscription updates.
 - Verify Resend webhook signatures before processing delivery events.
 - Do not email manuscript text, document chunks, signed URLs, raw PayTR payloads, or unreleased contact details.
@@ -242,7 +249,7 @@ Use a workflow that makes mistakes cheap and visible:
 ### 15. Build Frontend Product Screens
 
 - Public pages: home, pricing, login, signup, signup complete compatibility redirect, auth callback, forgot password, terms, privacy, KVKK, cookies.
-- App pages: dashboard, manuscripts, manuscript detail, matches, guarded match detail placeholder, guarded discover authors/publishers placeholders, requests, profile, billing, settings. Keep `/onboarding` only as a compatibility redirect until removed.
+- App pages: dashboard, manuscripts, manuscript detail, matches, guarded match detail/profile pages, guarded discover authors/publishers placeholders, requests, profile, profile history, match-revealed publisher/author/manuscript profiles, billing, settings. Keep `/onboarding` only as a compatibility redirect until removed.
 - Admin pages: dashboard, reviews, users, manuscripts, publishers, jobs, payments, audit logs, settings.
 - Public pages should be SEO-oriented and prerendered while the authenticated app remains a SPA.
 - Add a static health route or file for the web container and Cloud Run health checks.
@@ -348,6 +355,7 @@ Use a workflow that makes mistakes cheap and visible:
   - Cloud Tasks adapter.
   - Sentry telemetry setup.
   - Vertex AI retrieval/embedding adapter.
+  - Vertex/Gemini explanation adapter.
 - Environment config must include public frontend config, server-only API secrets, AI service secrets, provider credentials, and per-environment URLs.
 - Deployable services must expose health checks and run from environment-agnostic container images.
 - MCP server credentials must be stored outside the repo in local MCP config, CI secrets, or the provider's approved credential store.
@@ -357,7 +365,7 @@ Use a workflow that makes mistakes cheap and visible:
 
 - Unit tests:
   - matching/scoring
-  - hard filters
+  - platform gates and soft-constraint penalties
   - quota enforcement
   - PayTR hash validation
   - Resend webhook verification
@@ -376,7 +384,7 @@ Use a workflow that makes mistakes cheap and visible:
 
 - RLS/security tests:
   - cross-user profile access denial
-  - locked contact detail denial before accepted intro
+  - private contact detail denial before accepted intro
   - document access denial before accepted intro
   - admin-only route enforcement
   - payment event non-readability

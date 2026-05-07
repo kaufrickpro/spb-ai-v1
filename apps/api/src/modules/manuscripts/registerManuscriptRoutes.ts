@@ -4,8 +4,11 @@ import {
   CreateManuscriptRequestSchema,
   DocumentDownloadUrlResponseSchema,
   DocumentResponseSchema,
+  ManuscriptAccessRequestListResponseSchema,
+  ManuscriptAccessRequestResponseSchema,
   MAX_FILE_SIZE_BYTES,
   ManuscriptListResponseSchema,
+  ManuscriptProfileResponseSchema,
   ManuscriptResponseSchema,
   UpdateManuscriptRequestSchema,
   UploadSignedUrlRequestSchema,
@@ -17,11 +20,13 @@ import {
 } from "../auth/requestAuth.js";
 import {
   sendConflict,
+  sendForbidden,
   sendInternalServerError,
   sendNotFound,
   sendValidationError,
 } from "../../lib/http/errors.js";
 import type { AdminTestState } from "../admin/testState.js";
+import type { ProfileTestState } from "../profiles/testState.js";
 import { readLocalUpload, saveLocalUpload } from "../storage/localStorage.js";
 import {
   verifyLocalDownloadToken,
@@ -46,16 +51,29 @@ import {
   buildUploadUrlResponse,
   SUPPORTED_SAMPLE_MIME_TYPES,
 } from "./uploadUrls.js";
+import {
+  createManuscriptAccessRequest,
+  decideManuscriptAccessRequest,
+  getManuscriptProfilePage,
+  listManuscriptAccessRequests,
+  ManuscriptProfileAccessError,
+} from "./profileAccessService.js";
 
 type RegisterManuscriptRoutesOptions = {
   adminTestState: AdminTestState;
   auth: AuthDependencies;
+  profileTestState: ProfileTestState;
   testState: ManuscriptTestState;
 };
 
 export function registerManuscriptRoutes(
   app: FastifyInstance,
-  { adminTestState, auth, testState }: RegisterManuscriptRoutesOptions,
+  {
+    adminTestState,
+    auth,
+    profileTestState,
+    testState,
+  }: RegisterManuscriptRoutesOptions,
 ) {
   registerSampleContentTypeParsers(app);
 
@@ -397,6 +415,137 @@ export function registerManuscriptRoutes(
   });
 
   app.get(
+    "/api/v1/profiles/manuscripts/:manuscriptId",
+    async (request, reply) => {
+      const user = await requireAuthenticatedUser(request, reply, auth);
+      if (!user) return;
+
+      const manuscriptId = parseUuidParam(
+        request.params,
+        "manuscriptId",
+        reply,
+      );
+      if (!manuscriptId) return;
+
+      try {
+        const response = await getManuscriptProfilePage({
+          config: auth.config,
+          manuscriptId,
+          manuscriptTestState: testState,
+          profileTestState: profileTestState,
+          user,
+        });
+        return reply.send(ManuscriptProfileResponseSchema.parse(response));
+      } catch (error) {
+        return sendManuscriptProfileAccessError(app, reply, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/v1/manuscripts/:manuscriptId/access-requests",
+    async (request, reply) => {
+      const user = await requireAuthenticatedUser(request, reply, auth);
+      if (!user) return;
+
+      const manuscriptId = parseUuidParam(
+        request.params,
+        "manuscriptId",
+        reply,
+      );
+      if (!manuscriptId) return;
+
+      try {
+        const response = await createManuscriptAccessRequest({
+          config: auth.config,
+          manuscriptId,
+          manuscriptTestState: testState,
+          profileTestState,
+          user,
+        });
+        return reply
+          .code(201)
+          .send(ManuscriptAccessRequestResponseSchema.parse(response));
+      } catch (error) {
+        return sendManuscriptProfileAccessError(app, reply, error);
+      }
+    },
+  );
+
+  app.get("/api/v1/manuscript-access-requests", async (request, reply) => {
+    const user = await requireAuthenticatedUser(request, reply, auth);
+    if (!user) return;
+
+    try {
+      const response = await listManuscriptAccessRequests({
+        config: auth.config,
+        manuscriptTestState: testState,
+        profileTestState,
+        user,
+      });
+      return reply.send(
+        ManuscriptAccessRequestListResponseSchema.parse(response),
+      );
+    } catch (error) {
+      return sendManuscriptProfileAccessError(app, reply, error);
+    }
+  });
+
+  app.post(
+    "/api/v1/manuscript-access-requests/:requestId/approve",
+    async (request, reply) => {
+      const user = await requireAuthenticatedUser(request, reply, auth);
+      if (!user) return;
+
+      const requestId = parseUuidParam(request.params, "requestId", reply);
+      if (!requestId) return;
+
+      try {
+        const response = await decideManuscriptAccessRequest({
+          config: auth.config,
+          decision: "approved",
+          manuscriptTestState: testState,
+          profileTestState,
+          requestId,
+          user,
+        });
+        return reply.send(
+          ManuscriptAccessRequestResponseSchema.parse(response),
+        );
+      } catch (error) {
+        return sendManuscriptProfileAccessError(app, reply, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/v1/manuscript-access-requests/:requestId/reject",
+    async (request, reply) => {
+      const user = await requireAuthenticatedUser(request, reply, auth);
+      if (!user) return;
+
+      const requestId = parseUuidParam(request.params, "requestId", reply);
+      if (!requestId) return;
+
+      try {
+        const response = await decideManuscriptAccessRequest({
+          config: auth.config,
+          decision: "rejected",
+          manuscriptTestState: testState,
+          profileTestState,
+          requestId,
+          user,
+        });
+        return reply.send(
+          ManuscriptAccessRequestResponseSchema.parse(response),
+        );
+      } catch (error) {
+        return sendManuscriptProfileAccessError(app, reply, error);
+      }
+    },
+  );
+
+  app.get(
     "/api/v1/documents/local-download/:downloadToken",
     async (request, reply) => {
       if (auth.config.storageProvider === "gcs") {
@@ -508,6 +657,30 @@ function sendManuscriptServiceError(
   }
 
   app.log.error(error, "Failed to handle manuscript request");
+  return sendInternalServerError(reply);
+}
+
+function sendManuscriptProfileAccessError(
+  app: FastifyInstance,
+  reply: FastifyReply,
+  error: unknown,
+) {
+  if (error instanceof ManuscriptProfileAccessError) {
+    if (error.kind === "not_found") {
+      return sendNotFound(reply, error.message);
+    }
+    if (error.kind === "forbidden") {
+      return sendForbidden(reply, error.message);
+    }
+    if (error.kind === "conflict") {
+      return sendConflict(reply, "manuscript_access_conflict", error.message);
+    }
+    if (error.kind === "not_requestable") {
+      return sendValidationError(reply, error.message, [], "not_requestable");
+    }
+  }
+
+  app.log.error(error, "Failed to handle manuscript profile access request");
   return sendInternalServerError(reply);
 }
 

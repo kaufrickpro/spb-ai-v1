@@ -64,6 +64,19 @@ export async function createAuthorManuscript(
       synopsis: input.request.synopsis ?? null,
       target_age_min: input.request.targetAgeMin ?? null,
       target_age_max: input.request.targetAgeMax ?? null,
+      logline: input.request.logline ?? null,
+      subgenres: input.request.subgenres ?? [],
+      audience_categories: input.request.audienceCategories ?? [],
+      manuscript_form: input.request.manuscriptForm ?? null,
+      comp_titles: input.request.compTitles ?? [],
+      declared_themes: input.request.declaredThemes ?? [],
+      declared_content_warnings: input.request.declaredContentWarnings ?? [],
+      arc_summary: input.request.arcSummary ?? null,
+      chapter_summaries: input.request.chapterSummaries ?? [],
+      profile_teaser: input.request.shortTeaser ?? null,
+      author_profile_visibility: input.request.requestable
+        ? "requestable_from_author_profile"
+        : "match_revealed_only",
       status: "draft",
       admin_review_status: "not_submitted",
       eligibility_status: "eligible",
@@ -188,6 +201,37 @@ function buildManuscriptUpdatePayload(
   }
   if (input.targetAgeMax !== undefined) {
     updatePayload["target_age_max"] = input.targetAgeMax;
+  }
+  if (input.logline !== undefined) updatePayload["logline"] = input.logline;
+  if (input.subgenres !== undefined)
+    updatePayload["subgenres"] = input.subgenres;
+  if (input.audienceCategories !== undefined) {
+    updatePayload["audience_categories"] = input.audienceCategories;
+  }
+  if (input.manuscriptForm !== undefined) {
+    updatePayload["manuscript_form"] = input.manuscriptForm;
+  }
+  if (input.compTitles !== undefined)
+    updatePayload["comp_titles"] = input.compTitles;
+  if (input.declaredThemes !== undefined) {
+    updatePayload["declared_themes"] = input.declaredThemes;
+  }
+  if (input.declaredContentWarnings !== undefined) {
+    updatePayload["declared_content_warnings"] = input.declaredContentWarnings;
+  }
+  if (input.arcSummary !== undefined) {
+    updatePayload["arc_summary"] = input.arcSummary;
+  }
+  if (input.chapterSummaries !== undefined) {
+    updatePayload["chapter_summaries"] = input.chapterSummaries;
+  }
+  if (input.shortTeaser !== undefined) {
+    updatePayload["profile_teaser"] = input.shortTeaser;
+  }
+  if (input.requestable !== undefined) {
+    updatePayload["author_profile_visibility"] = input.requestable
+      ? "requestable_from_author_profile"
+      : "match_revealed_only";
   }
   return updatePayload;
 }

@@ -56,6 +56,12 @@ They create `public.profiles`, `public.author_profiles`, `public.publisher_profi
 
 Step 9 reprocessing uses `public.replace_document_ingestion_outputs(...)` as a service-role-only RPC. It replaces one document's active `document_chunks` and chunk-scoped `embedding_records` in one database transaction, while preserving `public.document_processing_jobs` history and keeping original file bytes out of Postgres.
 
+Step 10 tracer matching adds `match_signal_sources`, `match_runs`, and
+`match_candidates` in `20260507124500_step10_matching_runs.sql`, plus the
+remaining manuscript/publisher matching fields needed by GitHub issues #47-#51.
+Existing remote databases must apply this migration after
+`20260507103000_step10_profile_access_foundation.sql`.
+
 Do not create the full V1 schema upfront. Matching, intro requests, billing, and the broader discovery/runtime tables should still arrive in later vertical slices. Larger future domains may split schema and RLS into separate migrations when review clarity matters.
 
 Every future schema change must be introduced with a new migration. Never make manual dashboard-only schema edits without backfilling a migration.
@@ -155,6 +161,20 @@ Future profile/contact columns:
 - `approved_at timestamptz`
 - `approved_by uuid references profiles(id)`
 
+Step 10 match-revealed profile/contact fields:
+
+- `public_contact_email text`
+- `public_phone text`
+- `website_url text`
+- `social_links jsonb not null default '{}'::jsonb`
+- `contact_visibility jsonb not null default '{}'::jsonb`
+
+Rules:
+
+- Match-visible contact must be explicit per field or link. Do not infer visibility from a value existing.
+- Private account email and phone are not match-visible by default.
+- Accepted intro can unlock deeper relationship contact and sample access later; match-revealed profile access alone does not.
+
 Rules:
 
 - A normal user must choose exactly one role: `author` or `publisher`.
@@ -162,7 +182,7 @@ Rules:
 - Profiles become discoverable automatically when profile checks pass and `eligibility_status = 'eligible'`.
 - Profiles with `eligibility_status in ('limited', 'blocked', 'quarantined')` must not appear in discovery or matching.
 - `review_outcome` records whether eligibility came from automation or an admin override.
-- Contact fields are visible only to the owner, admins, or accepted intro counterparties.
+- Private contact fields are visible only to the owner, admins, or accepted intro counterparties. Explicit match-visible contact fields may be shown on match-revealed profiles or profiles unlocked by approved manuscript access.
 - Profile rows are created through the Node API with a service-role Supabase
   client. Browser-authenticated users may update only ordinary owner profile
   fields; direct owner writes to `approval_status`, `eligibility_status`,
@@ -218,10 +238,19 @@ Future author detail columns:
 - `primary_genre_ids uuid[] not null default '{}'`
 - `author_statement text`
 
+Step 10 match-revealed author profile fields:
+
+- `profile_photo_url` from `profiles`, or a placeholder in the UI
+- `biography text`
+- `style_statement text`
+- `influences text[] not null default '{}'::text[]`
+
 Rules:
 
 - `profile_id` must point to a profile with role `author`.
 - Matching should primarily use manuscripts, not the author profile alone.
+- Author profile pages are app-only and require match-revealed access, approved manuscript access, owner/admin access, or later accepted intro.
+- Author profile pages show only manuscripts visible to the viewer. Directly matched or access-approved manuscripts can show profile cards; other eligible manuscripts can show requestable teasers only when the author opted that manuscript into requestability.
 
 ### `manuscripts`
 
@@ -246,12 +275,33 @@ Current executable columns:
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`
 
+Step 10 matching fields:
+
+- `primary_genre text not null`
+- `subgenres text[] not null default '{}'::text[]`
+- `audience_categories text[] not null`
+- `manuscript_form text not null`
+- `logline text not null`
+- `arc_summary text`
+- `chapter_summaries jsonb not null default '[]'::jsonb`
+- `comp_titles text[] not null default '{}'::text[]`
+- `declared_themes text[] not null default '{}'::text[]`
+- `declared_content_warnings text[] not null default '{}'::text[]`
+- `derived_flagged_themes jsonb not null default '[]'::jsonb`
+
+Step 10 profile/access fields:
+
+- `profile_teaser text`
+- `author_profile_visibility text not null default 'match_revealed_only' check (author_profile_visibility in ('match_revealed_only', 'requestable_from_author_profile'))`
+
 Rules:
 
 - `author_id` is the authenticated author user id for the Step 8 slice.
 - Manuscript records are author-owned and author-only in the Step 8 UI/API.
 - Clean manuscript creation can become `eligible`/`auto_approved` automatically. Admin review rows are created only for exception outcomes.
 - A manuscript becomes matching-eligible when the author profile, manuscript, active document, processing state, and entitlement checks all pass and the manuscript has `eligibility_status = 'eligible'`.
+- Step 10 matching requires one primary genre, at least one audience category, a manuscript form, logline, synopsis, and either an arc summary or chapter summaries. `comp_titles` are collected but not used for scoring until a trusted catalog lookup exists.
+- A requestable manuscript teaser shows only title, primary genre, manuscript form, and short teaser. It must not show full logline, synopsis, arc data, themes, sample snippets, or upload/document status before access approval.
 
 Indexes:
 
@@ -288,11 +338,42 @@ Future publisher detail columns:
 - `submission_rules text`
 - `accepted_formats text[] not null default '{}'`
 
+Step 10 public/profile display fields:
+
+- `logo_url text`
+- `website_url text not null`
+- `biography text`
+- `editorial_note text`
+- `what_we_are_looking_for text`
+- `best_selling_books jsonb not null default '[]'::jsonb`
+- `public_directory_status text not null default 'hidden' check (public_directory_status in ('approved', 'hidden', 'rejected'))`
+- `public_directory_reviewed_by uuid references auth.users(id)`
+- `public_directory_reviewed_at timestamptz`
+
+Step 10 matching fields:
+
+- `publisher_name text not null`
+- `accepted_primary_genres text[] not null`
+- `preferred_subgenres text[] not null default '{}'::text[]`
+- `accepted_audience_categories text[] not null`
+- `accepted_manuscript_forms text[] not null`
+- `submission_guidelines text not null`
+- `excluded_topics text[] not null default '{}'::text[]`
+- `editor_wishlist jsonb`
+- `recent_acquisitions text`
+- `imprint_tone text`
+- `market_positioning text`
+- `not_currently_seeking text[] not null default '{}'::text[]`
+
 Rules:
 
 - `profile_id` must point to a profile with role `publisher`.
 - Publisher profiles are discoverable when their profile has `eligibility_status = 'eligible'`.
 - Publisher preference changes can be auto-approved when deterministic validation passes. Risky or uncertain changes become admin exceptions.
+- Step 10 matching requires publisher name, accepted primary genres, accepted audience categories, accepted manuscript forms, and submission guidelines. Editor wishlist and recent acquisitions are optional semantic signals.
+- Public `/publishers` directory inclusion is admin-approved and separate from matching eligibility. It requires `eligibility_status = 'eligible'`, `public_directory_status = 'approved'`, logo, publisher name, and valid `https` website.
+- Publisher public directory rows expose only logo, name, and website. Full publisher profiles are app-only and require match-revealed access, owner/admin access, approved manuscript access where relevant, or later accepted intro.
+- `profile_access_grants` records durable match-revealed access handoffs. Match candidate grants may unlock profile pages; manuscript-access grants are manuscript-specific and do not unlock private contact, sample downloads, or all manuscripts by the same author.
 
 Indexes:
 
@@ -480,7 +561,7 @@ Rules:
 
 - Do not store large vector arrays in Postgres for v1.
 - Use `source_type` and `source_id` to link back to manuscripts, chunks, or publisher profiles.
-- Step 9 writes chunk-level embedding references only. Local/dev writes deterministic fake references; staging/production wires Vertex AI Vector Search behind config.
+- Step 9 writes chunk-level embedding references only. Step 10 adds signal-level references for manuscript `premise`, `voice`, and `arc`, plus publisher `guidelines`, optional `wishlist`, and optional `catalog`. Store the signal identifier and source hash in bounded metadata; keep numeric vectors out of Postgres.
 
 Indexes:
 
@@ -508,34 +589,106 @@ Rules:
 
 Match runs are unlimited from a billing-quota perspective but must be rate-limited by the API.
 
+### `manuscript_access_requests`
+
+Lets a publisher who discovered an author through matching request access to another requestable manuscript by that author.
+
+Columns:
+
+- `id uuid primary key default gen_random_uuid()`
+- `publisher_profile_id uuid not null references profiles(id) on delete cascade`
+- `author_profile_id uuid not null references profiles(id) on delete cascade`
+- `manuscript_id uuid not null references manuscripts(id) on delete cascade`
+- `status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'cancelled'))`
+- `requested_at timestamptz not null default now()`
+- `responded_at timestamptz`
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+Rules:
+
+- Only eligible publishers can request access.
+- The publisher must have discovered the author through at least one stored match candidate before requesting access to another manuscript by that author.
+- The target manuscript must belong to that author, be eligible enough for profile access, and have `author_profile_visibility = 'requestable_from_author_profile'`.
+- Approval is manual and author-controlled.
+- Approval unlocks only the manuscript profile page for the requesting publisher. It does not unlock private contact details, sample download, full manuscript text, or accepted-intro privileges.
+- Requests are pair-specific. One approval does not expose the manuscript to other publishers.
+
+Indexes:
+
+- `manuscript_access_requests(publisher_profile_id, status, requested_at desc)`
+- `manuscript_access_requests(author_profile_id, status, requested_at desc)`
+- Unique partial index on `(publisher_profile_id, manuscript_id)` where `status = 'pending'`.
+
+### `match_signal_sources`
+
+Tracks the semantic signals that can be embedded and scored for matching.
+
+Columns:
+
+- `id uuid primary key default gen_random_uuid()`
+- `owner_type text not null check (owner_type in ('manuscript', 'publisher_profile'))`
+- `owner_id uuid not null`
+- `signal_type text not null check (signal_type in ('premise', 'voice', 'arc', 'guidelines', 'wishlist', 'catalog'))`
+- `source_fingerprint text not null`
+- `source_summary text`
+- `embedding_record_id uuid references embedding_records(id) on delete set null`
+- `status text not null check (status in ('ready', 'stale', 'missing', 'failed'))`
+- `last_embedded_at timestamptz`
+- `metadata jsonb not null default '{}'::jsonb`
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+Rules:
+
+- The AI service owns writes through service-role paths.
+- Store summaries and metadata only after redaction and bounds checks.
+- `premise`, `voice`, and `arc` belong to manuscripts. `guidelines`, `wishlist`, and `catalog` belong to publisher profiles.
+- `wishlist` and `catalog` may be missing without blocking publisher eligibility.
+- Use a unique constraint on `(owner_type, owner_id, signal_type)` for the initial Step 10 profile-level model. V1.5 can add editor-specific signal ownership for targeted editor queries.
+
 ### `match_runs`
 
 Columns:
 
 - `id uuid primary key default gen_random_uuid()`
 - `requested_by uuid not null references profiles(id)`
-- `manuscript_id uuid not null references manuscripts(id) on delete cascade`
-- `direction match_direction not null`
-- `status job_status not null default 'queued'`
+- `direction text not null check (direction in ('author_to_publisher', 'publisher_to_manuscript'))`
+- `source_manuscript_id uuid references manuscripts(id) on delete cascade`
+- `source_publisher_profile_id uuid references profiles(id) on delete cascade`
+- `status text not null default 'running' check (status in ('running', 'succeeded', 'failed', 'cancelled'))`
 - `idempotency_key text`
 - `matching_algorithm_version text not null`
-- `filter_version text not null`
+- `constraint_policy_version text not null`
+- `weight_profile text not null`
 - `embedding_model text not null`
+- `explanation_model text not null`
+- `explanation_prompt_version text not null`
+- `explanation_locale text not null`
+- `manuscript_match_fingerprint text`
+- `publisher_match_fingerprint text`
+- `input_snapshot jsonb not null default '{}'::jsonb`
+- `candidate_count integer not null default 0`
+- `failure_code text`
 - `started_at timestamptz`
 - `completed_at timestamptz`
 - `created_at timestamptz not null default now()`
 
 Rules:
 
-- Author-to-publisher runs are requested by the manuscript owner.
-- Publisher-to-author runs are requested by a publisher against an eligible discoverable manuscript.
-- All match runs are tied to a specific manuscript.
+- Author-to-publisher runs are requested by the manuscript owner and require `source_manuscript_id`.
+- Publisher-to-manuscript runs are requested by the publisher and require `source_publisher_profile_id`; Step 10 uses the general publisher profile rather than specific editor queries.
+- Every run creates a new row. Rematching never overwrites old runs.
+- Match-relevant manuscript and publisher fingerprints are stored so old runs can be marked stale when source data changes.
+- The input snapshot stores compact, safe metadata used to explain history. Do not store full manuscript text, signed URLs, private contact details, raw prompts, or raw provider responses.
+- A run succeeds only when the top 10 visible candidates have real Vertex/Gemini explanations.
 
 Indexes:
 
 - `match_runs(requested_by, status, created_at desc)`
-- `match_runs(manuscript_id, status, created_at desc)`
-- Unique partial index on `idempotency_key` where `status in ('queued', 'running')`.
+- `match_runs(source_manuscript_id, status, created_at desc)`
+- `match_runs(source_publisher_profile_id, status, created_at desc)`
+- Unique partial index on `idempotency_key` where `status = 'running'`.
 
 ### `match_candidates`
 
@@ -543,29 +696,42 @@ Columns:
 
 - `id uuid primary key default gen_random_uuid()`
 - `match_run_id uuid not null references match_runs(id) on delete cascade`
-- `manuscript_id uuid not null references manuscripts(id) on delete cascade`
-- `publisher_id uuid not null references profiles(id)`
-- `score numeric not null`
-- `score_band score_band not null`
+- `candidate_profile_id uuid references profiles(id) on delete cascade`
+- `candidate_manuscript_id uuid references manuscripts(id) on delete cascade`
+- `final_score numeric not null`
+- `score_band text not null check (score_band in ('strong', 'moderate', 'weak'))`
+- `axis_scores jsonb not null default '{}'::jsonb`
+- `publisher_signal_scores jsonb not null default '{}'::jsonb`
+- `penalties jsonb not null default '[]'::jsonb`
 - `fit_reasons text[] not null default '{}'`
 - `risk_reasons text[] not null default '{}'`
-- `shared_genre_ids uuid[] not null default '{}'`
+- `shared_genres text[] not null default '{}'`
 - `source_snippets jsonb not null default '[]'::jsonb`
+- `llm_explanation text`
+- `explanation_status text not null default 'not_requested' check (explanation_status in ('generated', 'not_requested', 'failed'))`
 - `explanation_version text not null`
+- `explanation_provider text not null`
+- `explanation_model text`
+- `explanation_prompt_version text`
 - `rank integer not null`
 - `created_at timestamptz not null default now()`
 
 Rules:
 
 - Store explainability alongside every candidate.
-- `publisher_id` must point to a publisher profile.
+- Author-to-publisher candidates store a publisher in `candidate_profile_id`.
+- Publisher-to-manuscript candidates store a manuscript in `candidate_manuscript_id`.
+- Store exact scores internally, but expose score bands and axis bands to users.
+- Final score bands start as: strong `>= 0.78`, moderate `>= 0.58`, weak `>= 0.35`; candidates below `0.35` are hidden from default results.
+- Store up to 25 visible candidates per run. Generate `llm_explanation` for ranks 1-10 only; ranks 11-25 remain inspectable through structured details.
+- LLM explanations must be generated from bounded evidence only. Do not store raw prompts, raw model responses, full manuscript text, signed URLs, hidden admin notes, contact details, or subscription plan as relevance evidence.
 - Do not use subscription plan as a hidden relevance boost.
 
 Indexes:
 
 - `match_candidates(match_run_id, rank)`
-- `match_candidates(manuscript_id, publisher_id, score desc)`
-- `match_candidates(publisher_id, score desc)`
+- `match_candidates(candidate_profile_id, final_score desc)`
+- `match_candidates(candidate_manuscript_id, final_score desc)`
 
 ## Intro Requests And Contact Unlocks
 
@@ -821,14 +987,15 @@ Policies:
 
 - Users can read their own full profile.
 - Users can update limited fields on their own profile, but not `role`, eligibility/review outcome fields, `approved_at`, or `approved_by`.
-- Eligible author and publisher profile summaries can be read for discovery, excluding locked contact details.
+- Eligible author and publisher profile summaries can be read for discovery, excluding private contact details.
 - Admins can read/update all profiles.
 
-Contact detail unlock:
+Private contact detail unlock:
 
 - Owner can read own contact details.
 - Admins can read contact details.
 - Opposite party can read contact details only when an accepted intro request exists.
+- Explicit owner-approved match-visible contact fields may be shown through access-checked app profile routes after match retrieval or approved manuscript access.
 
 If this is hard to express cleanly in table RLS, expose contact details through a secure RPC or server-side API endpoint instead of direct table reads.
 

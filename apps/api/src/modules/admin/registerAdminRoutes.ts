@@ -12,10 +12,12 @@ import {
   AdminReviewDetailResponseSchema,
   AdminReviewQueueQuerySchema,
   AdminReviewQueueResponseSchema,
+  PublicDirectoryDecisionRequestSchema,
+  PublicDirectoryDecisionResponseSchema,
   AdminTrustSafetyResponseSchema,
   type AdminReviewQueueQuery,
 } from "@marketplace/contracts";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   requireAuthenticatedUser,
   requireAdminUser,
@@ -67,16 +69,27 @@ import {
 } from "./routeSupport.js";
 import type { AdminTestState } from "./testState.js";
 import type { ManuscriptTestState } from "../manuscripts/testState.js";
+import type { ProfileTestState } from "../profiles/testState.js";
+import {
+  applyPublicDirectoryDecision,
+  MatchProfileServiceError,
+} from "../profiles/matchProfileService.js";
 
 type RegisterAdminRoutesOptions = {
   auth: AuthDependencies;
   manuscriptTestState: ManuscriptTestState;
+  profileTestState: ProfileTestState;
   testState: AdminTestState;
 };
 
 export function registerAdminRoutes(
   app: FastifyInstance,
-  { auth, manuscriptTestState, testState }: RegisterAdminRoutesOptions,
+  {
+    auth,
+    manuscriptTestState,
+    profileTestState,
+    testState,
+  }: RegisterAdminRoutesOptions,
 ) {
   app.get("/api/v1/admin/access", async (request, reply) => {
     const user = await requireAuthenticatedUser(request, reply, auth);
@@ -92,6 +105,52 @@ export function registerAdminRoutes(
       return sendInternalServerError(reply);
     }
   });
+
+  app.post(
+    "/api/v1/admin/publishers/:publisherProfileId/public-directory",
+    async (request, reply) => {
+      const user = await requireAdminUser(request, reply, auth);
+      if (!user) {
+        return;
+      }
+
+      const publisherProfileId = parsePublisherProfileId(request.params, reply);
+      if (!publisherProfileId) {
+        return;
+      }
+
+      const input = PublicDirectoryDecisionRequestSchema.parse(request.body);
+
+      try {
+        const response = await applyPublicDirectoryDecision({
+          config: auth.config,
+          publisherProfileId,
+          status: input.status,
+          testState: profileTestState,
+          user,
+        });
+        return reply.send(
+          PublicDirectoryDecisionResponseSchema.parse(response),
+        );
+      } catch (error) {
+        if (
+          error instanceof MatchProfileServiceError &&
+          error.kind === "not_found"
+        ) {
+          return sendNotFound(reply, error.message);
+        }
+        if (
+          error instanceof MatchProfileServiceError &&
+          error.kind === "not_ready"
+        ) {
+          return sendValidationError(reply, error.message, [], "not_ready");
+        }
+
+        app.log.error(error, "Failed to update public directory visibility");
+        return sendInternalServerError(reply);
+      }
+    },
+  );
 
   app.get("/api/v1/admin/dashboard", async (request, reply) => {
     const user = await requireAdminUser(request, reply, auth);
@@ -527,4 +586,17 @@ function parseLegacyProfileReviewDecision(
   }
 
   return parsed.data;
+}
+
+function parsePublisherProfileId(
+  params: unknown,
+  reply: FastifyReply,
+): string | null {
+  const raw = (params as { publisherProfileId?: string }).publisherProfileId;
+  if (typeof raw !== "string" || !/^[0-9a-f-]{36}$/i.test(raw)) {
+    sendValidationError(reply, "Invalid publisher profile id", []);
+    return null;
+  }
+
+  return raw;
 }

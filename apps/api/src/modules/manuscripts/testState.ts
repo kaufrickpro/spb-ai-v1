@@ -4,8 +4,10 @@ import {
   type Document,
   type CreateManuscriptRequest,
   type UpdateManuscriptRequest,
+  type ManuscriptAccessRequest,
   ManuscriptSchema,
   DocumentSchema,
+  ManuscriptAccessRequestSchema,
 } from "@marketplace/contracts";
 import {
   TEST_OTHER_AUTHOR_USER_ID,
@@ -24,6 +26,7 @@ export const TEST_OTHER_AUTHOR_MANUSCRIPT_ID =
 export type ManuscriptTestState = {
   manuscripts: Manuscript[];
   documents: Document[];
+  accessRequests: ManuscriptAccessRequest[];
 };
 
 export function createManuscriptTestState(): ManuscriptTestState {
@@ -41,6 +44,17 @@ export function createManuscriptTestState(): ManuscriptTestState {
         synopsis: "İstanbul'un yakın geleceğinde geçen bir distopya romanı.",
         targetAgeMin: 18,
         targetAgeMax: null,
+        logline: "A near-future city story about memory and power.",
+        subgenres: ["Spekülatif"],
+        audienceCategories: ["adult"],
+        manuscriptForm: "novel",
+        compTitles: ["1984"],
+        declaredThemes: ["memory", "power"],
+        declaredContentWarnings: ["state violence"],
+        arcSummary: "A journalist follows the trail of erased city records.",
+        chapterSummaries: [],
+        shortTeaser: null,
+        requestable: false,
         status: "draft",
         adminReviewStatus: "not_submitted",
         eligibilityStatus: "eligible",
@@ -59,6 +73,17 @@ export function createManuscriptTestState(): ManuscriptTestState {
         synopsis: "Başka yazara ait örnek manuskript.",
         targetAgeMin: 16,
         targetAgeMax: null,
+        logline: "A family secret reshapes a young writer's life.",
+        subgenres: ["Aile"],
+        audienceCategories: ["adult"],
+        manuscriptForm: "novel",
+        compTitles: [],
+        declaredThemes: ["family"],
+        declaredContentWarnings: [],
+        arcSummary: "A quiet inheritance reveals an old literary betrayal.",
+        chapterSummaries: [],
+        shortTeaser: "A family literary secret, revealed carefully.",
+        requestable: true,
         status: "draft",
         adminReviewStatus: "not_submitted",
         eligibilityStatus: "eligible",
@@ -69,6 +94,7 @@ export function createManuscriptTestState(): ManuscriptTestState {
       }),
     ],
     documents: [],
+    accessRequests: [],
   };
 }
 
@@ -116,6 +142,17 @@ export function createTestManuscript(
     synopsis: input.synopsis ?? null,
     targetAgeMin: input.targetAgeMin ?? null,
     targetAgeMax: input.targetAgeMax ?? null,
+    logline: input.logline ?? null,
+    subgenres: input.subgenres ?? [],
+    audienceCategories: input.audienceCategories ?? [],
+    manuscriptForm: input.manuscriptForm ?? null,
+    compTitles: input.compTitles ?? [],
+    declaredThemes: input.declaredThemes ?? [],
+    declaredContentWarnings: input.declaredContentWarnings ?? [],
+    arcSummary: input.arcSummary ?? null,
+    chapterSummaries: input.chapterSummaries ?? [],
+    shortTeaser: input.shortTeaser ?? null,
+    requestable: input.requestable ?? false,
     status: "draft",
     adminReviewStatus: "not_submitted",
     eligibilityStatus: "eligible",
@@ -153,10 +190,65 @@ export function updateTestManuscript(
     ...(input.targetAgeMax !== undefined && {
       targetAgeMax: input.targetAgeMax,
     }),
+    ...(input.logline !== undefined && { logline: input.logline }),
+    ...(input.subgenres !== undefined && { subgenres: input.subgenres }),
+    ...(input.audienceCategories !== undefined && {
+      audienceCategories: input.audienceCategories,
+    }),
+    ...(input.manuscriptForm !== undefined && {
+      manuscriptForm: input.manuscriptForm,
+    }),
+    ...(input.compTitles !== undefined && {
+      compTitles: input.compTitles,
+    }),
+    ...(input.declaredThemes !== undefined && {
+      declaredThemes: input.declaredThemes,
+    }),
+    ...(input.declaredContentWarnings !== undefined && {
+      declaredContentWarnings: input.declaredContentWarnings,
+    }),
+    ...(input.arcSummary !== undefined && { arcSummary: input.arcSummary }),
+    ...(input.chapterSummaries !== undefined && {
+      chapterSummaries: input.chapterSummaries,
+    }),
+    ...(input.shortTeaser !== undefined && { shortTeaser: input.shortTeaser }),
+    ...(input.requestable !== undefined && { requestable: input.requestable }),
     updatedAt: new Date().toISOString(),
   });
 
   state.manuscripts[index] = updated;
+  return updated;
+}
+
+export function createTestManuscriptAccessRequest(
+  state: ManuscriptTestState,
+  input: Omit<ManuscriptAccessRequest, "id" | "createdAt" | "updatedAt">,
+): ManuscriptAccessRequest {
+  const now = new Date().toISOString();
+  const request = ManuscriptAccessRequestSchema.parse({
+    ...input,
+    id: randomUUID(),
+    createdAt: now,
+    updatedAt: now,
+  });
+  state.accessRequests.push(request);
+  return request;
+}
+
+export function updateTestManuscriptAccessRequestStatus(
+  state: ManuscriptTestState,
+  requestId: string,
+  status: "approved" | "rejected",
+): ManuscriptAccessRequest | null {
+  const index = state.accessRequests.findIndex((item) => item.id === requestId);
+  if (index < 0) return null;
+
+  const updated = ManuscriptAccessRequestSchema.parse({
+    ...state.accessRequests[index],
+    status,
+    updatedAt: new Date().toISOString(),
+  });
+  state.accessRequests[index] = updated;
   return updated;
 }
 
