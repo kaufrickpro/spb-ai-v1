@@ -6,6 +6,7 @@
   "workspaces": [
     "apps/web",
     "apps/api",
+    "apps/document-scanner",
     "packages/contracts",
     "packages/ui"
   ],

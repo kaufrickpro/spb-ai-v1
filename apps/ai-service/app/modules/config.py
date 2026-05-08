@@ -30,6 +30,11 @@ class AiServiceConfig(BaseModel):
     max_chunks_per_document: int = Field(default=300)
     embedding_model: str = Field(default="local-reference-v1")
     vector_index_name: str = Field(default="local-reference-index")
+    vector_index_id: str | None = None
+    vector_index_endpoint_id: str | None = None
+    vector_deployed_index_id: str | None = None
+    vector_psc_network: str | None = None
+    vector_search_query_host: str | None = None
     supabase_url: str | None = None
     supabase_service_role_key: str | None = None
     document_scanner_mode: ScannerMode = Field(default="local_fake")
@@ -38,11 +43,16 @@ class AiServiceConfig(BaseModel):
     document_scanner_endpoint: str | None = None
     document_scanner_token: str | None = None
     document_scanner_timeout_seconds: float | None = None
+    document_scanner_cloud_run_audience: str | None = None
     local_fake_scanner_result: LocalFakeScannerResult = Field(default="not_scanned")
     vertex_project_id: str | None = None
     vertex_location: str | None = None
     explanation_provider: ExplanationProviderMode = Field(default="disabled")
     gemini_explanation_model: str | None = None
+    sentry_dsn: str | None = None
+    sentry_environment: str = Field(default="local")
+    sentry_release: str | None = None
+    sentry_traces_sample_rate: float = Field(default=0.0)
 
     @field_validator(
         "max_upload_bytes",
@@ -62,6 +72,13 @@ class AiServiceConfig(BaseModel):
             raise ValueError("DOCUMENT_SCANNER_TIMEOUT_SECONDS must be positive")
         return value
 
+    @field_validator("sentry_traces_sample_rate")
+    @classmethod
+    def require_valid_sentry_sample_rate(cls, value: float) -> float:
+        if value < 0 or value > 1:
+            raise ValueError("SENTRY_TRACES_SAMPLE_RATE must be between 0 and 1")
+        return value
+
     @field_validator("embedding_model", "vector_index_name")
     @classmethod
     def require_non_empty_provider_value(cls, value: str) -> str:
@@ -74,6 +91,17 @@ class AiServiceConfig(BaseModel):
         "document_scanner_launch_decision_id",
         "document_scanner_endpoint",
         "document_scanner_token",
+        "document_scanner_cloud_run_audience",
+        "vector_index_id",
+        "vector_index_endpoint_id",
+        "vector_deployed_index_id",
+        "vector_psc_network",
+        "vector_search_query_host",
+        "vertex_project_id",
+        "vertex_location",
+        "gemini_explanation_model",
+        "sentry_dsn",
+        "sentry_release",
     )
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
@@ -91,11 +119,16 @@ class AiServiceConfig(BaseModel):
             not self.vertex_project_id
             or not self.vertex_location
             or not self.embedding_model
-            or not self.vector_index_name
+            or not self.vector_index_id
+            or not self.vector_index_endpoint_id
+            or not self.vector_deployed_index_id
+            or not (self.vector_psc_network or self.vector_search_query_host)
         ):
             raise ValueError(
                 "Vertex mode requires VERTEX_PROJECT_ID, VERTEX_LOCATION, "
-                "VERTEX_AI_EMBEDDING_MODEL, and VERTEX_AI_VECTOR_INDEX"
+                "VERTEX_AI_EMBEDDING_MODEL, VERTEX_AI_VECTOR_INDEX_ID, "
+                "VERTEX_AI_INDEX_ENDPOINT_ID, VERTEX_AI_DEPLOYED_INDEX_ID, "
+                "and VERTEX_AI_PSC_NETWORK or VERTEX_AI_VECTOR_SEARCH_QUERY_HOST"
             )
 
         if self.explanation_provider == "vertex_gemini" and (
@@ -130,12 +163,15 @@ class AiServiceConfig(BaseModel):
                 )
 
         if self.app_config_mode != "local":
+            if self.provider_mode != "vertex":
+                raise ValueError(
+                    "Staging/production matching requires AI_PROVIDER_MODE=vertex"
+                )
             if (
-                self.provider_mode == "vertex"
-                and self.explanation_provider != "vertex_gemini"
+                self.explanation_provider != "vertex_gemini"
             ):
                 raise ValueError(
-                    "Staging/production Vertex matching requires "
+                    "Staging/production matching requires "
                     "MATCH_EXPLANATION_PROVIDER=vertex_gemini"
                 )
             if self.local_fake_scanner_result != "not_scanned":
@@ -162,11 +198,12 @@ class AiServiceConfig(BaseModel):
 
 def load_config() -> AiServiceConfig:
     load_local_env_file()
+    app_config_mode = parse_app_config_mode(
+        os.getenv("APP_CONFIG_MODE", os.getenv("APP_ENV", "local"))
+    )
     try:
         return AiServiceConfig(
-            app_config_mode=parse_app_config_mode(
-                os.getenv("APP_CONFIG_MODE", os.getenv("APP_ENV", "local"))
-            ),
+            app_config_mode=app_config_mode,
             provider_mode=parse_provider_mode(os.getenv("AI_PROVIDER_MODE", "local")),
             storage_provider=parse_storage_provider(os.getenv("STORAGE_PROVIDER", "local")),
             internal_token=os.getenv("AI_INTERNAL_TOKEN"),
@@ -177,6 +214,14 @@ def load_config() -> AiServiceConfig:
             max_chunks_per_document=int(os.getenv("MAX_CHUNKS_PER_DOCUMENT", "300")),
             embedding_model=os.getenv("VERTEX_AI_EMBEDDING_MODEL", "local-reference-v1"),
             vector_index_name=os.getenv("VERTEX_AI_VECTOR_INDEX", "local-reference-index"),
+            vector_index_id=os.getenv("VERTEX_AI_VECTOR_INDEX_ID"),
+            vector_index_endpoint_id=os.getenv("VERTEX_AI_INDEX_ENDPOINT_ID"),
+            vector_deployed_index_id=os.getenv("VERTEX_AI_DEPLOYED_INDEX_ID"),
+            vector_psc_network=os.getenv("VERTEX_AI_PSC_NETWORK"),
+            vector_search_query_host=os.getenv(
+                "VERTEX_AI_VECTOR_SEARCH_QUERY_HOST",
+                os.getenv("VERTEX_AI_PSC_MATCH_ADDRESS"),
+            ),
             supabase_url=os.getenv("SUPABASE_URL"),
             supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
             document_scanner_mode=parse_scanner_mode(
@@ -191,6 +236,9 @@ def load_config() -> AiServiceConfig:
             document_scanner_timeout_seconds=parse_optional_float(
                 os.getenv("DOCUMENT_SCANNER_TIMEOUT_SECONDS")
             ),
+            document_scanner_cloud_run_audience=os.getenv(
+                "DOCUMENT_SCANNER_CLOUD_RUN_AUDIENCE"
+            ),
             local_fake_scanner_result=parse_local_fake_scanner_result(
                 os.getenv("LOCAL_FAKE_SCANNER_RESULT", "not_scanned")
             ),
@@ -200,6 +248,15 @@ def load_config() -> AiServiceConfig:
                 os.getenv("MATCH_EXPLANATION_PROVIDER", "disabled")
             ),
             gemini_explanation_model=os.getenv("VERTEX_GEMINI_EXPLANATION_MODEL"),
+            sentry_dsn=os.getenv("SENTRY_DSN"),
+            sentry_environment=os.getenv("SENTRY_ENVIRONMENT", app_config_mode),
+            sentry_release=os.getenv("SENTRY_RELEASE"),
+            sentry_traces_sample_rate=float(
+                os.getenv(
+                    "SENTRY_TRACES_SAMPLE_RATE",
+                    "0" if app_config_mode == "local" else "0.1",
+                )
+            ),
         )
     except (ValueError, ValidationError) as exc:
         raise RuntimeError("Invalid AI service configuration") from exc

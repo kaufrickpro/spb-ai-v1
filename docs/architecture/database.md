@@ -118,7 +118,7 @@ match_direction: author_to_publisher, publisher_to_author
 job_status: queued, running, succeeded, failed, cancelled
 score_band: strong, moderate, weak
 intro_request_status: pending, accepted, rejected, cancelled
-notification_type: intro_requested, intro_accepted, intro_rejected, profile_approved, manuscript_approved, payment_updated
+notification_type: intro_requested, intro_accepted, intro_rejected, intro_cancelled, profile_approved, manuscript_approved, payment_updated
 change_request_status: pending, approved, rejected
 billing_period: monthly, annual
 subscription_status: trialing, active, past_due, cancelled, expired
@@ -739,34 +739,48 @@ Columns:
 
 - `id uuid primary key default gen_random_uuid()`
 - `manuscript_id uuid not null references manuscripts(id) on delete cascade`
-- `author_id uuid not null references profiles(id)`
-- `publisher_id uuid not null references profiles(id)`
-- `requested_by uuid not null references profiles(id)`
+- `author_profile_id uuid not null references profiles(id)`
+- `publisher_profile_id uuid not null references profiles(id)`
+- `requested_by_profile_id uuid not null references profiles(id)`
+- `recipient_profile_id uuid not null references profiles(id)`
 - `status intro_request_status not null default 'pending'`
 - `message text`
+- `decision_note text`
+- `requester_display_name_snapshot text not null`
+- `recipient_display_name_snapshot text not null`
+- `manuscript_title_snapshot text not null`
+- `publisher_display_name_snapshot text not null`
 - `responded_at timestamptz`
+- `cancelled_at timestamptz`
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`
 
 Rules:
 
-- Either the author or publisher can initiate.
-- `author_id` must own the manuscript.
-- `publisher_id` must be a publisher.
+- Either the author owner or publisher owner can initiate.
+- Creation requires durable pair evidence: a stored `match_candidates` row for the manuscript/publisher pair or an approved `manuscript_access_requests` row for that publisher/manuscript.
+- `author_profile_id` must own the manuscript. `publisher_profile_id` must be a publisher profile. `requested_by_profile_id` and `recipient_profile_id` must be the opposite participants in the pair.
+- Messages are optional plain text with a 1,000 character API limit. Rejection notes are optional plain text with a 500 character API limit.
+- Duplicate pending requests are blocked per manuscript/publisher pair.
+- Accepted requests are terminal for the pair. Rejected and cancelled requests can be retried only after a 14-day pair-level cooldown, regardless of which side sent the previous request.
+- Send quota is consumed when the request is created. Start with 10 sent intro requests per user/day until billing plan quotas are implemented in Step 13.
+- Pending requests remain visible if a profile, manuscript, or document later becomes ineligible, but acceptance and unlocks must be blocked until eligibility is restored. Rejection and requester cancellation remain allowed.
 - Accepted intro requests unlock:
-  - email,
-  - phone,
-  - website URL,
-  - social links,
-  - manuscript sample file for the publisher.
-- Add a unique partial index to prevent duplicate pending requests for the same manuscript/publisher pair.
+  - intended relationship contact fields for both counterparties through API read models,
+  - the current active eligible manuscript sample file for the publisher through signed download URLs.
+- Accepted intro does not unlock other manuscripts, full manuscript text, document chunks, private notes, admin metadata, billing state, or broad direct table access.
+- Access should be computed live from an accepted intro row plus current eligibility. Do not create a separate accepted-intro grant table in Step 11.
+- `public.has_accepted_intro(manuscript_id uuid, publisher_profile_id uuid)` returns true when a non-invalidated accepted intro exists for the pair. Keep richer eligibility checks in API policy helpers.
 
 Indexes:
 
-- `intro_requests(author_id, status, created_at desc)`
-- `intro_requests(publisher_id, status, created_at desc)`
-- `intro_requests(manuscript_id, publisher_id, status)`
-- `unique(manuscript_id, publisher_id) where status = 'pending'`
+- `intro_requests(author_profile_id, status, created_at desc)`
+- `intro_requests(publisher_profile_id, status, created_at desc)`
+- `intro_requests(requested_by_profile_id, status, created_at desc)`
+- `intro_requests(recipient_profile_id, status, created_at desc)`
+- `intro_requests(manuscript_id, publisher_profile_id, status)`
+- `unique(manuscript_id, publisher_profile_id) where status = 'pending'`
+- Guard accepted terminal behavior with a unique accepted partial index or transaction/RPC logic that rejects future create attempts when an accepted pair exists.
 
 ### `notifications`
 
@@ -778,6 +792,34 @@ Columns:
 - `payload jsonb not null default '{}'::jsonb`
 - `read_at timestamptz`
 - `created_at timestamptz not null default now()`
+
+Rules:
+
+- Step 11 introduces durable in-app notification records, not product email delivery.
+- Initial Step 11 types are `intro_requested`, `intro_accepted`, `intro_rejected`, and `intro_cancelled`.
+- Notification payloads may include `intro_request_id`, `manuscript_id`, `manuscript_title`, `counterparty_profile_id`, `counterparty_display_name`, and `status`.
+- Notification payloads must not include intro message text, rejection notes, private contact details, signed URLs, sample metadata, manuscript text, document chunks, or admin notes.
+
+### `product_audit_events`
+
+Stores user-driven marketplace lifecycle events separately from admin/moderation audit logs.
+
+Columns:
+
+- `id uuid primary key default gen_random_uuid()`
+- `actor_profile_id uuid references profiles(id) on delete set null`
+- `event_type text not null`
+- `target_type text not null`
+- `target_id uuid not null`
+- `metadata jsonb not null default '{}'::jsonb`
+- `created_at timestamptz not null default now()`
+
+Rules:
+
+- Use this table for intro request create, accept, reject, and cancel events.
+- Admin intro request detail pages can read these events as the safe lifecycle timeline.
+- Regular users should see request state through `intro_requests` and `notifications`, not a raw product audit feed.
+- Metadata should include stable IDs, status transitions, source evidence, and safe labels. It must not include message bodies, rejection notes, private contact details, signed URLs, manuscript text, document chunks, raw provider payloads, or admin-only notes.
 
 Indexes:
 

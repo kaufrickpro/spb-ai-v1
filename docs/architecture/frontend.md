@@ -142,8 +142,8 @@ The first authenticated completion surface now starts in signup. Signup uses one
 The frontend owns the app callback route:
 
 - local: `http://localhost:5173/auth/callback`
-- staging: `https://staging.spb-ai.dev/auth/callback`
-- production: `https://spb-ai.dev/auth/callback`
+- staging: `https://spb-ai.dev/auth/callback`
+- production: `https://spb-ai.com/auth/callback`
 
 Supabase Auth URL Configuration must always use the app domain for:
 
@@ -154,8 +154,8 @@ Do not leave `localhost:5173` values in production auth configuration. Productio
 
 Canonical production URL:
 
-- Use `https://spb-ai.dev`.
-- Redirect `https://www.spb-ai.dev` to `https://spb-ai.dev`.
+- Use `https://spb-ai.com`.
+- Redirect `https://www.spb-ai.com` to `https://spb-ai.com`.
 
 For Google social auth, keep the distinction clear:
 
@@ -176,6 +176,8 @@ Show the active matching workspace for both roles. Authors can run publisher mat
 
 Top-10 candidates show a stored one-paragraph explanation generated during the match run. Ranks 11-25 remain inspectable through structured details without requiring an LLM paragraph. The UI must render stored structured details only; it must not generate explanations from the browser.
 
+Intro request buttons must be driven by API-provided `introState`, not frontend inference. Supported states are `can_request`, `pending_sent`, `pending_received`, `accepted`, `rejected_cooldown`, `cancelled_cooldown`, `not_eligible`, and `quota_exhausted`.
+
 ### Match Detail
 
 Show stored candidate explanation data in a user-friendly details dropdown: one-paragraph explanation when present, premise/voice/arc bands, good signs, watch-outs, safe source snippets, publisher preference context, manuscript metadata comparison, and intro request state. Do not generate a separate report from the frontend or on detail open.
@@ -190,6 +192,8 @@ Author profile pages show author photo, biography, "My style", influences, owner
 
 Manuscript profile pages show manuscript title, logline, synopsis, primary genre, subgenres, audience categories, manuscript form, declared themes, arc/summary display, and a compact author card linking back to the author profile. They must not show full manuscript text, full sample downloads, private notes, private account contact, or exact internal scores from match access alone.
 
+When an accepted intro exists, profile and request surfaces may show a separate accepted-intro contact section. Do not merge it with match-visible contact, and do not auto-fetch signed sample URLs. Sample download remains an explicit click.
+
 ### Profile History
 
 `/app/profile/history` stores durable user history. Step 10 ships this with match runs only. Show latest runs first, include direction, source manuscript or publisher profile, created date, status, stale badge, candidate count, view results action, and rematch action. Rematch creates a new run and leaves older stale runs visible. History result links must route to `/app/matches/:matchRunId`, while individual candidate details route to `/app/matches/:matchRunId/candidates/:candidateId`.
@@ -198,9 +202,13 @@ Manuscript profile pages show manuscript title, logline, synopsis, primary genre
 
 Show sent and received intro requests plus manuscript access requests. Manuscript access requests let an eligible publisher who discovered an author through matching ask to view another requestable manuscript profile. Author approval unlocks that manuscript profile only for the requesting publisher. Accepted intro requests remain the deeper relationship unlock for private contact details and sample-file access.
 
+The Step 11 requests workspace should support sent/received intro request filters, status badges, manuscript and counterparty context, expandable message/detail display, accept/reject for `pending_received`, cancel for `pending_sent`, accepted contact display, and publisher sample download action. Accept must use a confirmation dialog because it unlocks private contact and sample access.
+
 ### Admin
 
 Support exception review, quarantine, reports, system failures, jobs, payment events, and audit logs.
+
+Step 11 adds a read-only intro request investigation surface for admins. It should show safe list/detail metadata, filters, lifecycle timeline, notification/audit links, and current unlock status. It must not provide admin accept/reject/cancel-on-behalf actions and must keep private contact, signed URLs, message bodies, rejection notes, full manuscript text, chunks, and billing state out of list views.
 
 ## UI Rules
 

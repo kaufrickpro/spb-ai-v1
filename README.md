@@ -206,21 +206,28 @@ npm run bootstrap:first-admin --workspace apps/api -- <email>
   - Audit Logs
   - Settings
 
-## Production OAuth Checklist
+## Staging And Production OAuth Checklist
 
-Before a production build or production auth test, replace every localhost OAuth URL with the real public domain.
+Before a staging or production build/auth test, replace every localhost OAuth URL with the environment's real public domain.
 
-Required production changes:
+Environment app URLs:
 
-- Set frontend base URLs and backend `WEB_APP_URL` to `https://your-domain`
-- Change Supabase Auth `Site URL` to `https://your-domain`
-- Change Supabase Auth allowed redirect URL to `https://your-domain/auth/callback`
-- Change Google Cloud `Authorized JavaScript origin` to `https://your-domain`
+- Staging website: `https://spb-ai.dev`
+- Staging app callback: `https://spb-ai.dev/auth/callback`
+- Production website: `https://spb-ai.com`
+- Production app callback: `https://spb-ai.com/auth/callback`
+
+Required environment changes:
+
+- Set frontend base URLs and backend `WEB_APP_URL` to the environment website.
+- Change Supabase Auth `Site URL` to the environment website.
+- Change Supabase Auth allowed redirect URL to the environment app callback.
+- Change Google Cloud `Authorized JavaScript origin` to the environment website.
 - Change Google Cloud `Authorized redirect URI` only if the Supabase project changes. If production still uses the same hosted Supabase project, keep the callback at `https://ipqmdjsxedffetotemil.supabase.co/auth/v1/callback`
 
 Important distinction:
 
-- App callback URL changes between local and production
+- App callback URL changes between local, staging, and production
 - Supabase provider callback URL is the Supabase project callback, not the app domain callback
 
 Do not ship with:

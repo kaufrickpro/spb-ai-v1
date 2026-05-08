@@ -23,6 +23,10 @@ apps/ai-service/
     settings.py
 ```
 
+`apps/document-scanner` is the private ClamAV Cloud Run scanner used by deployed
+AI-service ingestion. It exposes the existing `http-clamav` contract and keeps
+the raw `clamd` socket private to the container.
+
 ## Ingestion Flow
 
 1. Author uploads a manuscript sample through an API-issued signed URL.
@@ -42,7 +46,7 @@ The first Step 9 implementation supports `text/plain` only. Digital PDF, DOCX, a
 
 - Local/dev: local file storage and fake signed URLs stand in for private GCS; the API local processor command `npm run documents:process --workspace apps/api -- <limit>` claims queued jobs and calls the AI service with only `{ job_id }`; the AI service local worker reads Supabase job/document rows, reads bytes from `LOCAL_STORAGE_ROOT`, scans through the fake scanner adapter, and writes chunks plus embedding references back to Supabase for clean text samples; fake embeddings write deterministic reference metadata only; AI calls use `AI_INTERNAL_TOKEN`.
 - Staging/production: files live in private GCS with `STORAGE_PROVIDER=gcs` and `GCS_BUCKET_PRIVATE_UPLOADS`; Cloud Tasks calls the private Cloud Run AI service with OIDC; AI service authentication uses Cloud Run IAM/OIDC; the AI service reads document bytes from private GCS through its service identity, not through public buckets or browser-provided signed URLs. Step 9 stores reference-only embedding records. Step 10 owns the full three-axis matching model, real Vertex/Gemini explanation generation, and Vertex AI embeddings/Vector Search behind provider adapters as the production retrieval target.
-- Local/dev may simulate scanner outcomes with the fake scanner adapter through `LOCAL_FAKE_SCANNER_RESULT`. Staging/production must configure real malware/safety scanning with `DOCUMENT_SCANNER_MODE=real`, `DOCUMENT_SCANNER_PROVIDER=http-clamav`, `DOCUMENT_SCANNER_ENDPOINT`, `DOCUMENT_SCANNER_TOKEN`, and `DOCUMENT_SCANNER_TIMEOUT_SECONDS`, or carry a named explicit launch decision in `DOCUMENT_SCANNER_LAUNCH_DECISION_ID` before accepting real user documents. Deployed environments must not use local simulation outcomes such as fake `clean`, fake `suspicious`, or fake `quarantined`.
+- Local/dev may simulate scanner outcomes with the fake scanner adapter through `LOCAL_FAKE_SCANNER_RESULT`. Staging/production must configure real malware/safety scanning with `DOCUMENT_SCANNER_MODE=real`, `DOCUMENT_SCANNER_PROVIDER=http-clamav`, `DOCUMENT_SCANNER_ENDPOINT`, `DOCUMENT_SCANNER_TOKEN`, and `DOCUMENT_SCANNER_TIMEOUT_SECONDS`. Staging reads those scanner values from Secret Manager entries created by `infra/scripts/deploy-document-scanner-staging.sh`. The scanner itself runs as private Cloud Run, so the AI service also sets `DOCUMENT_SCANNER_CLOUD_RUN_AUDIENCE` and sends Google OIDC in `Authorization` plus the app scanner token in `X-Scanner-Token`. ADR 0008 remains available only for controlled internal staging smoke tests before accepting real user documents. Deployed environments must not use local simulation outcomes such as fake `clean`, fake `suspicious`, or fake `quarantined`.
 
 ### Local Validation
 
@@ -83,7 +87,10 @@ Scanner outcomes map to admin exceptions as follows:
 - Provider errors, HTTP failures, timeouts, malformed payloads, and unknown scanner response values: ingestion fails as retryable `scanner_failed` and writes no chunks or embedding records. A System Failures admin exception is created only after automatic retries are exhausted.
 - `not_scanned`: local/dev fake result, or a deployed explicit launch exception; it must not be treated as clean for launch readiness.
 
-No scanner container or repo-owned scanner deployable is introduced in Step 9c. Live malware protection still requires a private scanner endpoint, or a documented launch-decision escape hatch before accepting real user documents.
+The repo includes a small ClamAV scanner deployable in `apps/document-scanner`.
+Live malware protection still requires that private scanner to be deployed,
+bound to Secret Manager config, and smoke-tested before accepting real user
+documents.
 
 ### Ingestion Result Policy
 
@@ -121,19 +128,18 @@ Steps:
 6. Store `match_runs`, `match_signal_sources`, `match_candidates`, input fingerprints, snapshots, reference-only embedding records, score breakdowns, penalties, snippets, and explanation metadata.
 
 Current matching status: the Node API calls the private AI service at
-`POST /internal/matching/run` with `{ match_run_id }` only, then persists safe
-deterministic scored candidates for both directions and writes reference-only
-signal records. The AI service has a real Vertex/Gemini explanation provider
-boundary with bounded evidence and strict JSON validation. The AI-service
-matching handoff now also has an extra-field-forbidden `{ match_run_id }`
-request contract, a Supabase matching repository boundary, and Python-owned
-signal/fingerprint/embedding-reference helpers for manuscript
-premise/voice/arc and publisher guidelines/wishlist/catalog signals. The
-default matching endpoint still only acknowledges the run so the current
-product path can finish through API-owned persistence. The next hardening step
-is to implement the repository-backed matching worker that performs retrieval,
-scoring, candidate writes, profile-access grant writes, and explanation
-persistence inside the AI service.
+`POST /internal/matching/run` with `{ match_run_id }` only, then reads
+candidates persisted by the AI service. The deployed API path no longer
+persists deterministic fallback candidates, and AI timeouts or failures leave
+the run failed with zero candidates. The AI service has the real Vertex/Gemini
+explanation provider boundary, Vertex embedding and Vector Search adapters,
+metadata-token provider calls, and strict request/response validation tests.
+The repository-backed matching worker loads trusted run data from Supabase,
+syncs current semantic signals, retrieves top neighbors per axis, applies
+three-axis soft scoring, persists up to 25 visible candidates plus match
+profile-access grants, and requires valid bounded Gemini paragraphs for ranks
+1-10 before candidate insertion. Numeric vectors remain transient provider
+payloads and are not stored in Supabase.
 
 Do not use paid subscription status as a hidden relevance boost.
 

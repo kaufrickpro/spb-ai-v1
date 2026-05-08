@@ -51,8 +51,8 @@ Preferred SMTP provider:
 - host: `smtp.resend.com`
 - port: `465`
 - username: `resend`
-- production sender: `no-reply@auth.spb-ai.dev`
-- staging sender: `no-reply@auth.staging.spb-ai.dev`
+- production sender: `no-reply@auth.spb-ai.com`
+- staging sender: `no-reply@auth.spb-ai.dev`
 
 Rules:
 
@@ -64,7 +64,7 @@ Rules:
 
 OAuth environment rule:
 
-- The app callback URL is environment-specific: local uses `http://localhost:5173/auth/callback`, staging uses `https://staging.spb-ai.dev/auth/callback`, and production uses `https://spb-ai.dev/auth/callback`.
+- The app callback URL is environment-specific: local uses `http://localhost:5173/auth/callback`, staging uses `https://spb-ai.dev/auth/callback`, and production uses `https://spb-ai.com/auth/callback`.
 - Supabase Auth `Site URL` and allowed redirect URLs must follow the same environment-specific app domain.
 - Provider callbacks such as Google should continue to point to the Supabase project callback URL, for example `https://ipqmdjsxedffetotemil.supabase.co/auth/v1/callback`, unless the Supabase project itself changes.
 
@@ -110,7 +110,9 @@ Private account contact fields are visible to:
 
 Explicit owner-approved match-visible contact fields may be exposed through access-checked app profile routes after match retrieval or approved manuscript access. Do not infer match visibility from a stored contact value existing.
 
-For implementation simplicity and safety, expose unlocked contact details through the Node API instead of direct browser table reads if RLS becomes complex.
+Accepted-intro contact unlock is pair-scoped to one manuscript and one publisher profile. The API should expose it in a clearly named `acceptedIntroContact` block only to accepted counterparties while the relevant profiles, manuscript, and active sample remain eligible. Match-visible contact remains a separate field set.
+
+For implementation simplicity and safety, expose unlocked contact details through the Node API instead of direct browser table reads if RLS becomes complex. Do not expose Supabase Auth account email unless that value has been intentionally stored as a profile relationship contact field.
 
 ## File Access
 
@@ -127,6 +129,8 @@ Access rules:
 - admins can access for review
 - publisher can access sample only after accepted intro request
 - In Step 8 local mode, upload/download URLs are short-lived tokenized API URLs backed by ignored local storage. They are public signed targets, not bearer-authenticated API calls.
+
+Accepted intro sample access is manuscript-specific and publisher-only. Resolve the current active eligible processed sample at download time; do not store a document grant on the intro request. If the manuscript, document, author profile, or publisher profile becomes blocked, quarantined, or otherwise ineligible, signed download access must stop even if the intro request remains accepted.
 
 The browser should receive short-lived signed URLs from the Node API. Do not make GCS buckets public.
 

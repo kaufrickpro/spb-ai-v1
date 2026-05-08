@@ -29,6 +29,10 @@ const ApiConfigSchema = z.object({
   cloudTasksIngestionQueue: optionalNonEmptyString(),
   cloudTasksServiceAccountEmail: optionalNonEmptyString(),
   webAppUrl: z.string().url(),
+  sentryDsn: optionalNonEmptyString(),
+  sentryEnvironment: z.string().min(1),
+  sentryRelease: optionalNonEmptyString(),
+  sentryTracesSampleRate: z.coerce.number().min(0).max(1),
   documentScannerMode: z.enum(["local_fake", "real"]),
   documentScannerProvider: optionalNonEmptyString(),
   documentScannerLaunchDecisionId: optionalNonEmptyString(),
@@ -67,6 +71,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     cloudTasksIngestionQueue: env.CLOUD_TASKS_INGESTION_QUEUE,
     cloudTasksServiceAccountEmail: env.CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL,
     webAppUrl: env.WEB_APP_URL ?? "http://localhost:5173",
+    sentryDsn: env.SENTRY_DSN,
+    sentryEnvironment: env.SENTRY_ENVIRONMENT ?? env.APP_CONFIG_MODE ?? "local",
+    sentryRelease: env.SENTRY_RELEASE,
+    sentryTracesSampleRate:
+      env.SENTRY_TRACES_SAMPLE_RATE ??
+      ((env.APP_CONFIG_MODE ?? "local") === "local" ? "0" : "0.1"),
     documentScannerMode: env.DOCUMENT_SCANNER_MODE ?? "local_fake",
     documentScannerProvider: env.DOCUMENT_SCANNER_PROVIDER,
     documentScannerLaunchDecisionId: env.DOCUMENT_SCANNER_LAUNCH_DECISION_ID,

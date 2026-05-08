@@ -16,7 +16,6 @@ import {
   WEIGHT_PROFILE,
 } from "./snapshots.js";
 import { fingerprint } from "./testState.js";
-import { createDbTracerCandidates } from "./tracerCandidates.js";
 
 type ServiceRoleDb = ReturnType<typeof createServiceRoleSupabaseClient>;
 
@@ -53,7 +52,7 @@ export async function runSupabaseMatch(input: {
   if (aiResult.status === "failed") {
     await markRunFailed(db, runRow.id, aiResult.failure_code);
   } else {
-    const candidateCount = await createDbTracerCandidates(db, runRow);
+    const candidateCount = await countPersistedCandidates(db, runRow.id);
     await markRunSucceeded(db, runRow.id, candidateCount);
   }
 
@@ -351,6 +350,21 @@ async function markRunFailed(
       error,
     );
   }
+}
+
+async function countPersistedCandidates(db: ServiceRoleDb, runId: unknown) {
+  const { count, error } = await db
+    .from("match_candidates")
+    .select("id", { count: "exact", head: true })
+    .eq("match_run_id", runId);
+  if (error) {
+    throw new MatchingServiceError(
+      "storage",
+      "Failed to count persisted match candidates",
+      error,
+    );
+  }
+  return count ?? 0;
 }
 
 async function markRunSucceeded(

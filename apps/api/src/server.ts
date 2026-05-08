@@ -19,6 +19,7 @@ import type { ProfileTestState } from "./modules/profiles/testState.js";
 import { registerMatchingRoutes } from "./modules/matching/registerMatchingRoutes.js";
 import { createMatchingTestState } from "./modules/matching/testState.js";
 import type { MatchingTestState } from "./modules/matching/testState.js";
+import { initializeSentry } from "./lib/sentry/index.js";
 
 type BuildAppOptions = {
   config: ApiConfig;
@@ -66,6 +67,8 @@ export function buildApp({
   jwtVerify,
   testState: injectedTestState,
 }: BuildAppOptions): FastifyInstance {
+  initializeSentry(config);
+
   const app = Fastify({
     logger: config.logLevel === "silent" ? false : { level: config.logLevel },
     routerOptions: {

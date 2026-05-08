@@ -384,3 +384,49 @@ def test_matching_repository_marks_run_success_and_failure(
         "candidate_count": 0,
         "failure_code": "matching_provider_failed",
     }
+
+
+def test_matching_repository_lists_only_manuscripts_with_eligible_processed_samples(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    responses = [
+        FakeResponse(
+            [
+                {
+                    "id": "manuscript-1",
+                    "author_id": "user-1",
+                    "sample_document_id": "document-1",
+                    "eligibility_status": "eligible",
+                },
+                {
+                    "id": "manuscript-2",
+                    "author_id": "user-2",
+                    "sample_document_id": "document-2",
+                    "eligibility_status": "eligible",
+                },
+            ]
+        ),
+        FakeResponse([{"id": "document-1"}]),
+        FakeResponse(
+            [
+                {
+                    "id": "author-profile-1",
+                    "user_id": "user-1",
+                    "display_name": "Author One",
+                    "eligibility_status": "eligible",
+                }
+            ]
+        ),
+    ]
+    requests = capture_requests(
+        monkeypatch,
+        lambda _method, _url, _json: responses.pop(0),
+    )
+    repository = SupabaseMatchingRepository("https://project.supabase.co", "service")
+
+    manuscripts = repository.list_eligible_manuscripts(50)
+
+    assert [manuscript["id"] for manuscript in manuscripts] == ["manuscript-1"]
+    assert manuscripts[0]["author_profile_id"] == "author-profile-1"
+    assert "processing_status=eq.succeeded" in requests[1]["url"]
+    assert "eligibility_status=eq.eligible" in requests[1]["url"]

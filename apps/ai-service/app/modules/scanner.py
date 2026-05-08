@@ -1,6 +1,9 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+import google.auth.transport.requests
+import google.oauth2.id_token
 import httpx
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
@@ -106,6 +109,8 @@ class HttpClamAvDocumentScanner:
     endpoint: str
     token: str
     timeout_seconds: float
+    cloud_run_audience: str | None = None
+    id_token_fetcher: Callable[[str], str] | None = None
 
     def scan_bytes(
         self,
@@ -115,13 +120,15 @@ class HttpClamAvDocumentScanner:
         byte_size: int,
         content: bytes,
     ) -> ScannerResult:
-        headers = {
-            "authorization": f"Bearer {self.token}",
-            "content-type": "application/octet-stream",
-            "x-document-id": document_id,
-            "x-document-mime-type": mime_type,
-            "x-document-byte-size": str(byte_size),
-        }
+        try:
+            headers = self._build_headers(
+                document_id=document_id,
+                mime_type=mime_type,
+                byte_size=byte_size,
+            )
+        except Exception as exc:
+            raise ScannerProviderError("auth_error") from exc
+
         try:
             response = httpx.post(
                 self.endpoint,
@@ -147,6 +154,37 @@ class HttpClamAvDocumentScanner:
             scanner_signature=payload.signature,
         )
 
+    def _build_headers(
+        self,
+        *,
+        document_id: str,
+        mime_type: str,
+        byte_size: int,
+    ) -> dict[str, str]:
+        headers = {
+            "content-type": "application/octet-stream",
+            "x-document-id": document_id,
+            "x-document-mime-type": mime_type,
+            "x-document-byte-size": str(byte_size),
+        }
+
+        if self.cloud_run_audience:
+            headers["authorization"] = (
+                f"Bearer {self._fetch_id_token(self.cloud_run_audience)}"
+            )
+            headers["x-scanner-token"] = self.token
+            return headers
+
+        headers["authorization"] = f"Bearer {self.token}"
+        return headers
+
+    def _fetch_id_token(self, audience: str) -> str:
+        if self.id_token_fetcher:
+            return self.id_token_fetcher(audience)
+
+        request = google.auth.transport.requests.Request()
+        return google.oauth2.id_token.fetch_id_token(request, audience)
+
 
 def build_document_scanner(config: AiServiceConfig) -> DocumentScanner:
     if config.document_scanner_mode == "local_fake":
@@ -167,6 +205,7 @@ def build_document_scanner(config: AiServiceConfig) -> DocumentScanner:
             endpoint=config.document_scanner_endpoint,
             token=config.document_scanner_token,
             timeout_seconds=config.document_scanner_timeout_seconds,
+            cloud_run_audience=config.document_scanner_cloud_run_audience,
         )
 
     raise ValueError(

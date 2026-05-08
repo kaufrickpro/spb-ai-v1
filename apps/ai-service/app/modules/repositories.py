@@ -88,6 +88,14 @@ class MatchCandidateWrite:
     safe_snippets: list[dict[str, object]]
 
 
+@dataclass(frozen=True)
+class ProfileAccessGrantWrite:
+    viewer_profile_id: str
+    target_profile_id: str
+    manuscript_id: str | None
+    source: Literal["match_candidate", "manuscript_access"] = "match_candidate"
+
+
 class IngestionRepository(Protocol):
     def get_job(self, job_id: str) -> ProcessingJobRecord | None:
         """Return a durable processing job record."""
@@ -148,6 +156,9 @@ class MatchingRepository(Protocol):
     def insert_match_candidates(self, candidates: list[MatchCandidateWrite]) -> None:
         """Persist already-ranked match candidates."""
 
+    def insert_profile_access_grants(self, grants: list[ProfileAccessGrantWrite]) -> None:
+        """Persist idempotent profile grants created by visible match candidates."""
+
     def mark_match_run_succeeded(self, match_run_id: str, candidate_count: int) -> None:
         """Mark a match run as succeeded after candidates are persisted."""
 
@@ -204,3 +215,60 @@ class InMemoryIngestionRepository:
     def mark_document_failed(self, document_id: str, failure_code: str) -> None:
         self.document_statuses[document_id] = "failed"
         self.document_failure_codes[document_id] = failure_code
+
+
+@dataclass
+class InMemoryMatchingRepository:
+    match_runs: dict[str, MatchRunRecord] = field(default_factory=dict)
+    manuscripts: dict[str, dict[str, object]] = field(default_factory=dict)
+    publishers: dict[str, dict[str, object]] = field(default_factory=dict)
+    signal_ids: list[str] = field(default_factory=list)
+    signal_writes: list[MatchSignalSourceWrite] = field(default_factory=list)
+    candidates: list[MatchCandidateWrite] = field(default_factory=list)
+    profile_access_grants: list[ProfileAccessGrantWrite] = field(default_factory=list)
+    run_statuses: dict[str, tuple[str, int, str | None]] = field(default_factory=dict)
+
+    def get_match_run(self, match_run_id: str) -> MatchRunRecord | None:
+        return self.match_runs.get(match_run_id)
+
+    def get_manuscript_matching_source(self, manuscript_id: str) -> dict[str, object] | None:
+        return self.manuscripts.get(manuscript_id)
+
+    def get_publisher_matching_source(
+        self, publisher_profile_id: str
+    ) -> dict[str, object] | None:
+        return self.publishers.get(publisher_profile_id)
+
+    def list_eligible_publishers(self, limit: int) -> list[dict[str, object]]:
+        return [
+            publisher
+            for publisher in self.publishers.values()
+            if publisher.get("eligibility_status") == "eligible"
+        ][:limit]
+
+    def list_eligible_manuscripts(self, limit: int) -> list[dict[str, object]]:
+        return [
+            manuscript
+            for manuscript in self.manuscripts.values()
+            if manuscript.get("eligibility_status") == "eligible"
+        ][:limit]
+
+    def upsert_match_signal_source(self, signal: MatchSignalSourceWrite) -> str:
+        signal_id = f"signal-{len(self.signal_writes) + 1}"
+        self.signal_ids.append(signal_id)
+        self.signal_writes.append(signal)
+        return signal_id
+
+    def insert_match_candidates(self, candidates: list[MatchCandidateWrite]) -> None:
+        self.candidates.extend(candidates)
+
+    def insert_profile_access_grants(self, grants: list[ProfileAccessGrantWrite]) -> None:
+        for grant in grants:
+            if grant not in self.profile_access_grants:
+                self.profile_access_grants.append(grant)
+
+    def mark_match_run_succeeded(self, match_run_id: str, candidate_count: int) -> None:
+        self.run_statuses[match_run_id] = ("succeeded", candidate_count, None)
+
+    def mark_match_run_failed(self, match_run_id: str, failure_code: str) -> None:
+        self.run_statuses[match_run_id] = ("failed", 0, failure_code)

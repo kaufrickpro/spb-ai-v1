@@ -68,7 +68,7 @@ Current scaffold:
 - `apps/api/src/modules/auth/requestAuth.ts` centralizes bearer-token authentication and admin authorization checks.
 - `apps/api/src/modules/manuscripts/registerManuscriptRoutes.ts` owns the Step 8/9 manuscript/document lifecycle, including author-only checks, local signed upload targets, GCS signed URL responses, local file serving, and test-mode review side effects.
 - Step 10 manuscript profile access in `apps/api/src/modules/manuscripts/` is split into manuscript profile page reads, manuscript access request workflow, shared DB access helpers, and a focused error type. `profileAccessService.ts` stays as a small route-facing barrel.
-- Step 10 matching in `apps/api/src/modules/matching/` is split by responsibility: `service.ts` is the small route-facing dispatcher, `testMatchingService.ts` owns local fixture behavior, `supabaseMatchingService.ts` owns trusted Supabase run lifecycle and authorization gates, `tracerCandidates.ts` owns deterministic tracer candidate/grant persistence, and mapper/snapshot modules keep response shaping and safe input fingerprints isolated.
+- Step 10 matching in `apps/api/src/modules/matching/` is split by responsibility: `service.ts` is the small route-facing dispatcher, `testMatchingService.ts` owns local fixture behavior, `supabaseMatchingService.ts` owns trusted Supabase run lifecycle and authorization gates, and mapper/snapshot modules keep response shaping and safe input fingerprints isolated. Any tracer-style candidate generation is local/test-only and is not part of the Supabase staging/production path.
 - `apps/api/src/modules/storage/localTokens.ts` and `apps/api/src/modules/storage/localStorage.ts` own local fake signed URLs and ignored `local-uploads/` storage.
 - `apps/api/src/modules/storage/gcsStorage.ts` owns private GCS object names, signed upload/download URL creation, and server-side object existence checks.
 - `apps/api/src/modules/manuscripts/documentProcessingQueue.ts` owns Cloud Tasks enqueueing for document-processing jobs. The task payload is `{ job_id }` only and Cloud Tasks uses OIDC with the configured invoker service account to call the private AI service.
@@ -143,7 +143,7 @@ Rules:
 
 - Match runs are rate-limited but not monthly quota-limited.
 - Step 10 supports both `author_to_publisher` and `publisher_to_manuscript` runs. Author-to-publisher runs are tied to one manuscript; publisher-to-manuscript runs use the publisher's general profile.
-- The current Step 10 implementation creates durable match runs, calls the private AI service with only `{ match_run_id }`, persists deterministic safe scored candidates, records reference-only match signal sources, and keeps raw numeric scores out of frontend responses. The next hardening step is to move scoring and explanation persistence fully into the AI service.
+- The current Step 10 implementation creates durable match runs, calls the private AI service with only `{ match_run_id }`, and reads candidates persisted by the AI service. The deployed API path does not synthesize fallback candidates on AI timeout or failure; failed AI results leave the run failed with `candidate_count = 0`. Local `API_AUTH_MODE=test` keeps in-memory tracer-like fixture behavior for repeatable tests.
 - Full match visibility requires eligible profile state, eligible manuscript/document state where a manuscript is the source or candidate, successful sample processing for manuscript candidates, publisher discoverability, and entitlement checks.
 - The Node API owns authorization, eligibility, rate limits, run creation, persistence, response validation, and role-based redaction.
 - The FastAPI AI service owns three-axis retrieval/scoring, soft-constraint penalties, ranking, safe snippet selection, and real Vertex/Gemini explanation generation.
@@ -192,8 +192,30 @@ Rules:
 Rules:
 
 - Either side can initiate.
-- Only the recipient can accept or reject.
-- Accepted requests unlock contact details and sample access.
+- Create payload is `{ manuscriptId, publisherProfileId, message? }`. The API derives author profile, requester, recipient, and pair ownership from authenticated context and trusted database state. Browser payloads must not include `authorId`, `requestedBy`, `recipientId`, contact fields, sample URLs, or status.
+- Creation requires durable pair evidence: a stored match candidate for that manuscript/publisher pair or an approved manuscript access request for that publisher/manuscript pair.
+- Both participant profiles, the manuscript, and the active sample must be eligible for create, accept, contact unlock, and sample unlock. Pending requests remain visible when eligibility later changes, but acceptance and unlocks are blocked while blocked/quarantined/ineligible.
+- Prevent duplicate pending requests for the same pair. Accepted requests are terminal. Rejected or cancelled requests can be retried after a 14-day pair-level cooldown.
+- Only the recipient can accept or reject. Only the requester can cancel a pending request.
+- Reject accepts an optional short note. Create accepts an optional plain-text message. Neither message nor note should be copied into notifications, product audit metadata, emails, match explanations, or list payloads.
+- Sending consumes quota transactionally with request creation. Start with 10 intro requests per user/day until Step 13 wires plan-specific subscription quotas.
+- Intro lifecycle mutations should write `intro_requests`, `notifications`, and `product_audit_events` in one transaction or trusted RPC.
+- `GET /api/v1/intro-requests` supports bounded user lists with `box=sent|received|all`, `status=pending|accepted|rejected|cancelled|all`, and `limit` capped at 100.
+- Accepted requests unlock relationship contact details through access-checked API read models and publisher-only sample download access through the document download URL endpoint.
+- Profile and match read models should expose explicit `introState` values instead of requiring frontend inference: `can_request`, `pending_sent`, `pending_received`, `accepted`, `rejected_cooldown`, `cancelled_cooldown`, `not_eligible`, and `quota_exhausted`.
+
+### Admin Intro Requests
+
+- `GET /api/v1/admin/intro-requests`
+- `GET /api/v1/admin/intro-requests/:id`
+
+Rules:
+
+- Admin endpoints are read-only in Step 11.
+- List filtering starts with `status`, requester role/direction, manuscript id, author profile id, publisher profile id, created date range, and bounded `limit`.
+- Detail responses show safe metadata, current unlock status, and a timeline from `product_audit_events`.
+- Admin list views must not expose private contact details, signed sample URLs, intro message bodies, rejection notes, full manuscript text, document chunks, raw provider payloads, or billing state.
+- Do not add admin accept/reject/cancel-on-behalf actions in Step 11.
 
 ### Billing
 

@@ -17,20 +17,29 @@ export async function runAiMatching(input: {
     throw new Error("AI_SERVICE_BASE_URL is required to run matching");
   }
 
-  const response = await fetch(
-    new URL("/internal/matching/run", input.config.aiServiceBaseUrl),
-    {
-      method: "POST",
-      signal: AbortSignal.timeout(60_000),
-      headers: {
-        "content-type": "application/json",
-        ...(input.config.aiInternalToken
-          ? { authorization: `Bearer ${input.config.aiInternalToken}` }
-          : {}),
+  let response: Response;
+  try {
+    response = await fetch(
+      new URL("/internal/matching/run", input.config.aiServiceBaseUrl),
+      {
+        method: "POST",
+        signal: AbortSignal.timeout(60_000),
+        headers: {
+          "content-type": "application/json",
+          ...(input.config.aiInternalToken
+            ? { authorization: `Bearer ${input.config.aiInternalToken}` }
+            : {}),
+        },
+        body: JSON.stringify({ match_run_id: input.matchRunId }),
       },
-      body: JSON.stringify({ match_run_id: input.matchRunId }),
-    },
-  );
+    );
+  } catch (error) {
+    return {
+      status: "failed",
+      candidate_count: 0,
+      failure_code: getAiFailureCode(error),
+    };
+  }
 
   if (!response.ok) {
     return {
@@ -40,5 +49,23 @@ export async function runAiMatching(input: {
     };
   }
 
-  return AiMatchingRunResultSchema.parse(await response.json());
+  try {
+    return AiMatchingRunResultSchema.parse(await response.json());
+  } catch {
+    return {
+      status: "failed",
+      candidate_count: 0,
+      failure_code: "ai_service_failed",
+    };
+  }
+}
+
+function getAiFailureCode(error: unknown) {
+  if (
+    error instanceof Error &&
+    (error.name === "AbortError" || error.name === "TimeoutError")
+  ) {
+    return "ai_service_timeout";
+  }
+  return "ai_service_failed";
 }

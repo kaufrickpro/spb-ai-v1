@@ -2,12 +2,24 @@ from fastapi import FastAPI, Header, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 
 from app.modules.config import AiServiceConfig, load_config
+from app.modules.embeddings import VertexTextEmbeddingAdapter
+from app.modules.explanations import VertexGeminiExplanationProvider
 from app.modules.ingestion import IngestionResult
 from app.modules.ingestion_worker import IngestionWorker, create_local_ingestion_worker
 from app.modules.matching import MatchingResult, MatchingWorker
+from app.modules.matching_signals import VertexSignalEmbeddingProvider
+from app.modules.matching_worker import (
+    RepositoryBackedMatchingWorker,
+    VertexSignalRetrievalProvider,
+)
+from app.modules.retrieval import VertexVectorSearchAdapter
 from app.modules.runtime import RuntimeAdapter, create_runtime_adapter
+from app.modules.sentry import initialize_sentry
 from app.modules.storage import GcsDocumentStorage, LocalFileStorage
-from app.modules.supabase_repository import SupabaseIngestionRepository
+from app.modules.supabase_repository import (
+    SupabaseIngestionRepository,
+    SupabaseMatchingRepository,
+)
 
 
 class HealthResponse(BaseModel):
@@ -32,8 +44,12 @@ def create_app(
     matching_worker: MatchingWorker | None = None,
 ) -> FastAPI:
     resolved_config = config or load_config()
+    initialize_sentry(resolved_config)
     runtime = runtime_adapter or create_runtime_adapter(resolved_config)
     resolved_worker = ingestion_worker or create_default_ingestion_worker(resolved_config)
+    resolved_matching_worker = matching_worker or create_default_matching_worker(
+        resolved_config
+    )
     app = FastAPI(title="AI Service", version="0.1.0")
 
     @app.get("/health", response_model=HealthResponse)
@@ -64,8 +80,8 @@ def create_app(
         authorization: str | None = Header(default=None),
     ) -> MatchingResult:
         require_internal_auth(resolved_config, authorization)
-        if matching_worker is not None:
-            return matching_worker.process_run(request.match_run_id)
+        if resolved_matching_worker is not None:
+            return resolved_matching_worker.process_run(request.match_run_id)
         return MatchingResult(status="succeeded", candidate_count=0)
 
     return app
@@ -94,6 +110,36 @@ def create_default_ingestion_worker(config: AiServiceConfig) -> IngestionWorker 
         ),
         storage=create_document_storage(config),
         config=config,
+    )
+
+
+def create_default_matching_worker(config: AiServiceConfig) -> MatchingWorker | None:
+    if (
+        config.provider_mode != "vertex"
+        or config.explanation_provider != "vertex_gemini"
+        or not config.supabase_url
+        or not config.supabase_service_role_key
+    ):
+        return None
+
+    repository = SupabaseMatchingRepository(
+        config.supabase_url,
+        config.supabase_service_role_key,
+    )
+    embedding_adapter = VertexTextEmbeddingAdapter(config)
+    vector_search_adapter = VertexVectorSearchAdapter(config)
+    return RepositoryBackedMatchingWorker(
+        repository=repository,
+        retrieval_provider=VertexSignalRetrievalProvider(
+            embedding_adapter=embedding_adapter,
+            vector_search_adapter=vector_search_adapter,
+        ),
+        explanation_provider=VertexGeminiExplanationProvider(config),
+        embedding_provider=VertexSignalEmbeddingProvider(
+            embedding_adapter=embedding_adapter,
+            vector_search_adapter=vector_search_adapter,
+            vector_index_name=config.vector_index_name,
+        ),
     )
 
 

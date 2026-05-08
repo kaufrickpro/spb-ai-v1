@@ -114,6 +114,8 @@ async function assertExistingTestUploadWasStored(input: {
       host: "0.0.0.0",
       logLevel: "silent",
       port: 4000,
+      sentryEnvironment: "local",
+      sentryTracesSampleRate: 0,
       storageProvider: "local",
       webAppUrl: "http://localhost:5173",
     },

@@ -2,18 +2,18 @@
 
 ## Current Implementation Note
 
-As of 2026-05-07, GitHub issues #52-#56 are partially implemented on top of
-the #47-#51 durable run lifecycle: reference-only signal records, deterministic
-soft-constraint scoring, visible-candidate thresholding, top-10 stored
-explanation display, result dropdowns, run detail, profile history, focused
-tests, and docs are in place. The AI service now has a real Vertex/Gemini
-explanation provider boundary with bounded evidence and JSON validation tests,
-an extra-field-forbidden `{ match_run_id }` request contract, matching
-repository protocol/REST methods, and Python-owned signal/fingerprint/reference
-helpers. Production-quality AI-service-owned retrieval/scoring persistence and
-Vertex Vector Search remain future work. Browser smoke coverage now lives in
-`docs/step-10-matching-smoke-checklist.md`, and the first matching eval fixture
-lives in `apps/ai-service/tests/fixtures/matching_eval.json`.
+As of 2026-05-08, GitHub issues #60-#65 are implemented on top of the #47-#56
+matching foundation. Staging/production AI-service config now requires real
+Vertex/Gemini matching settings and `/ready` fails closed when those
+dependencies are incomplete. The AI service has Vertex text embedding and
+Vector Search adapters, a signal sync worker, repository-backed
+`MatchingWorker.process_run(match_run_id)`, Python three-axis soft scoring,
+top-25 candidate and profile-access grant persistence, and strict top-10
+Gemini explanation persistence. The deployed API path now creates runs, calls
+the AI service with only `{ match_run_id }`, reads AI-persisted candidates, and
+does not synthesize candidates on AI timeout/failure. Browser smoke coverage
+now lives in `docs/step-10-matching-smoke-checklist.md`, and the first matching
+eval fixture lives in `apps/ai-service/tests/fixtures/matching_eval.json`.
 
 ## Overview
 

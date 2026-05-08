@@ -112,6 +112,36 @@ describe("loadConfig", () => {
     expect(config.documentProcessingProvider).toBe("cloud_tasks");
     expect(config.gcsBucketPrivateUploads).toBe("spb-ai-staging-manuscripts");
     expect(config.cloudTasksIngestionQueue).toBe("document-processing-staging");
+    expect(config.sentryEnvironment).toBe("staging");
+    expect(config.sentryTracesSampleRate).toBe(0.1);
+  });
+
+  it("accepts explicit Sentry release metadata and sampling", () => {
+    const config = loadConfig({
+      API_AUTH_MODE: "test",
+      APP_CONFIG_MODE: "local",
+      NODE_ENV: "development",
+      SENTRY_DSN: "https://public@example.ingest.sentry.io/1",
+      SENTRY_ENVIRONMENT: "local",
+      SENTRY_RELEASE: "api@test-sha",
+      SENTRY_TRACES_SAMPLE_RATE: "0.25",
+    });
+
+    expect(config.sentryDsn).toBe("https://public@example.ingest.sentry.io/1");
+    expect(config.sentryEnvironment).toBe("local");
+    expect(config.sentryRelease).toBe("api@test-sha");
+    expect(config.sentryTracesSampleRate).toBe(0.25);
+  });
+
+  it("rejects invalid Sentry sampling values", () => {
+    expect(() =>
+      loadConfig({
+        API_AUTH_MODE: "test",
+        APP_CONFIG_MODE: "local",
+        NODE_ENV: "development",
+        SENTRY_TRACES_SAMPLE_RATE: "2",
+      }),
+    ).toThrow();
   });
 
   it("rejects local storage outside local app config mode", () => {

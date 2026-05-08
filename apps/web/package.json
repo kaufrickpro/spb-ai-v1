@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@marketplace/contracts": "*",
+    "@sentry/react": "^10.52.0",
     "@supabase/supabase-js": "^2.105.1",
     "@tanstack/react-query": "^5.74.4",
     "i18next": "^24.2.3",

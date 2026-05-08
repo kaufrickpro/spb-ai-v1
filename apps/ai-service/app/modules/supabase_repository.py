@@ -14,6 +14,7 @@ from app.modules.repositories import (
     MatchRunRecord,
     MatchSignalSourceWrite,
     ProcessingJobRecord,
+    ProfileAccessGrantWrite,
 )
 
 
@@ -321,7 +322,7 @@ class SupabaseMatchingRepository:
         ]
 
     def list_eligible_manuscripts(self, limit: int) -> list[dict[str, object]]:
-        return self._request(
+        manuscripts = self._request(
             "GET",
             "manuscripts",
             query={
@@ -335,6 +336,64 @@ class SupabaseMatchingRepository:
                 "limit": str(limit),
             },
         )
+        if not manuscripts:
+            return []
+        sample_document_ids = ",".join(
+            sorted(
+                {
+                    row["sample_document_id"]
+                    for row in manuscripts
+                    if row.get("sample_document_id")
+                }
+            )
+        )
+        if not sample_document_ids:
+            return []
+        documents = self._request(
+            "GET",
+            "documents",
+            query={
+                "id": f"in.({sample_document_ids})",
+                "processing_status": "eq.succeeded",
+                "eligibility_status": "eq.eligible",
+                "select": "id",
+            },
+        )
+        eligible_document_ids = {document["id"] for document in documents}
+        manuscripts = [
+            manuscript
+            for manuscript in manuscripts
+            if manuscript.get("sample_document_id") in eligible_document_ids
+        ]
+        if not manuscripts:
+            return []
+        author_user_ids = ",".join(
+            sorted({row["author_id"] for row in manuscripts if row.get("author_id")})
+        )
+        if not author_user_ids:
+            return []
+        authors = self._request(
+            "GET",
+            "profiles",
+            query={
+                "user_id": f"in.({author_user_ids})",
+                "role": "eq.author",
+                "eligibility_status": "eq.eligible",
+                "select": "id,user_id,display_name,eligibility_status",
+            },
+        )
+        authors_by_user_id = {author["user_id"]: author for author in authors}
+        return [
+            {
+                **manuscript,
+                "author_profile_id": authors_by_user_id[manuscript["author_id"]]["id"],
+                "author_display_name": authors_by_user_id[manuscript["author_id"]][
+                    "display_name"
+                ],
+            }
+            for manuscript in manuscripts
+            if manuscript.get("author_id") in authors_by_user_id
+        ]
 
     def upsert_match_signal_source(self, signal: MatchSignalSourceWrite) -> str:
         embedding_record_id = (
@@ -410,6 +469,20 @@ class SupabaseMatchingRepository:
             prefer="return=minimal",
         )
 
+    def insert_profile_access_grants(
+        self, grants: list[ProfileAccessGrantWrite]
+    ) -> None:
+        for grant in grants:
+            existing = self._find_profile_access_grant(grant)
+            if existing is not None:
+                continue
+            self._request(
+                "POST",
+                "profile_access_grants",
+                body=asdict(grant),
+                prefer="return=minimal",
+            )
+
     def mark_match_run_succeeded(self, match_run_id: str, candidate_count: int) -> None:
         self._request(
             "PATCH",
@@ -454,6 +527,22 @@ class SupabaseMatchingRepository:
             ),
         }
         rows = self._request("GET", "match_signal_sources", query=query)
+        return rows[0] if rows else None
+
+    def _find_profile_access_grant(
+        self, grant: ProfileAccessGrantWrite
+    ) -> dict[str, object] | None:
+        query = {
+            "viewer_profile_id": f"eq.{grant.viewer_profile_id}",
+            "target_profile_id": f"eq.{grant.target_profile_id}",
+            "source": f"eq.{grant.source}",
+            "select": "id",
+            "limit": "1",
+            "manuscript_id": (
+                "is.null" if grant.manuscript_id is None else f"eq.{grant.manuscript_id}"
+            ),
+        }
+        rows = self._request("GET", "profile_access_grants", query=query)
         return rows[0] if rows else None
 
     def _request(

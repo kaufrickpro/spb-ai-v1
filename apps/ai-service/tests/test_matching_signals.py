@@ -73,6 +73,19 @@ def test_builds_missing_optional_publisher_signals_without_embedding_reference()
     assert by_type["catalog"].embedding is None
 
 
+def test_required_signal_without_text_is_stale_and_has_no_embedding() -> None:
+    signals = build_publisher_signal_writes(
+        publisher={"publisherName": ""},
+        publisher_profile_id="30000000-0000-4000-8000-000000000001",
+        owner_profile_id="30000000-0000-4000-8000-000000000001",
+    )
+
+    guidelines = {signal.signal_type: signal for signal in signals}["guidelines"]
+    assert guidelines.status == "stale"
+    assert guidelines.summary is None
+    assert guidelines.embedding is None
+
+
 def test_signal_fingerprint_changes_when_summary_changes() -> None:
     first = fingerprint_signal("premise", "literary mystery")
     second = fingerprint_signal("premise", "historical romance")

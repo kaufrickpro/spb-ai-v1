@@ -37,6 +37,29 @@ def test_ready_endpoint_reports_runtime_not_ready() -> None:
     assert response.json() == {"status": "not_ready", "service": "ai-service"}
 
 
+def test_ready_endpoint_reports_missing_vertex_matching_dependencies() -> None:
+    config = AiServiceConfig.model_construct(
+        provider_mode="vertex",
+        vertex_project_id="project-1",
+        vertex_location="europe-west1",
+        embedding_model="gemini-embedding-001",
+        vector_index_id="6107839868853813248",
+        vector_index_endpoint_id=None,
+        vector_deployed_index_id="publisher_author_staging_v1",
+        vector_psc_network="projects/project-1/global/networks/matching-vpc",
+        vector_search_query_host=None,
+        explanation_provider="vertex_gemini",
+        gemini_explanation_model="gemini-2.5-flash",
+        supabase_url=None,
+        supabase_service_role_key=None,
+    )
+    app = create_app(config)
+    response = TestClient(app).get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "not_ready", "service": "ai-service"}
+
+
 class SuccessfulMatchingWorker:
     def process_run(self, match_run_id: str) -> MatchingResult:
         assert match_run_id == "10000000-0000-4000-8000-000000000001"

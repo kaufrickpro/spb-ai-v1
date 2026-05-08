@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
+import { captureApiException } from "../sentry/index.js";
 import { sendInternalServerError, sendValidationError } from "./errors.js";
 
 export function registerErrorHandler(app: FastifyInstance) {
-  app.setErrorHandler((error: unknown, _request, reply) => {
+  app.setErrorHandler((error: unknown, request, reply) => {
     if (isZodError(error)) {
       return sendValidationError(
         reply,
@@ -11,6 +12,7 @@ export function registerErrorHandler(app: FastifyInstance) {
       );
     }
 
+    captureApiException(error, request);
     app.log.error(error);
     return sendInternalServerError(reply);
   });

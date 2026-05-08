@@ -198,7 +198,7 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 10. Build Matching Vertical Slice
 
-- Status: Step 10 Phase 0 profile/access foundation is implemented for GitHub issues #40-#45. GitHub issues #47-#51 are implemented as the durable run/profile-access lifecycle foundation. GitHub issues #52-#56 are partially implemented: reference-only signal records, deterministic soft-constraint scoring, top-10 bounded explanation display, richer result cards/detail dropdowns, profile history, focused tests, and docs are in place. The first AI-service handoff phases are now implemented: the matching endpoint rejects extra payload fields, the AI service has a Supabase matching repository boundary, and Python-owned signal/fingerprint/reference helpers exist for manuscript and publisher signals. The remaining production hardening is to implement AI-service retrieval/scoring/candidate persistence, profile-access grant persistence, and real Vertex Vector Search/Gemini explanation writes behind the `{ match_run_id }` boundary.
+- Status: Step 10 Phase 0 profile/access foundation is implemented for GitHub issues #40-#45. GitHub issues #47-#51 are implemented as the durable run/profile-access lifecycle foundation. GitHub issues #52-#56 added the stored scoring/result UI shape. GitHub issues #60-#65 now move deployed matching behind the AI-service-owned path: staging/production AI-service config fails closed without real Vertex/Gemini matching settings; Vertex embedding and Vector Search adapters exist; signal sync embeds/upserts eligible manuscript and publisher signals; `RepositoryBackedMatchingWorker.process_run(match_run_id)` performs retrieval, scoring, candidate/profile-access persistence, and top-10 explanation persistence; and the deployed API reads AI-persisted candidates instead of creating tracer candidates.
 - Phase 0: build the profile/access foundation before matching. Add match-revealed publisher, author, and manuscript profile pages; public `/publishers` directory with only admin-approved logo/name/website; owner-approved match-visible contact fields; manual manuscript access requests; and admin public directory approval.
 - Implement both author-to-publisher and publisher-to-manuscript match runs.
 - Keep hard gates narrow: requester authorization, eligible profile/manuscript where applicable, successful processed sample for manuscript candidates, discoverable publisher profile, entitlement checks, and rate limits.
@@ -207,7 +207,7 @@ Use a workflow that makes mistakes cheap and visible:
 - Use three manuscript semantic axes: `premise`, `voice`, and `arc`. Use publisher semantic signals: `guidelines`, optional `wishlist`, and optional `catalog`.
 - Track semantic signal freshness in `match_signal_sources`; keep numeric vectors out of Postgres and store only vector references in `embedding_records`.
 - Apply genre, audience, manuscript-form, word-count, and exclusion-topic conflicts as penalties and watch-outs, not broad hard filters.
-- Retrieve more candidates than are shown, hide final scores below `0.35`, store up to 25 visible candidates, and show stored top-10 one-paragraph explanations. The AI service has the real Vertex/Gemini provider boundary; repository-backed explanation persistence is the next hardening step.
+- Retrieve more candidates than are shown, hide final scores below `0.35`, store up to 25 visible candidates, and show stored top-10 one-paragraph explanations. The deployed path is now AI-service-owned; local `API_AUTH_MODE=test` keeps in-memory tracer-like fixtures for repeatable local tests.
 - Store `match_runs`, `match_signal_sources`, and `match_candidates` with fingerprints, input snapshots, reference-only embedding records, score breakdowns, penalties, safe snippets, explanation metadata, and stale-run support.
 - Return score band, axis bands, one-paragraph explanation when present, fit reasons, risk reasons, snippets, intro CTA state, and match detail CTA state.
 - Expose prior match runs under profile history. Rematch always creates a new run; old runs remain visible and may be marked stale.
@@ -216,11 +216,17 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 11. Build Intro Requests And Contact Unlock
 
-- Either author or publisher can send an intro request for one manuscript/publisher pair.
-- Prevent duplicate pending requests for the same pair.
-- Only the recipient can accept or reject.
-- Accepted requests unlock contact details and sample access through secure API endpoints, not direct broad table access.
-- Write notifications and audit logs for request state changes.
+- Status: planned and decision-complete; implementation has not started.
+- Either author or publisher can send an intro request for one manuscript/publisher pair only when durable match/access evidence exists: a stored match candidate for that pair or an approved manuscript access request for that publisher/manuscript.
+- Prevent arbitrary outreach from guessed IDs, logged-out public directory browsing, or unrelated profile access. Both profiles, the manuscript, and the active sample must remain eligible for send, accept, and unlock behavior.
+- Prevent duplicate pending requests for the same pair. An accepted request is terminal for that pair. Rejected or cancelled requests can be retried only after a 14-day pair-level cooldown.
+- Only the recipient can accept or reject. Only the original requester can cancel while pending. Accept requires a confirmation step because it unlocks private relationship data.
+- Consume intro request quota when the request is sent, transactionally with request creation, notification creation, and product audit event creation. Start with the simple default limit of 10 intro requests per user/day; Step 13 can replace the quota source with real subscription plan limits.
+- Accepted requests unlock relationship contact details for both counterparties and publisher-only sample download access for the current active eligible manuscript sample. Unlocks are computed live from the accepted intro row plus current eligibility; do not copy broad grants into profile rows.
+- Keep match-visible contact separate from accepted-intro contact. Use a clearly named `acceptedIntroContact` response block and continue to serve signed sample download URLs only through secure API endpoints.
+- Write in-app notification records and product audit events for create, accept, reject, and cancel. Product emails remain deferred to Step 14.
+- Add a read-only admin intro request investigation surface with filters, safe metadata, timeline, and unlock status. Do not add admin accept/reject/cancel-on-behalf actions in Step 11.
+- The detailed Step 11 implementation plan lives in `docs/step-11-intro-requests-implementation-plan.md`.
 
 ### 12. Build Match Detail View
 
@@ -244,7 +250,7 @@ Use a workflow that makes mistakes cheap and visible:
 - Send transactional emails for profile decisions, manuscript decisions, intro request updates, and subscription updates.
 - Verify Resend webhook signatures before processing delivery events.
 - Do not email manuscript text, document chunks, signed URLs, raw PayTR payloads, or unreleased contact details.
-- Keep Supabase Auth emails out of this adapter. Auth lifecycle emails are configured in Supabase custom SMTP through Resend SMTP using dedicated auth senders such as `no-reply@auth.spb-ai.dev` for production and `no-reply@auth.staging.spb-ai.dev` for staging.
+- Keep Supabase Auth emails out of this adapter. Auth lifecycle emails are configured in Supabase custom SMTP through Resend SMTP using dedicated auth senders such as `no-reply@auth.spb-ai.com` for production and `no-reply@auth.spb-ai.dev` for staging.
 
 ### 15. Build Frontend Product Screens
 
@@ -273,11 +279,11 @@ Use a workflow that makes mistakes cheap and visible:
 - Add Artifact Registry repositories for container images.
 - Add Cloud Tasks queues, GCS buckets, Secret Manager secrets, IAM, monitoring, DNS/domain mapping, and service accounts.
 - Keep separate local, staging, and production configuration.
-- Use `https://spb-ai.dev` as the canonical production URL, redirect `https://www.spb-ai.dev` to the apex domain, and use `https://staging.spb-ai.dev` for staging.
+- Use `https://spb-ai.com` as the canonical production URL, redirect `https://www.spb-ai.com` to the apex domain, and use `https://spb-ai.dev` for staging.
 - Use private manuscript buckets `spb-ai-prod-manuscripts` and `spb-ai-staging-manuscripts`; all upload/download access must go through API authorization checks and short-lived signed URLs.
 - Use Frankfurt-aligned GCP regions where service support allows.
-- Configure Resend SPF, DKIM, and DMARC for auth senders `no-reply@auth.spb-ai.dev` and `no-reply@auth.staging.spb-ai.dev`.
-- Configure Resend SPF, DKIM, and DMARC for product senders `support@mail.spb-ai.dev` and `support@mail.staging.spb-ai.dev`.
+- Configure Resend SPF, DKIM, and DMARC for auth senders `no-reply@auth.spb-ai.com` and `no-reply@auth.spb-ai.dev`.
+- Configure Resend SPF, DKIM, and DMARC for product senders `support@mail.spb-ai.com` and `support@mail.spb-ai.dev`.
 - Use Google Cloud MCP for read-only deployed resource inspection where available; use Terraform for all planned infrastructure changes.
 
 ### 18. Containerize Services
@@ -314,7 +320,7 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 21. Staging Rollout
 
-- Use `https://staging.spb-ai.dev` as the staging app URL and `https://staging.spb-ai.dev/auth/callback` as the staging app callback URL.
+- Use `https://spb-ai.dev` as the staging app URL and `https://spb-ai.dev/auth/callback` as the staging app callback URL.
 - Deploy infrastructure to staging.
 - Run migrations and seeds.
 - Build and push container images for web, API, and AI service to Artifact Registry.
@@ -327,7 +333,7 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 22. Production Launch
 
-- Configure production domain `https://spb-ai.dev`, redirect `https://www.spb-ai.dev` to the apex domain, and use `https://spb-ai.dev/auth/callback` as the production app callback URL.
+- Configure production domain `https://spb-ai.com`, redirect `https://www.spb-ai.com` to the apex domain, and use `https://spb-ai.com/auth/callback` as the production app callback URL.
 - Configure production Resend sender domains for Supabase Auth and API-owned product email.
 - Apply production infrastructure.
 - Run migrations.

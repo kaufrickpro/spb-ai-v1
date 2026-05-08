@@ -97,6 +97,66 @@ def test_http_clamav_scanner_sends_safe_request_shape(
     ]
 
 
+def test_http_clamav_scanner_can_use_cloud_run_oidc_auth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[dict[str, Any]] = []
+
+    def fake_post(
+        url: str,
+        *,
+        content: bytes,
+        headers: dict[str, str],
+        timeout: float,
+    ) -> httpx.Response:
+        requests.append(
+            {
+                "url": url,
+                "content": content,
+                "headers": headers,
+                "timeout": timeout,
+            }
+        )
+        return httpx.Response(
+            200,
+            request=httpx.Request("POST", url),
+            json={"result": "clean", "scanner": "clamav"},
+        )
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    scanner = HttpClamAvDocumentScanner(
+        endpoint="https://scanner.internal/scan",
+        token="scanner-token",
+        timeout_seconds=7,
+        cloud_run_audience="https://scanner.internal",
+        id_token_fetcher=lambda audience: f"id-token-for-{audience}",
+    )
+
+    result = scanner.scan_bytes(
+        document_id="doc-1",
+        mime_type="text/plain",
+        byte_size=11,
+        content=b"Sample text",
+    )
+
+    assert result.scanner_result == "clean"
+    assert requests == [
+        {
+            "url": "https://scanner.internal/scan",
+            "content": b"Sample text",
+            "headers": {
+                "authorization": "Bearer id-token-for-https://scanner.internal",
+                "content-type": "application/octet-stream",
+                "x-document-id": "doc-1",
+                "x-document-mime-type": "text/plain",
+                "x-document-byte-size": "11",
+                "x-scanner-token": "scanner-token",
+            },
+            "timeout": 7,
+        }
+    ]
+
+
 def test_http_clamav_scanner_rejects_unknown_response_values(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

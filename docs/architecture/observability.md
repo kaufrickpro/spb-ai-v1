@@ -60,6 +60,7 @@ Configure by environment:
 - Sentry projects: `spb-ai-web`, `spb-ai-api`, and `spb-ai-ai-service`
 - environment tags: `staging` and `production`
 - release names on every deployment: `web@<git-sha>`, `api@<git-sha>`, and `ai-service@<git-sha>`
+- runtime config: `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, and `SENTRY_TRACES_SAMPLE_RATE` for the API and AI service; `VITE_PUBLIC_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`, `VITE_SENTRY_RELEASE`, and `VITE_SENTRY_TRACES_SAMPLE_RATE` for the frontend
 - source maps uploaded for frontend releases without exposing source maps publicly
 - PII scrubbing before events leave the app
 
