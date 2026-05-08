@@ -79,7 +79,9 @@ describe("runSupabaseMatch", () => {
           manuscriptProfilePath: null,
           penalties: [],
         },
-        safe_snippets: [{ label: "Guidelines", text: "Send literary fiction." }],
+        safe_snippets: [
+          { label: "Guidelines", text: "Send literary fiction." },
+        ],
       });
       return {
         status: "succeeded",
@@ -90,7 +92,10 @@ describe("runSupabaseMatch", () => {
 
     const response = await runSupabaseMatch({
       config,
-      request: { direction: "author_to_publisher", manuscriptId: MANUSCRIPT_ID },
+      request: {
+        direction: "author_to_publisher",
+        manuscriptId: MANUSCRIPT_ID,
+      },
       user: {
         userId: AUTHOR_USER_ID,
         jwt: "jwt",
@@ -118,7 +123,10 @@ describe("runSupabaseMatch", () => {
 
     const response = await runSupabaseMatch({
       config,
-      request: { direction: "author_to_publisher", manuscriptId: MANUSCRIPT_ID },
+      request: {
+        direction: "author_to_publisher",
+        manuscriptId: MANUSCRIPT_ID,
+      },
       user: {
         userId: AUTHOR_USER_ID,
         jwt: "jwt",

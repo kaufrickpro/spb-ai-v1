@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { IsoDateTimeSchema, UuidSchema } from "./common.js";
+import { IntroStateSchema } from "./introRequests.js";
 
 export const MatchDirectionSchema = z.enum([
   "author_to_publisher",
@@ -23,6 +24,11 @@ export const MatchPenaltySchema = z.object({
   code: z.string().trim().min(1).max(80),
   label: z.string().trim().min(1).max(160),
   severity: z.enum(["low", "medium", "high"]),
+});
+
+export const IntroTargetSchema = z.object({
+  manuscriptId: UuidSchema,
+  publisherProfileId: UuidSchema,
 });
 
 export const MatchRunRequestSchema = z.discriminatedUnion("direction", [
@@ -54,6 +60,16 @@ export const MatchCandidateSchema = z.object({
   safeSnippets: z.array(MatchSafeSnippetSchema).max(6),
   profilePath: z.string().trim().min(1).max(240),
   manuscriptProfilePath: z.string().trim().min(1).max(240).nullable(),
+  introTarget: IntroTargetSchema.nullable().default(null),
+  introState: IntroStateSchema.default({
+    status: "not_eligible",
+    requestId: null,
+    viewerCanAccept: false,
+    viewerCanReject: false,
+    viewerCanCancel: false,
+    cooldownUntil: null,
+    quotaRemaining: null,
+  }),
 });
 
 export const MatchRunSchema = z.object({

@@ -8,6 +8,7 @@ const adminSidebarLinks = [
   { to: WEB_ROUTES.admin, key: "dashboard" },
   { to: WEB_ROUTES.adminReviews, key: "reviews" },
   { to: WEB_ROUTES.adminTrustSafety, key: "trustSafety" },
+  { to: WEB_ROUTES.adminIntroRequests, key: "introRequests" },
   { to: WEB_ROUTES.adminJobs, key: "jobs" },
   { to: WEB_ROUTES.adminPayments, key: "payments" },
   { to: WEB_ROUTES.adminAuditLogs, key: "auditLogs" },

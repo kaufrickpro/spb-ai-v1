@@ -741,17 +741,12 @@ Columns:
 - `manuscript_id uuid not null references manuscripts(id) on delete cascade`
 - `author_profile_id uuid not null references profiles(id)`
 - `publisher_profile_id uuid not null references profiles(id)`
-- `requested_by_profile_id uuid not null references profiles(id)`
+- `requester_profile_id uuid not null references profiles(id)`
 - `recipient_profile_id uuid not null references profiles(id)`
 - `status intro_request_status not null default 'pending'`
 - `message text`
-- `decision_note text`
-- `requester_display_name_snapshot text not null`
-- `recipient_display_name_snapshot text not null`
-- `manuscript_title_snapshot text not null`
-- `publisher_display_name_snapshot text not null`
+- `rejection_note text`
 - `responded_at timestamptz`
-- `cancelled_at timestamptz`
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`
 
@@ -776,8 +771,8 @@ Indexes:
 
 - `intro_requests(author_profile_id, status, created_at desc)`
 - `intro_requests(publisher_profile_id, status, created_at desc)`
-- `intro_requests(requested_by_profile_id, status, created_at desc)`
-- `intro_requests(recipient_profile_id, status, created_at desc)`
+- `intro_requests(requester_profile_id, requested_at desc)`
+- `intro_requests(manuscript_id, publisher_profile_id, requested_at desc)`
 - `intro_requests(manuscript_id, publisher_profile_id, status)`
 - `unique(manuscript_id, publisher_profile_id) where status = 'pending'`
 - Guard accepted terminal behavior with a unique accepted partial index or transaction/RPC logic that rejects future create attempts when an accepted pair exists.
@@ -787,16 +782,19 @@ Indexes:
 Columns:
 
 - `id uuid primary key default gen_random_uuid()`
-- `recipient_id uuid not null references profiles(id) on delete cascade`
-- `type notification_type not null`
-- `payload jsonb not null default '{}'::jsonb`
+- `recipient_profile_id uuid not null references profiles(id) on delete cascade`
+- `actor_profile_id uuid references profiles(id) on delete set null`
+- `notification_type text not null`
+- `target_type text not null`
+- `target_id uuid not null`
+- `metadata jsonb not null default '{}'::jsonb`
 - `read_at timestamptz`
 - `created_at timestamptz not null default now()`
 
 Rules:
 
 - Step 11 introduces durable in-app notification records, not product email delivery.
-- Initial Step 11 types are `intro_requested`, `intro_accepted`, `intro_rejected`, and `intro_cancelled`.
+- Initial Step 11 types are `intro_request_created`, `intro_request_accepted`, `intro_request_rejected`, and `intro_request_cancelled`.
 - Notification payloads may include `intro_request_id`, `manuscript_id`, `manuscript_title`, `counterparty_profile_id`, `counterparty_display_name`, and `status`.
 - Notification payloads must not include intro message text, rejection notes, private contact details, signed URLs, sample metadata, manuscript text, document chunks, or admin notes.
 
@@ -808,7 +806,7 @@ Columns:
 
 - `id uuid primary key default gen_random_uuid()`
 - `actor_profile_id uuid references profiles(id) on delete set null`
-- `event_type text not null`
+- `action text not null`
 - `target_type text not null`
 - `target_id uuid not null`
 - `metadata jsonb not null default '{}'::jsonb`

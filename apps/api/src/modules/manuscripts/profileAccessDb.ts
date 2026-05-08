@@ -65,7 +65,15 @@ export async function canViewDbManuscript(input: {
     .eq("manuscript_id", input.manuscript.id)
     .eq("status", "approved")
     .maybeSingle();
-  return Boolean(request);
+  if (request) return true;
+  const { data: introRequest } = await input.db
+    .from("intro_requests")
+    .select("id")
+    .eq("publisher_profile_id", viewer.id)
+    .eq("manuscript_id", input.manuscript.id)
+    .eq("status", "accepted")
+    .maybeSingle();
+  return Boolean(introRequest);
 }
 
 export async function hasDbDiscoveredAuthor(

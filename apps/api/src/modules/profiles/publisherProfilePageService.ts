@@ -4,6 +4,10 @@ import {
 } from "@marketplace/contracts";
 import type { ApiConfig } from "../config/config.js";
 import type { AuthenticatedUser } from "../auth/verifyJwt.js";
+import { getAcceptedIntroContactForProfile } from "../introRequests/service.js";
+import type { IntroRequestTestState } from "../introRequests/testState.js";
+import type { ManuscriptTestState } from "../manuscripts/testState.js";
+import type { MatchingTestState } from "../matching/testState.js";
 import { createServiceRoleSupabaseClient } from "../supabase/client.js";
 import { findTestProfileById, type ProfileTestState } from "./testState.js";
 import { MatchProfileServiceError } from "./matchProfileErrors.js";
@@ -15,6 +19,9 @@ import { canViewDbProfile, canViewProfile } from "./profileAccessPolicy.js";
 
 export async function getPublisherProfilePage(input: {
   config: ApiConfig;
+  introTestState?: IntroRequestTestState;
+  manuscriptTestState?: ManuscriptTestState;
+  matchingTestState?: MatchingTestState;
   publisherProfileId: string;
   testState: ProfileTestState;
   user: AuthenticatedUser;
@@ -72,6 +79,21 @@ export async function getPublisherProfilePage(input: {
           publisher.profile.id,
         ),
       ),
+      introState: null,
+      acceptedIntroContact:
+        input.introTestState &&
+        input.manuscriptTestState &&
+        input.matchingTestState
+          ? await getAcceptedIntroContactForProfile({
+              config: input.config,
+              introTestState: input.introTestState,
+              manuscriptTestState: input.manuscriptTestState,
+              matchingTestState: input.matchingTestState,
+              profileTestState: input.testState,
+              targetProfileId: publisher.profile.id,
+              user: input.user,
+            })
+          : null,
     };
 
     return PublisherProfilePageResponseSchema.parse({ publisher: page });
@@ -153,6 +175,16 @@ export async function getPublisherProfilePage(input: {
       recentAcquisitions: details.recent_acquisitions ?? [],
       bestSellingBooks: details.best_selling_books ?? [],
       contact: buildVisibleContact(fromDbContactSettings(profile)),
+      introState: null,
+      acceptedIntroContact: await getAcceptedIntroContactForProfile({
+        config: input.config,
+        introTestState: input.introTestState!,
+        manuscriptTestState: input.manuscriptTestState!,
+        matchingTestState: input.matchingTestState!,
+        profileTestState: input.testState,
+        targetProfileId: profile.id,
+        user: input.user,
+      }),
     },
   });
 }

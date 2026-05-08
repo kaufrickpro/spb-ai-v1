@@ -56,7 +56,7 @@ export type LocalUploadToken = {
 };
 
 export type LocalDownloadToken = {
-  accessType: "author" | "admin";
+  accessType: "author" | "admin" | "accepted_intro";
   documentId: string;
   authorId: string;
   expiresAt: string;
@@ -89,7 +89,7 @@ export function verifyLocalUploadToken(token: string): LocalUploadToken | null {
 export function createLocalDownloadToken(
   documentId: string,
   authorId: string,
-  accessType: "author" | "admin" = "author",
+  accessType: "author" | "admin" | "accepted_intro" = "author",
 ): { token: string; expiresAt: string } {
   const expiresAt = new Date(
     Date.now() + LOCAL_DOWNLOAD_TTL_SECONDS * 1000,
@@ -111,7 +111,13 @@ export function verifyLocalDownloadToken(
   if (!parts || parts[0] !== "download" || parts.length !== 5) return null;
   const [, documentId, authorId, accessType, expiresAt] = parts;
   if (new Date(expiresAt) < new Date()) return null;
-  if (accessType !== "author" && accessType !== "admin") return null;
+  if (
+    accessType !== "author" &&
+    accessType !== "admin" &&
+    accessType !== "accepted_intro"
+  ) {
+    return null;
+  }
   return { documentId, authorId, accessType, expiresAt };
 }
 

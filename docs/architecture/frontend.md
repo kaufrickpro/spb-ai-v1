@@ -202,13 +202,13 @@ When an accepted intro exists, profile and request surfaces may show a separate 
 
 Show sent and received intro requests plus manuscript access requests. Manuscript access requests let an eligible publisher who discovered an author through matching ask to view another requestable manuscript profile. Author approval unlocks that manuscript profile only for the requesting publisher. Accepted intro requests remain the deeper relationship unlock for private contact details and sample-file access.
 
-The Step 11 requests workspace should support sent/received intro request filters, status badges, manuscript and counterparty context, expandable message/detail display, accept/reject for `pending_received`, cancel for `pending_sent`, accepted contact display, and publisher sample download action. Accept must use a confirmation dialog because it unlocks private contact and sample access.
+The Step 11 requests workspace now shows intro requests beside manuscript access requests, renders API-owned status badges, supports accept/reject for `pending_received`, cancel for `pending_sent`, and shows accepted contact separately. Accept uses a confirmation dialog because it unlocks private contact and sample access. Publisher sample download remains an explicit click on the accepted manuscript profile surface.
 
 ### Admin
 
 Support exception review, quarantine, reports, system failures, jobs, payment events, and audit logs.
 
-Step 11 adds a read-only intro request investigation surface for admins. It should show safe list/detail metadata, filters, lifecycle timeline, notification/audit links, and current unlock status. It must not provide admin accept/reject/cancel-on-behalf actions and must keep private contact, signed URLs, message bodies, rejection notes, full manuscript text, chunks, and billing state out of list views.
+Step 11 adds a read-only intro request investigation surface for admins. It shows safe list metadata and current unlock status, with a safe detail/timeline API available for drill-down. It must not provide admin accept/reject/cancel-on-behalf actions and must keep private contact, signed URLs, message bodies, rejection notes, full manuscript text, chunks, and billing state out of list views.
 
 ## UI Rules
 

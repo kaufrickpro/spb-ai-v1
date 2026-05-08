@@ -4,6 +4,7 @@ import type { AuthenticatedUser } from "../auth/verifyJwt.js";
 import type { ApiConfig } from "../config/config.js";
 import type { ManuscriptTestState } from "../manuscripts/testState.js";
 import type { ProfileTestState } from "../profiles/testState.js";
+import type { IntroRequestTestState } from "../introRequests/testState.js";
 import { MatchingServiceError } from "./errors.js";
 import {
   getSupabaseMatchRun,
@@ -20,6 +21,7 @@ import type { MatchingTestState } from "./testState.js";
 type MatchingContext = {
   config: ApiConfig;
   manuscriptTestState: ManuscriptTestState;
+  introTestState: IntroRequestTestState;
   profileTestState: ProfileTestState;
   testState: MatchingTestState;
   user: AuthenticatedUser;

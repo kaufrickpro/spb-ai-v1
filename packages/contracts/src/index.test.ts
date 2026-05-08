@@ -495,6 +495,9 @@ describe("first-slice API contracts", () => {
       "/api/v1/admin/payments/health",
     );
     expect(ApiRoutes.admin.trustSafety.path).toBe("/api/v1/admin/trust-safety");
+    expect(ApiRoutes.admin.introRequests.path).toBe(
+      "/api/v1/admin/intro-requests",
+    );
     expect(ApiRoutes.manuscripts.list.path).toBe("/api/v1/manuscripts");
     expect(ApiRoutes.manuscripts.create.path).toBe("/api/v1/manuscripts");
     expect(ApiRoutes.uploads.requestSignedUrl.path).toBe(
@@ -512,6 +515,7 @@ describe("first-slice API contracts", () => {
       "admin",
       "manuscripts",
       "matches",
+      "introRequests",
       "uploads",
       "documents",
     ]);
@@ -578,6 +582,8 @@ describe("first-slice API contracts", () => {
       "/api/v1/admin/access",
       "/api/v1/admin/audit-logs",
       "/api/v1/admin/dashboard",
+      "/api/v1/admin/intro-requests",
+      "/api/v1/admin/intro-requests/{requestId}",
       "/api/v1/admin/jobs/health",
       "/api/v1/admin/payments/health",
       "/api/v1/admin/pending-profiles",
@@ -590,6 +596,10 @@ describe("first-slice API contracts", () => {
       "/api/v1/documents/{id}",
       "/api/v1/documents/{id}/complete-upload",
       "/api/v1/documents/{id}/download-url",
+      "/api/v1/intro-requests",
+      "/api/v1/intro-requests/{requestId}/accept",
+      "/api/v1/intro-requests/{requestId}/cancel",
+      "/api/v1/intro-requests/{requestId}/reject",
       "/api/v1/manuscript-access-requests",
       "/api/v1/manuscript-access-requests/{requestId}/approve",
       "/api/v1/manuscript-access-requests/{requestId}/reject",

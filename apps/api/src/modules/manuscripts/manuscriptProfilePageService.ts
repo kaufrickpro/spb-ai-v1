@@ -7,6 +7,12 @@ import { authorizeAdminUser } from "../auth/requestAuth.js";
 import type { AuthenticatedUser } from "../auth/verifyJwt.js";
 import { createServiceRoleSupabaseClient } from "../supabase/client.js";
 import {
+  getAcceptedIntroContactForProfile,
+  getIntroStateForPair,
+} from "../introRequests/service.js";
+import type { IntroRequestTestState } from "../introRequests/testState.js";
+import type { MatchingTestState } from "../matching/testState.js";
+import {
   findTestProfileByUserId,
   type ProfileTestState,
 } from "../profiles/testState.js";
@@ -16,8 +22,10 @@ import { canViewDbManuscript } from "./profileAccessDb.js";
 
 export async function getManuscriptProfilePage(input: {
   config: ApiConfig;
+  introTestState?: IntroRequestTestState;
   manuscriptId: string;
   manuscriptTestState: ManuscriptTestState;
+  matchingTestState?: MatchingTestState;
   profileTestState: ProfileTestState;
   user: AuthenticatedUser;
 }) {
@@ -75,6 +83,20 @@ export async function getManuscriptProfilePage(input: {
       .select("biography")
       .eq("profile_id", author.id)
       .maybeSingle();
+    const viewer = await getDbViewerProfile(db, input.user.userId);
+    const introState =
+      viewer?.role === "publisher"
+        ? await getIntroStateForPair({
+            config: input.config,
+            introTestState: input.introTestState!,
+            manuscriptId: manuscript.id,
+            manuscriptTestState: input.manuscriptTestState,
+            matchingTestState: input.matchingTestState!,
+            profileTestState: input.profileTestState,
+            publisherProfileId: viewer.id,
+            user: input.user,
+          })
+        : null;
 
     return ManuscriptProfileResponseSchema.parse({
       manuscript: {
@@ -102,6 +124,23 @@ export async function getManuscriptProfilePage(input: {
         shortTeaser: manuscript.profile_teaser ?? null,
         wordCount: manuscript.word_count,
         language: manuscript.language,
+        introState,
+        acceptedIntroContact:
+          introState?.status === "accepted"
+            ? await getAcceptedIntroContactForProfile({
+                config: input.config,
+                introTestState: input.introTestState!,
+                manuscriptTestState: input.manuscriptTestState,
+                matchingTestState: input.matchingTestState!,
+                profileTestState: input.profileTestState,
+                targetProfileId: author.id,
+                user: input.user,
+              })
+            : null,
+        acceptedIntroSampleDocumentId:
+          introState?.status === "accepted"
+            ? manuscript.sample_document_id
+            : null,
       },
     });
   }
@@ -158,7 +197,30 @@ export async function getManuscriptProfilePage(input: {
     shortTeaser: manuscript.shortTeaser ?? null,
     wordCount: manuscript.wordCount,
     language: manuscript.language,
+    introState:
+      input.introTestState && input.matchingTestState
+        ? await getManuscriptIntroState(input, manuscript.id)
+        : null,
+    acceptedIntroContact: null,
+    acceptedIntroSampleDocumentId: null,
   };
+
+  if (
+    page.introState?.status === "accepted" &&
+    input.introTestState &&
+    input.matchingTestState
+  ) {
+    page.acceptedIntroContact = await getAcceptedIntroContactForProfile({
+      config: input.config,
+      introTestState: input.introTestState,
+      manuscriptTestState: input.manuscriptTestState,
+      matchingTestState: input.matchingTestState,
+      profileTestState: input.profileTestState,
+      targetProfileId: author.profile.id,
+      user: input.user,
+    });
+    page.acceptedIntroSampleDocumentId = manuscript.sampleDocumentId;
+  }
 
   return ManuscriptProfileResponseSchema.parse({ manuscript: page });
 }
@@ -168,6 +230,8 @@ async function canViewManuscript(input: {
   manuscriptId: string;
   manuscriptTestState: ManuscriptTestState;
   profileTestState: ProfileTestState;
+  introTestState?: IntroRequestTestState;
+  matchingTestState?: MatchingTestState;
   user: AuthenticatedUser;
 }) {
   const manuscript = input.manuscriptTestState.manuscripts.find(
@@ -194,10 +258,75 @@ async function canViewManuscript(input: {
     return false;
   }
 
+  if (
+    input.introTestState &&
+    input.matchingTestState &&
+    viewerProfile.profile.role === "publisher"
+  ) {
+    const state = await getIntroStateForPair({
+      config: input.config,
+      introTestState: input.introTestState,
+      manuscriptId: input.manuscriptId,
+      manuscriptTestState: input.manuscriptTestState,
+      matchingTestState: input.matchingTestState,
+      profileTestState: input.profileTestState,
+      publisherProfileId: viewerProfile.profile.id,
+      user: input.user,
+    });
+    if (state.status === "accepted") return true;
+  }
+
   return input.manuscriptTestState.accessRequests.some(
     (request) =>
       request.manuscriptId === input.manuscriptId &&
       request.publisherProfileId === viewerProfile.profile.id &&
       request.status === "approved",
   );
+}
+
+async function getManuscriptIntroState(
+  input: {
+    config: ApiConfig;
+    introTestState?: IntroRequestTestState;
+    manuscriptTestState: ManuscriptTestState;
+    matchingTestState?: MatchingTestState;
+    profileTestState: ProfileTestState;
+    user: AuthenticatedUser;
+  },
+  manuscriptId: string,
+) {
+  const viewer = findTestProfileByUserId(
+    input.profileTestState,
+    input.user.userId,
+  );
+  if (
+    !viewer ||
+    viewer.profile.role !== "publisher" ||
+    !input.introTestState ||
+    !input.matchingTestState
+  ) {
+    return null;
+  }
+  return getIntroStateForPair({
+    config: input.config,
+    introTestState: input.introTestState,
+    manuscriptId,
+    manuscriptTestState: input.manuscriptTestState,
+    matchingTestState: input.matchingTestState,
+    profileTestState: input.profileTestState,
+    publisherProfileId: viewer.profile.id,
+    user: input.user,
+  });
+}
+
+async function getDbViewerProfile(
+  db: ReturnType<typeof createServiceRoleSupabaseClient>,
+  userId: string,
+) {
+  const { data } = await db
+    .from("profiles")
+    .select("id,role")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data as { id: string; role: string } | null;
 }

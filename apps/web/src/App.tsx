@@ -24,6 +24,7 @@ import { AdminAuditLogsPage } from "./modules/admin/AdminAuditLogsPage";
 import { AdminTrustSafetyPage } from "./modules/admin/AdminTrustSafetyPage";
 import { AdminJobsPage } from "./modules/admin/AdminJobsPage";
 import { AdminPaymentsPage } from "./modules/admin/AdminPaymentsPage";
+import { AdminIntroRequestsPage } from "./modules/admin/AdminIntroRequestsPage";
 import { ManuscriptListPage } from "./modules/manuscripts/ManuscriptListPage";
 import { ManuscriptDetailPage } from "./modules/manuscripts/ManuscriptDetailPage";
 import { AppPlaceholderPage } from "./modules/layout/AppPlaceholderPage";
@@ -343,6 +344,14 @@ export function App() {
         element={
           <AdminGuard>
             <AdminTrustSafetyPage />
+          </AdminGuard>
+        }
+      />
+      <Route
+        path={WEB_ROUTES.adminIntroRequests}
+        element={
+          <AdminGuard>
+            <AdminIntroRequestsPage />
           </AdminGuard>
         }
       />

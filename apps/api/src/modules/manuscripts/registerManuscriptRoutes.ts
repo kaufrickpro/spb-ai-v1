@@ -26,6 +26,8 @@ import {
   sendValidationError,
 } from "../../lib/http/errors.js";
 import type { AdminTestState } from "../admin/testState.js";
+import type { IntroRequestTestState } from "../introRequests/testState.js";
+import type { MatchingTestState } from "../matching/testState.js";
 import type { ProfileTestState } from "../profiles/testState.js";
 import { readLocalUpload, saveLocalUpload } from "../storage/localStorage.js";
 import {
@@ -58,10 +60,13 @@ import {
   listManuscriptAccessRequests,
   ManuscriptProfileAccessError,
 } from "./profileAccessService.js";
+import { canPublisherDownloadAcceptedIntroSample } from "../introRequests/service.js";
 
 type RegisterManuscriptRoutesOptions = {
   adminTestState: AdminTestState;
   auth: AuthDependencies;
+  introTestState?: IntroRequestTestState;
+  matchingTestState?: MatchingTestState;
   profileTestState: ProfileTestState;
   testState: ManuscriptTestState;
 };
@@ -71,6 +76,8 @@ export function registerManuscriptRoutes(
   {
     adminTestState,
     auth,
+    introTestState,
+    matchingTestState,
     profileTestState,
     testState,
   }: RegisterManuscriptRoutesOptions,
@@ -347,6 +354,39 @@ export function registerManuscriptRoutes(
     const documentId = parseUuidParam(request.params, "id", reply);
     if (!documentId) return;
 
+    if (introTestState && matchingTestState) {
+      const acceptedIntroDocument =
+        await canPublisherDownloadAcceptedIntroSample({
+          config: auth.config,
+          documentId,
+          introTestState,
+          manuscriptTestState: testState,
+          matchingTestState,
+          profileTestState,
+          user,
+        });
+      if (acceptedIntroDocument) {
+        const document = normalizeDownloadDocument(
+          acceptedIntroDocument as Record<string, unknown>,
+        );
+        return reply.send(
+          DocumentDownloadUrlResponseSchema.parse(
+            await buildDownloadUrlResponse(
+              auth,
+              {
+                authorId: document.authorId,
+                documentId: document.id,
+                fileName: document.originalFileName,
+                mimeType: document.mimeType,
+                uploadId: document.uploadId,
+              },
+              "accepted_intro",
+            ),
+          ),
+        );
+      }
+    }
+
     const context = await requireAuthorRequest(
       auth,
       user,
@@ -430,8 +470,10 @@ export function registerManuscriptRoutes(
       try {
         const response = await getManuscriptProfilePage({
           config: auth.config,
+          introTestState,
           manuscriptId,
           manuscriptTestState: testState,
+          matchingTestState,
           profileTestState: profileTestState,
           user,
         });
@@ -615,6 +657,18 @@ export function registerManuscriptRoutes(
 
 function escapeContentDispositionFilename(fileName: string): string {
   return fileName.replace(/["\\]/g, "_");
+}
+
+function normalizeDownloadDocument(document: Record<string, unknown>) {
+  return {
+    id: String(document["id"]),
+    authorId: String(document["authorId"] ?? document["author_id"]),
+    originalFileName: String(
+      document["originalFileName"] ?? document["original_file_name"],
+    ),
+    mimeType: String(document["mimeType"] ?? document["mime_type"]),
+    uploadId: String(document["uploadId"] ?? document["upload_id"]),
+  };
 }
 
 function registerSampleContentTypeParsers(app: FastifyInstance): void {

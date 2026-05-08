@@ -21,6 +21,8 @@ import {
   sendNotFound,
 } from "../../lib/http/errors.js";
 import type { ManuscriptTestState } from "../manuscripts/testState.js";
+import type { IntroRequestTestState } from "../introRequests/testState.js";
+import type { MatchingTestState } from "../matching/testState.js";
 import {
   getAuthorProfilePage,
   getPublisherProfilePage,
@@ -41,6 +43,8 @@ export function registerProfileRoutes(
   auth: AuthDependencies,
   testState: ProfileTestState,
   manuscriptTestState?: ManuscriptTestState,
+  introTestState?: IntroRequestTestState,
+  matchingTestState?: MatchingTestState,
 ) {
   app.get("/api/v1/public/publishers", async (_request, reply) => {
     try {
@@ -205,6 +209,9 @@ export function registerProfileRoutes(
       try {
         const response = await getPublisherProfilePage({
           config: auth.config,
+          introTestState,
+          manuscriptTestState,
+          matchingTestState,
           publisherProfileId,
           testState,
           user,
@@ -247,7 +254,9 @@ export function registerProfileRoutes(
         const response = await getAuthorProfilePage({
           authorProfileId,
           config: auth.config,
+          introTestState,
           manuscriptTestState,
+          matchingTestState,
           testState,
           user,
         });

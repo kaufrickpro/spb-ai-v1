@@ -2,95 +2,95 @@
 
 ## People and identity
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Auth Identity** | A login identity managed by Supabase Auth. | User, account, login |
-| **Marketplace Participant** | A non-staff person using the marketplace as exactly one role: author or publisher. | User, customer, account |
-| **Marketplace Profile** | The product profile for one **Marketplace Participant**. | Account, user profile, onboarding profile |
-| **Author** | A **Marketplace Participant** who manages manuscripts and requests publisher matches. | Writer, creator, seller |
-| **Publisher** | A **Marketplace Participant** who defines acquisition preferences and discovers eligible manuscripts. | Buyer, press, organization, imprint |
-| **Staff Identity** | An **Auth Identity** used by an internal operator. | Admin account, user account |
-| **Admin User** | A trusted staff membership record that grants access to internal operations. | Admin profile, staff profile, marketplace admin |
+| Term                        | Definition                                                                                            | Aliases to avoid                                |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **Auth Identity**           | A login identity managed by Supabase Auth.                                                            | User, account, login                            |
+| **Marketplace Participant** | A non-staff person using the marketplace as exactly one role: author or publisher.                    | User, customer, account                         |
+| **Marketplace Profile**     | The product profile for one **Marketplace Participant**.                                              | Account, user profile, onboarding profile       |
+| **Author**                  | A **Marketplace Participant** who manages manuscripts and requests publisher matches.                 | Writer, creator, seller                         |
+| **Publisher**               | A **Marketplace Participant** who defines acquisition preferences and discovers eligible manuscripts. | Buyer, press, organization, imprint             |
+| **Staff Identity**          | An **Auth Identity** used by an internal operator.                                                    | Admin account, user account                     |
+| **Admin User**              | A trusted staff membership record that grants access to internal operations.                          | Admin profile, staff profile, marketplace admin |
 
 ## Profiles and manuscript assets
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Author Profile** | The author-facing details used for marketplace eligibility and match context. | Author account, writer page |
-| **Publisher Profile** | The publisher-facing details and acquisition preferences used for discovery and matching. | Publisher account, organization profile, imprint |
-| **Manuscript** | A work submitted by an **Author** for discovery, matching, and intro workflows. | Book, project, title |
-| **Manuscript Metadata** | Structured facts about a **Manuscript**, such as genre, audience, form, word count, logline, and themes. | Book data, manuscript details |
-| **Sample Document** | The private uploaded sample file attached to a **Manuscript**. | Manuscript file, full manuscript, upload |
-| **Active Sample** | The current **Sample Document** used for document checks, matching evidence, and eventual accepted-intro access. | Current upload, file |
-| **Requestable Manuscript** | A **Manuscript** whose author allows qualified publishers to request profile access after discovery. | Open manuscript, public manuscript |
-| **Manuscript Access Request** | A publisher's request to view a specific **Requestable Manuscript** profile before an accepted intro. | Access ask, sample request, profile request |
+| Term                          | Definition                                                                                                       | Aliases to avoid                                 |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **Author Profile**            | The author-facing details used for marketplace eligibility and match context.                                    | Author account, writer page                      |
+| **Publisher Profile**         | The publisher-facing details and acquisition preferences used for discovery and matching.                        | Publisher account, organization profile, imprint |
+| **Manuscript**                | A work submitted by an **Author** for discovery, matching, and intro workflows.                                  | Book, project, title                             |
+| **Manuscript Metadata**       | Structured facts about a **Manuscript**, such as genre, audience, form, word count, logline, and themes.         | Book data, manuscript details                    |
+| **Sample Document**           | The private uploaded sample file attached to a **Manuscript**.                                                   | Manuscript file, full manuscript, upload         |
+| **Active Sample**             | The current **Sample Document** used for document checks, matching evidence, and eventual accepted-intro access. | Current upload, file                             |
+| **Requestable Manuscript**    | A **Manuscript** whose author allows qualified publishers to request profile access after discovery.             | Open manuscript, public manuscript               |
+| **Manuscript Access Request** | A publisher's request to view a specific **Requestable Manuscript** profile before an accepted intro.            | Access ask, sample request, profile request      |
 
 ## Eligibility and review
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Automated Check** | A deterministic product, safety, validity, entitlement, or document-readiness assessment. | Manual review, approval |
-| **Eligibility Status** | The product-behavior state of a profile, manuscript, or document: eligible, limited, blocked, or quarantined. | Approval status, review status |
-| **Review Outcome** | The explanation for how an item reached its eligibility state: auto approved, needs review, admin approved, admin rejected, or quarantined. | Eligibility, approval status |
-| **Eligible** | A state where required checks have passed and the item may participate in its allowed marketplace flows. | Approved, live |
-| **Limited** | A state where safe workspace access may continue but marketplace exposure or intro actions are restricted. | Pending, soft blocked |
-| **Blocked** | A state where the item cannot participate in marketplace flows. | Rejected, disabled |
-| **Quarantined** | A state where severe safety or security signals block user preview, matching, discovery, and download access except for staff review. | Blocked, malware state |
-| **Needs Review** | A review outcome for items that automated checks could not safely approve or reject. | Pending approval, admin queue |
-| **Admin Exception** | A staff work item for uncertain, risky, failed, reported, quarantined, or staff-overridden cases. | Review task, ticket |
-| **Staff Override** | An audited admin decision that changes a previously automated or live product state. | Manual edit, admin fix |
-| **Report** | A user or staff complaint about abuse, suspicious content, bad matches, payment concerns, or platform misuse. | Complaint, flag |
+| Term                   | Definition                                                                                                                                  | Aliases to avoid               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| **Automated Check**    | A deterministic product, safety, validity, entitlement, or document-readiness assessment.                                                   | Manual review, approval        |
+| **Eligibility Status** | The product-behavior state of a profile, manuscript, or document: eligible, limited, blocked, or quarantined.                               | Approval status, review status |
+| **Review Outcome**     | The explanation for how an item reached its eligibility state: auto approved, needs review, admin approved, admin rejected, or quarantined. | Eligibility, approval status   |
+| **Eligible**           | A state where required checks have passed and the item may participate in its allowed marketplace flows.                                    | Approved, live                 |
+| **Limited**            | A state where safe workspace access may continue but marketplace exposure or intro actions are restricted.                                  | Pending, soft blocked          |
+| **Blocked**            | A state where the item cannot participate in marketplace flows.                                                                             | Rejected, disabled             |
+| **Quarantined**        | A state where severe safety or security signals block user preview, matching, discovery, and download access except for staff review.       | Blocked, malware state         |
+| **Needs Review**       | A review outcome for items that automated checks could not safely approve or reject.                                                        | Pending approval, admin queue  |
+| **Admin Exception**    | A staff work item for uncertain, risky, failed, reported, quarantined, or staff-overridden cases.                                           | Review task, ticket            |
+| **Staff Override**     | An audited admin decision that changes a previously automated or live product state.                                                        | Manual edit, admin fix         |
+| **Report**             | A user or staff complaint about abuse, suspicious content, bad matches, payment concerns, or platform misuse.                               | Complaint, flag                |
 
 ## Document checking
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Sample Check** | The automated process that determines whether an uploaded **Sample Document** is safe and readable enough for later product use. | Ingestion, parsing, processing |
-| **Scanner Result** | The malware or safety scan outcome for a **Sample Document**. | Antivirus response, scan payload |
-| **Document Chunk** | A bounded extracted text segment retained as matching evidence after a successful **Sample Check**. | Manuscript text, raw text, excerpt |
-| **Embedding Reference** | A stored pointer to vector data or embedding metadata, never the numeric vector itself. | Embedding, vector, array |
-| **Safe Snippet** | A bounded, non-sensitive excerpt shown as evidence in match details. | Manuscript text, chunk, quote |
+| Term                    | Definition                                                                                                                       | Aliases to avoid                   |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| **Sample Check**        | The automated process that determines whether an uploaded **Sample Document** is safe and readable enough for later product use. | Ingestion, parsing, processing     |
+| **Scanner Result**      | The malware or safety scan outcome for a **Sample Document**.                                                                    | Antivirus response, scan payload   |
+| **Document Chunk**      | A bounded extracted text segment retained as matching evidence after a successful **Sample Check**.                              | Manuscript text, raw text, excerpt |
+| **Embedding Reference** | A stored pointer to vector data or embedding metadata, never the numeric vector itself.                                          | Embedding, vector, array           |
+| **Safe Snippet**        | A bounded, non-sensitive excerpt shown as evidence in match details.                                                             | Manuscript text, chunk, quote      |
 
 ## Discovery, matching, and profile access
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Public Publisher Directory** | A logged-out listing of admin-approved eligible publishers showing only logo, name, and valid HTTPS website. | Public profile, publisher search |
-| **Discovery** | Controlled browsing or retrieval of eligible marketplace entities before an intro. | Search, public marketplace |
-| **Match Run** | A stored matching attempt in one direction for one requester and one manuscript or publisher context. | Match request, search run |
-| **Rematch** | A new **Match Run** created after match-relevant information changes or the user asks again. | Refresh, rerun |
-| **Stale Match Run** | A prior **Match Run** whose input fingerprint no longer matches current profile or manuscript data. | Old result, invalid result |
-| **Match Candidate** | A stored publisher or manuscript result produced by a **Match Run**. | Result, recommendation |
-| **Score Band** | A user-safe label that summarizes match strength without exposing raw relevance scores. | Score, percentage, ranking value |
-| **Fit Reason** | A stored explanation of why a **Match Candidate** appears suitable. | Positive reason, rationale |
-| **Watch-Out** | A stored mismatch, risk, or constraint concern that should be considered before an intro. | Risk reason, penalty, warning |
-| **Manuscript Signal** | A matching representation of a **Manuscript** along premise, voice, or arc. | Manuscript embedding, vector |
-| **Publisher Signal** | A matching representation of a **Publisher Profile** from guidelines, wishlist, or catalog context. | Publisher embedding, preference vector |
-| **Profile Access** | Permission to view an access-checked author, publisher, or manuscript profile surface. | Public access, full access |
-| **Match-Revealed Profile** | An authenticated app profile unlocked through a stored match candidate or approved manuscript access. | Public profile, full profile |
-| **Match-Visible Contact** | Owner-approved contact information that may appear after match retrieval or approved manuscript access. | Contact details, public contact |
+| Term                           | Definition                                                                                                   | Aliases to avoid                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| **Public Publisher Directory** | A logged-out listing of admin-approved eligible publishers showing only logo, name, and valid HTTPS website. | Public profile, publisher search       |
+| **Discovery**                  | Controlled browsing or retrieval of eligible marketplace entities before an intro.                           | Search, public marketplace             |
+| **Match Run**                  | A stored matching attempt in one direction for one requester and one manuscript or publisher context.        | Match request, search run              |
+| **Rematch**                    | A new **Match Run** created after match-relevant information changes or the user asks again.                 | Refresh, rerun                         |
+| **Stale Match Run**            | A prior **Match Run** whose input fingerprint no longer matches current profile or manuscript data.          | Old result, invalid result             |
+| **Match Candidate**            | A stored publisher or manuscript result produced by a **Match Run**.                                         | Result, recommendation                 |
+| **Score Band**                 | A user-safe label that summarizes match strength without exposing raw relevance scores.                      | Score, percentage, ranking value       |
+| **Fit Reason**                 | A stored explanation of why a **Match Candidate** appears suitable.                                          | Positive reason, rationale             |
+| **Watch-Out**                  | A stored mismatch, risk, or constraint concern that should be considered before an intro.                    | Risk reason, penalty, warning          |
+| **Manuscript Signal**          | A matching representation of a **Manuscript** along premise, voice, or arc.                                  | Manuscript embedding, vector           |
+| **Publisher Signal**           | A matching representation of a **Publisher Profile** from guidelines, wishlist, or catalog context.          | Publisher embedding, preference vector |
+| **Profile Access**             | Permission to view an access-checked author, publisher, or manuscript profile surface.                       | Public access, full access             |
+| **Match-Revealed Profile**     | An authenticated app profile unlocked through a stored match candidate or approved manuscript access.        | Public profile, full profile           |
+| **Match-Visible Contact**      | Owner-approved contact information that may appear after match retrieval or approved manuscript access.      | Contact details, public contact        |
 
 ## Introductions and subscriptions
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Intro Request** | A request from either side to connect around one manuscript-publisher pair. | Message, chat, deal request |
-| **Accepted Intro** | An intro request accepted by the counterparty. | Match accepted, agreement, contract |
-| **Contact Unlock** | The access granted after an **Accepted Intro** to counterparty contact details and the relevant manuscript sample. | Public contact, sample access |
-| **Subscription Plan** | A paid SaaS tier that controls entitlements such as intro request limits, storage, directory visibility, or support level. | Membership, boost, package |
-| **Entitlement** | A product capability granted by role, eligibility, subscription, or access state. | Permission, quota |
-| **Intro Request Quota** | The count of intro requests a participant may send within a plan or time window. | Match quota, message limit |
-| **Subscription Payment** | A PayTR-powered SaaS payment for platform access. | Marketplace payout, escrow, royalty |
+| Term                     | Definition                                                                                                                 | Aliases to avoid                    |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| **Intro Request**        | A request from either side to connect around one manuscript-publisher pair.                                                | Message, chat, deal request         |
+| **Accepted Intro**       | An intro request accepted by the counterparty.                                                                             | Match accepted, agreement, contract |
+| **Contact Unlock**       | The access granted after an **Accepted Intro** to counterparty contact details and the relevant manuscript sample.         | Public contact, sample access       |
+| **Subscription Plan**    | A paid SaaS tier that controls entitlements such as intro request limits, storage, directory visibility, or support level. | Membership, boost, package          |
+| **Entitlement**          | A product capability granted by role, eligibility, subscription, or access state.                                          | Permission, quota                   |
+| **Intro Request Quota**  | The count of intro requests a participant may send within a plan or time window.                                           | Match quota, message limit          |
+| **Subscription Payment** | A PayTR-powered SaaS payment for platform access.                                                                          | Marketplace payout, escrow, royalty |
 
 ## Staff operations and audit
 
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| **Admin Console** | The staff-only operations surface for exceptions, reports, jobs, payments, audit logs, and settings. | Back office, admin profile |
-| **Needs Review Queue** | The admin queue for items that require a human decision before broader marketplace participation. | Approval queue, pending queue |
-| **Quarantine Queue** | The admin queue for blocked items that require staff or security handling. | Blocked queue, malware queue |
-| **System Failure** | A failed ingestion, matching, payment, email, quota, or idempotency process that needs retry or investigation. | Error, bug, incident |
-| **Audit Log** | The durable record of automated outcomes, admin decisions, access grants, billing mutations, and sensitive product events. | Event log, Sentry issue |
+| Term                   | Definition                                                                                                                 | Aliases to avoid              |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| **Admin Console**      | The staff-only operations surface for exceptions, reports, jobs, payments, audit logs, and settings.                       | Back office, admin profile    |
+| **Needs Review Queue** | The admin queue for items that require a human decision before broader marketplace participation.                          | Approval queue, pending queue |
+| **Quarantine Queue**   | The admin queue for blocked items that require staff or security handling.                                                 | Blocked queue, malware queue  |
+| **System Failure**     | A failed ingestion, matching, payment, email, quota, or idempotency process that needs retry or investigation.             | Error, bug, incident          |
+| **Audit Log**          | The durable record of automated outcomes, admin decisions, access grants, billing mutations, and sensitive product events. | Event log, Sentry issue       |
 
 ## Relationships
 

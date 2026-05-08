@@ -845,6 +845,125 @@
                             "socialLinks"
                           ],
                           "additionalProperties": false
+                        },
+                        "introState": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "can_request",
+                                "pending_sent",
+                                "pending_received",
+                                "accepted",
+                                "rejected_cooldown",
+                                "cancelled_cooldown",
+                                "not_eligible",
+                                "quota_exhausted"
+                              ]
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "nullable": true
+                            },
+                            "viewerCanAccept": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanReject": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanCancel": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "cooldownUntil": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true,
+                              "default": null
+                            },
+                            "quotaRemaining": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "nullable": true,
+                              "default": null
+                            }
+                          },
+                          "required": ["status", "requestId"],
+                          "additionalProperties": false,
+                          "nullable": true,
+                          "default": null
+                        },
+                        "acceptedIntroContact": {
+                          "type": "object",
+                          "properties": {
+                            "profileId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": ["author", "publisher"]
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 40,
+                              "nullable": true
+                            },
+                            "websiteUrl": {
+                              "type": "string",
+                              "format": "uri",
+                              "maxLength": 2048,
+                              "nullable": true
+                            },
+                            "socialLinks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "maxLength": 2048
+                                  }
+                                },
+                                "required": ["label", "url"],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 8
+                            }
+                          },
+                          "required": [
+                            "profileId",
+                            "displayName",
+                            "role",
+                            "email",
+                            "phone",
+                            "websiteUrl",
+                            "socialLinks"
+                          ],
+                          "additionalProperties": false,
+                          "nullable": true,
+                          "default": null
                         }
                       },
                       "required": [
@@ -1005,6 +1124,74 @@
                           ],
                           "additionalProperties": false
                         },
+                        "acceptedIntroContact": {
+                          "type": "object",
+                          "properties": {
+                            "profileId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": ["author", "publisher"]
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 40,
+                              "nullable": true
+                            },
+                            "websiteUrl": {
+                              "type": "string",
+                              "format": "uri",
+                              "maxLength": 2048,
+                              "nullable": true
+                            },
+                            "socialLinks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "maxLength": 2048
+                                  }
+                                },
+                                "required": ["label", "url"],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 8
+                            }
+                          },
+                          "required": [
+                            "profileId",
+                            "displayName",
+                            "role",
+                            "email",
+                            "phone",
+                            "websiteUrl",
+                            "socialLinks"
+                          ],
+                          "additionalProperties": false,
+                          "nullable": true,
+                          "default": null
+                        },
                         "manuscripts": {
                           "type": "array",
                           "items": {
@@ -1057,6 +1244,125 @@
                                   "rejected"
                                 ],
                                 "default": "none"
+                              },
+                              "introState": {
+                                "type": "object",
+                                "properties": {
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "can_request",
+                                      "pending_sent",
+                                      "pending_received",
+                                      "accepted",
+                                      "rejected_cooldown",
+                                      "cancelled_cooldown",
+                                      "not_eligible",
+                                      "quota_exhausted"
+                                    ]
+                                  },
+                                  "requestId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "nullable": true
+                                  },
+                                  "viewerCanAccept": {
+                                    "type": "boolean",
+                                    "default": false
+                                  },
+                                  "viewerCanReject": {
+                                    "type": "boolean",
+                                    "default": false
+                                  },
+                                  "viewerCanCancel": {
+                                    "type": "boolean",
+                                    "default": false
+                                  },
+                                  "cooldownUntil": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "nullable": true,
+                                    "default": null
+                                  },
+                                  "quotaRemaining": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "nullable": true,
+                                    "default": null
+                                  }
+                                },
+                                "required": ["status", "requestId"],
+                                "additionalProperties": false,
+                                "nullable": true,
+                                "default": null
+                              },
+                              "acceptedIntroContact": {
+                                "type": "object",
+                                "properties": {
+                                  "profileId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "displayName": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "role": {
+                                    "type": "string",
+                                    "enum": ["author", "publisher"]
+                                  },
+                                  "email": {
+                                    "type": "string",
+                                    "maxLength": 254,
+                                    "nullable": true
+                                  },
+                                  "phone": {
+                                    "type": "string",
+                                    "minLength": 3,
+                                    "maxLength": 40,
+                                    "nullable": true
+                                  },
+                                  "websiteUrl": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "maxLength": 2048,
+                                    "nullable": true
+                                  },
+                                  "socialLinks": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 40
+                                        },
+                                        "url": {
+                                          "type": "string",
+                                          "format": "uri",
+                                          "maxLength": 2048
+                                        }
+                                      },
+                                      "required": ["label", "url"],
+                                      "additionalProperties": false
+                                    },
+                                    "maxItems": 8
+                                  }
+                                },
+                                "required": [
+                                  "profileId",
+                                  "displayName",
+                                  "role",
+                                  "email",
+                                  "phone",
+                                  "websiteUrl",
+                                  "socialLinks"
+                                ],
+                                "additionalProperties": false,
+                                "nullable": true,
+                                "default": null
                               }
                             },
                             "required": [
@@ -3059,6 +3365,428 @@
         }
       }
     },
+    "/api/v1/admin/intro-requests": {
+      "get": {
+        "operationId": "admin_introRequests",
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "box",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["sent", "received", "all"],
+              "default": "all"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {}
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "requesterRole",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["author", "publisher"]
+            }
+          },
+          {
+            "name": "manuscriptId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "authorProfileId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "publisherProfileId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "createdFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "createdTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "manuscriptId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "manuscriptTitle": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "authorProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "authorName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "publisherProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "publisherName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "requesterProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "requesterRole": {
+                            "type": "string",
+                            "enum": ["author", "publisher"]
+                          },
+                          "recipientProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "accepted",
+                              "rejected",
+                              "cancelled"
+                            ]
+                          },
+                          "currentUnlockStatus": {
+                            "type": "object",
+                            "properties": {
+                              "contact": {
+                                "type": "boolean"
+                              },
+                              "publisherSample": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": ["contact", "publisherSample"],
+                            "additionalProperties": false
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "respondedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true,
+                            "default": null
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "manuscriptId",
+                          "manuscriptTitle",
+                          "authorProfileId",
+                          "authorName",
+                          "publisherProfileId",
+                          "publisherName",
+                          "requesterProfileId",
+                          "requesterRole",
+                          "recipientProfileId",
+                          "status",
+                          "currentUnlockStatus",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["requests"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/intro-requests/{requestId}": {
+      "get": {
+        "operationId": "admin_introRequestDetail",
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "authorProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "publisherProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "publisherName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "requesterProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterRole": {
+                          "type": "string",
+                          "enum": ["author", "publisher"]
+                        },
+                        "recipientProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "accepted",
+                            "rejected",
+                            "cancelled"
+                          ]
+                        },
+                        "currentUnlockStatus": {
+                          "type": "object",
+                          "properties": {
+                            "contact": {
+                              "type": "boolean"
+                            },
+                            "publisherSample": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": ["contact", "publisherSample"],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "respondedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "nullable": true,
+                          "default": null
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "manuscriptId",
+                        "manuscriptTitle",
+                        "authorProfileId",
+                        "authorName",
+                        "publisherProfileId",
+                        "publisherName",
+                        "requesterProfileId",
+                        "requesterRole",
+                        "recipientProfileId",
+                        "status",
+                        "currentUnlockStatus",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "timeline": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "actorProfileId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "action": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "targetType": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "targetId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "additionalProperties": {},
+                            "default": {}
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "actorProfileId",
+                          "action",
+                          "targetType",
+                          "targetId",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["request", "timeline"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/manuscripts": {
       "get": {
         "operationId": "manuscripts_list",
@@ -4379,6 +5107,131 @@
                           "type": "string",
                           "minLength": 2,
                           "maxLength": 10
+                        },
+                        "introState": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "can_request",
+                                "pending_sent",
+                                "pending_received",
+                                "accepted",
+                                "rejected_cooldown",
+                                "cancelled_cooldown",
+                                "not_eligible",
+                                "quota_exhausted"
+                              ]
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "nullable": true
+                            },
+                            "viewerCanAccept": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanReject": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanCancel": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "cooldownUntil": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true,
+                              "default": null
+                            },
+                            "quotaRemaining": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "nullable": true,
+                              "default": null
+                            }
+                          },
+                          "required": ["status", "requestId"],
+                          "additionalProperties": false,
+                          "nullable": true,
+                          "default": null
+                        },
+                        "acceptedIntroContact": {
+                          "type": "object",
+                          "properties": {
+                            "profileId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": ["author", "publisher"]
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 40,
+                              "nullable": true
+                            },
+                            "websiteUrl": {
+                              "type": "string",
+                              "format": "uri",
+                              "maxLength": 2048,
+                              "nullable": true
+                            },
+                            "socialLinks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "maxLength": 2048
+                                  }
+                                },
+                                "required": ["label", "url"],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 8
+                            }
+                          },
+                          "required": [
+                            "profileId",
+                            "displayName",
+                            "role",
+                            "email",
+                            "phone",
+                            "websiteUrl",
+                            "socialLinks"
+                          ],
+                          "additionalProperties": false,
+                          "nullable": true,
+                          "default": null
+                        },
+                        "acceptedIntroSampleDocumentId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "nullable": true,
+                          "default": null
                         }
                       },
                       "required": [
@@ -5091,6 +5944,81 @@
                             "minLength": 1,
                             "maxLength": 240,
                             "nullable": true
+                          },
+                          "introTarget": {
+                            "type": "object",
+                            "properties": {
+                              "manuscriptId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "publisherProfileId": {
+                                "type": "string",
+                                "format": "uuid"
+                              }
+                            },
+                            "required": ["manuscriptId", "publisherProfileId"],
+                            "additionalProperties": false,
+                            "nullable": true,
+                            "default": null
+                          },
+                          "introState": {
+                            "type": "object",
+                            "properties": {
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "can_request",
+                                  "pending_sent",
+                                  "pending_received",
+                                  "accepted",
+                                  "rejected_cooldown",
+                                  "cancelled_cooldown",
+                                  "not_eligible",
+                                  "quota_exhausted"
+                                ]
+                              },
+                              "requestId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "nullable": true
+                              },
+                              "viewerCanAccept": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "viewerCanReject": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "viewerCanCancel": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "cooldownUntil": {
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true,
+                                "default": null
+                              },
+                              "quotaRemaining": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "nullable": true,
+                                "default": null
+                              }
+                            },
+                            "required": ["status", "requestId"],
+                            "additionalProperties": false,
+                            "default": {
+                              "status": "not_eligible",
+                              "requestId": null,
+                              "viewerCanAccept": false,
+                              "viewerCanReject": false,
+                              "viewerCanCancel": false,
+                              "cooldownUntil": null,
+                              "quotaRemaining": null
+                            }
                           }
                         },
                         "required": [
@@ -5620,6 +6548,81 @@
                             "minLength": 1,
                             "maxLength": 240,
                             "nullable": true
+                          },
+                          "introTarget": {
+                            "type": "object",
+                            "properties": {
+                              "manuscriptId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "publisherProfileId": {
+                                "type": "string",
+                                "format": "uuid"
+                              }
+                            },
+                            "required": ["manuscriptId", "publisherProfileId"],
+                            "additionalProperties": false,
+                            "nullable": true,
+                            "default": null
+                          },
+                          "introState": {
+                            "type": "object",
+                            "properties": {
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "can_request",
+                                  "pending_sent",
+                                  "pending_received",
+                                  "accepted",
+                                  "rejected_cooldown",
+                                  "cancelled_cooldown",
+                                  "not_eligible",
+                                  "quota_exhausted"
+                                ]
+                              },
+                              "requestId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "nullable": true
+                              },
+                              "viewerCanAccept": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "viewerCanReject": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "viewerCanCancel": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "cooldownUntil": {
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true,
+                                "default": null
+                              },
+                              "quotaRemaining": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "nullable": true,
+                                "default": null
+                              }
+                            },
+                            "required": ["status", "requestId"],
+                            "additionalProperties": false,
+                            "default": {
+                              "status": "not_eligible",
+                              "requestId": null,
+                              "viewerCanAccept": false,
+                              "viewerCanReject": false,
+                              "viewerCanCancel": false,
+                              "cooldownUntil": null,
+                              "quotaRemaining": null
+                            }
                           }
                         },
                         "required": [
@@ -5914,6 +6917,81 @@
                           "minLength": 1,
                           "maxLength": 240,
                           "nullable": true
+                        },
+                        "introTarget": {
+                          "type": "object",
+                          "properties": {
+                            "manuscriptId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "publisherProfileId": {
+                              "type": "string",
+                              "format": "uuid"
+                            }
+                          },
+                          "required": ["manuscriptId", "publisherProfileId"],
+                          "additionalProperties": false,
+                          "nullable": true,
+                          "default": null
+                        },
+                        "introState": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "can_request",
+                                "pending_sent",
+                                "pending_received",
+                                "accepted",
+                                "rejected_cooldown",
+                                "cancelled_cooldown",
+                                "not_eligible",
+                                "quota_exhausted"
+                              ]
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "nullable": true
+                            },
+                            "viewerCanAccept": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanReject": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanCancel": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "cooldownUntil": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true,
+                              "default": null
+                            },
+                            "quotaRemaining": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "nullable": true,
+                              "default": null
+                            }
+                          },
+                          "required": ["status", "requestId"],
+                          "additionalProperties": false,
+                          "default": {
+                            "status": "not_eligible",
+                            "requestId": null,
+                            "viewerCanAccept": false,
+                            "viewerCanReject": false,
+                            "viewerCanCancel": false,
+                            "cooldownUntil": null,
+                            "quotaRemaining": null
+                          }
                         }
                       },
                       "required": [
@@ -5940,6 +7018,1465 @@
                     }
                   },
                   "required": ["run", "candidate"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/intro-requests": {
+      "post": {
+        "operationId": "introRequests_create",
+        "tags": ["introRequests"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "manuscriptId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "publisherProfileId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "nullable": true
+                  }
+                },
+                "required": ["manuscriptId", "publisherProfileId"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "authorProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "publisherProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "publisherName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "requesterProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "recipientProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "recipientName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "accepted",
+                            "rejected",
+                            "cancelled"
+                          ]
+                        },
+                        "viewerRelation": {
+                          "type": "string",
+                          "enum": ["requester", "recipient"]
+                        },
+                        "message": {
+                          "type": "string",
+                          "maxLength": 1000,
+                          "nullable": true
+                        },
+                        "note": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "introState": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "can_request",
+                                "pending_sent",
+                                "pending_received",
+                                "accepted",
+                                "rejected_cooldown",
+                                "cancelled_cooldown",
+                                "not_eligible",
+                                "quota_exhausted"
+                              ]
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "nullable": true
+                            },
+                            "viewerCanAccept": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanReject": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanCancel": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "cooldownUntil": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true,
+                              "default": null
+                            },
+                            "quotaRemaining": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "nullable": true,
+                              "default": null
+                            }
+                          },
+                          "required": ["status", "requestId"],
+                          "additionalProperties": false
+                        },
+                        "acceptedIntroContact": {
+                          "type": "object",
+                          "properties": {
+                            "profileId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": ["author", "publisher"]
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 40,
+                              "nullable": true
+                            },
+                            "websiteUrl": {
+                              "type": "string",
+                              "format": "uri",
+                              "maxLength": 2048,
+                              "nullable": true
+                            },
+                            "socialLinks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "maxLength": 2048
+                                  }
+                                },
+                                "required": ["label", "url"],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 8
+                            }
+                          },
+                          "required": [
+                            "profileId",
+                            "displayName",
+                            "role",
+                            "email",
+                            "phone",
+                            "websiteUrl",
+                            "socialLinks"
+                          ],
+                          "additionalProperties": false,
+                          "nullable": true,
+                          "default": null
+                        },
+                        "publisherSampleUnlocked": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "respondedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "nullable": true,
+                          "default": null
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "manuscriptId",
+                        "manuscriptTitle",
+                        "authorProfileId",
+                        "authorName",
+                        "publisherProfileId",
+                        "publisherName",
+                        "requesterProfileId",
+                        "requesterName",
+                        "recipientProfileId",
+                        "recipientName",
+                        "status",
+                        "viewerRelation",
+                        "message",
+                        "note",
+                        "introState",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["request"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "introRequests_list",
+        "tags": ["introRequests"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "box",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["sent", "received", "all"],
+              "default": "all"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {}
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "manuscriptId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "manuscriptTitle": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "authorProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "authorName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "publisherProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "publisherName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "requesterProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "requesterName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "recipientProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "recipientName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "accepted",
+                              "rejected",
+                              "cancelled"
+                            ]
+                          },
+                          "viewerRelation": {
+                            "type": "string",
+                            "enum": ["requester", "recipient"]
+                          },
+                          "message": {
+                            "type": "string",
+                            "maxLength": 1000,
+                            "nullable": true
+                          },
+                          "note": {
+                            "type": "string",
+                            "maxLength": 500,
+                            "nullable": true
+                          },
+                          "introState": {
+                            "type": "object",
+                            "properties": {
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "can_request",
+                                  "pending_sent",
+                                  "pending_received",
+                                  "accepted",
+                                  "rejected_cooldown",
+                                  "cancelled_cooldown",
+                                  "not_eligible",
+                                  "quota_exhausted"
+                                ]
+                              },
+                              "requestId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "nullable": true
+                              },
+                              "viewerCanAccept": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "viewerCanReject": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "viewerCanCancel": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "cooldownUntil": {
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true,
+                                "default": null
+                              },
+                              "quotaRemaining": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "nullable": true,
+                                "default": null
+                              }
+                            },
+                            "required": ["status", "requestId"],
+                            "additionalProperties": false
+                          },
+                          "acceptedIntroContact": {
+                            "type": "object",
+                            "properties": {
+                              "profileId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "displayName": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": ["author", "publisher"]
+                              },
+                              "email": {
+                                "type": "string",
+                                "maxLength": 254,
+                                "nullable": true
+                              },
+                              "phone": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 40,
+                                "nullable": true
+                              },
+                              "websiteUrl": {
+                                "type": "string",
+                                "format": "uri",
+                                "maxLength": 2048,
+                                "nullable": true
+                              },
+                              "socialLinks": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 40
+                                    },
+                                    "url": {
+                                      "type": "string",
+                                      "format": "uri",
+                                      "maxLength": 2048
+                                    }
+                                  },
+                                  "required": ["label", "url"],
+                                  "additionalProperties": false
+                                },
+                                "maxItems": 8
+                              }
+                            },
+                            "required": [
+                              "profileId",
+                              "displayName",
+                              "role",
+                              "email",
+                              "phone",
+                              "websiteUrl",
+                              "socialLinks"
+                            ],
+                            "additionalProperties": false,
+                            "nullable": true,
+                            "default": null
+                          },
+                          "publisherSampleUnlocked": {
+                            "type": "boolean",
+                            "default": false
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "respondedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true,
+                            "default": null
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "manuscriptId",
+                          "manuscriptTitle",
+                          "authorProfileId",
+                          "authorName",
+                          "publisherProfileId",
+                          "publisherName",
+                          "requesterProfileId",
+                          "requesterName",
+                          "recipientProfileId",
+                          "recipientName",
+                          "status",
+                          "viewerRelation",
+                          "message",
+                          "note",
+                          "introState",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["requests"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/intro-requests/{requestId}/accept": {
+      "post": {
+        "operationId": "introRequests_accept",
+        "tags": ["introRequests"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "authorProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "publisherProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "publisherName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "requesterProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "recipientProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "recipientName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "accepted",
+                            "rejected",
+                            "cancelled"
+                          ]
+                        },
+                        "viewerRelation": {
+                          "type": "string",
+                          "enum": ["requester", "recipient"]
+                        },
+                        "message": {
+                          "type": "string",
+                          "maxLength": 1000,
+                          "nullable": true
+                        },
+                        "note": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "introState": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "can_request",
+                                "pending_sent",
+                                "pending_received",
+                                "accepted",
+                                "rejected_cooldown",
+                                "cancelled_cooldown",
+                                "not_eligible",
+                                "quota_exhausted"
+                              ]
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "nullable": true
+                            },
+                            "viewerCanAccept": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanReject": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanCancel": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "cooldownUntil": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true,
+                              "default": null
+                            },
+                            "quotaRemaining": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "nullable": true,
+                              "default": null
+                            }
+                          },
+                          "required": ["status", "requestId"],
+                          "additionalProperties": false
+                        },
+                        "acceptedIntroContact": {
+                          "type": "object",
+                          "properties": {
+                            "profileId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": ["author", "publisher"]
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 40,
+                              "nullable": true
+                            },
+                            "websiteUrl": {
+                              "type": "string",
+                              "format": "uri",
+                              "maxLength": 2048,
+                              "nullable": true
+                            },
+                            "socialLinks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "maxLength": 2048
+                                  }
+                                },
+                                "required": ["label", "url"],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 8
+                            }
+                          },
+                          "required": [
+                            "profileId",
+                            "displayName",
+                            "role",
+                            "email",
+                            "phone",
+                            "websiteUrl",
+                            "socialLinks"
+                          ],
+                          "additionalProperties": false,
+                          "nullable": true,
+                          "default": null
+                        },
+                        "publisherSampleUnlocked": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "respondedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "nullable": true,
+                          "default": null
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "manuscriptId",
+                        "manuscriptTitle",
+                        "authorProfileId",
+                        "authorName",
+                        "publisherProfileId",
+                        "publisherName",
+                        "requesterProfileId",
+                        "requesterName",
+                        "recipientProfileId",
+                        "recipientName",
+                        "status",
+                        "viewerRelation",
+                        "message",
+                        "note",
+                        "introState",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["request"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/intro-requests/{requestId}/reject": {
+      "post": {
+        "operationId": "introRequests_reject",
+        "tags": ["introRequests"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "authorProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "publisherProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "publisherName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "requesterProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "recipientProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "recipientName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "accepted",
+                            "rejected",
+                            "cancelled"
+                          ]
+                        },
+                        "viewerRelation": {
+                          "type": "string",
+                          "enum": ["requester", "recipient"]
+                        },
+                        "message": {
+                          "type": "string",
+                          "maxLength": 1000,
+                          "nullable": true
+                        },
+                        "note": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "introState": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "can_request",
+                                "pending_sent",
+                                "pending_received",
+                                "accepted",
+                                "rejected_cooldown",
+                                "cancelled_cooldown",
+                                "not_eligible",
+                                "quota_exhausted"
+                              ]
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "nullable": true
+                            },
+                            "viewerCanAccept": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanReject": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanCancel": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "cooldownUntil": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true,
+                              "default": null
+                            },
+                            "quotaRemaining": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "nullable": true,
+                              "default": null
+                            }
+                          },
+                          "required": ["status", "requestId"],
+                          "additionalProperties": false
+                        },
+                        "acceptedIntroContact": {
+                          "type": "object",
+                          "properties": {
+                            "profileId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": ["author", "publisher"]
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 40,
+                              "nullable": true
+                            },
+                            "websiteUrl": {
+                              "type": "string",
+                              "format": "uri",
+                              "maxLength": 2048,
+                              "nullable": true
+                            },
+                            "socialLinks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "maxLength": 2048
+                                  }
+                                },
+                                "required": ["label", "url"],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 8
+                            }
+                          },
+                          "required": [
+                            "profileId",
+                            "displayName",
+                            "role",
+                            "email",
+                            "phone",
+                            "websiteUrl",
+                            "socialLinks"
+                          ],
+                          "additionalProperties": false,
+                          "nullable": true,
+                          "default": null
+                        },
+                        "publisherSampleUnlocked": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "respondedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "nullable": true,
+                          "default": null
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "manuscriptId",
+                        "manuscriptTitle",
+                        "authorProfileId",
+                        "authorName",
+                        "publisherProfileId",
+                        "publisherName",
+                        "requesterProfileId",
+                        "requesterName",
+                        "recipientProfileId",
+                        "recipientName",
+                        "status",
+                        "viewerRelation",
+                        "message",
+                        "note",
+                        "introState",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["request"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/intro-requests/{requestId}/cancel": {
+      "post": {
+        "operationId": "introRequests_cancel",
+        "tags": ["introRequests"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "manuscriptTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "authorProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "authorName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "publisherProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "publisherName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "requesterProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "recipientProfileId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "recipientName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "accepted",
+                            "rejected",
+                            "cancelled"
+                          ]
+                        },
+                        "viewerRelation": {
+                          "type": "string",
+                          "enum": ["requester", "recipient"]
+                        },
+                        "message": {
+                          "type": "string",
+                          "maxLength": 1000,
+                          "nullable": true
+                        },
+                        "note": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "introState": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "can_request",
+                                "pending_sent",
+                                "pending_received",
+                                "accepted",
+                                "rejected_cooldown",
+                                "cancelled_cooldown",
+                                "not_eligible",
+                                "quota_exhausted"
+                              ]
+                            },
+                            "requestId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "nullable": true
+                            },
+                            "viewerCanAccept": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanReject": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "viewerCanCancel": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "cooldownUntil": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true,
+                              "default": null
+                            },
+                            "quotaRemaining": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "nullable": true,
+                              "default": null
+                            }
+                          },
+                          "required": ["status", "requestId"],
+                          "additionalProperties": false
+                        },
+                        "acceptedIntroContact": {
+                          "type": "object",
+                          "properties": {
+                            "profileId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": ["author", "publisher"]
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "nullable": true
+                            },
+                            "phone": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 40,
+                              "nullable": true
+                            },
+                            "websiteUrl": {
+                              "type": "string",
+                              "format": "uri",
+                              "maxLength": 2048,
+                              "nullable": true
+                            },
+                            "socialLinks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "url": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "maxLength": 2048
+                                  }
+                                },
+                                "required": ["label", "url"],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 8
+                            }
+                          },
+                          "required": [
+                            "profileId",
+                            "displayName",
+                            "role",
+                            "email",
+                            "phone",
+                            "websiteUrl",
+                            "socialLinks"
+                          ],
+                          "additionalProperties": false,
+                          "nullable": true,
+                          "default": null
+                        },
+                        "publisherSampleUnlocked": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "respondedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "nullable": true,
+                          "default": null
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "manuscriptId",
+                        "manuscriptTitle",
+                        "authorProfileId",
+                        "authorName",
+                        "publisherProfileId",
+                        "publisherName",
+                        "requesterProfileId",
+                        "requesterName",
+                        "recipientProfileId",
+                        "recipientName",
+                        "status",
+                        "viewerRelation",
+                        "message",
+                        "note",
+                        "introState",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["request"],
                   "additionalProperties": false
                 }
               }

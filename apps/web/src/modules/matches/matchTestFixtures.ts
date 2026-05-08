@@ -65,6 +65,16 @@ export function createMatchCandidate(
     profilePath: "/app/profiles/authors/55555555-5555-4555-8555-555555555555",
     manuscriptProfilePath:
       "/app/profiles/manuscripts/66666666-6666-4666-8666-666666666666",
+    introTarget: null,
+    introState: {
+      status: "can_request",
+      requestId: null,
+      viewerCanAccept: false,
+      viewerCanReject: false,
+      viewerCanCancel: false,
+      cooldownUntil: null,
+      quotaRemaining: 10,
+    },
     ...input,
   };
 }

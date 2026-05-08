@@ -63,7 +63,7 @@ export async function buildDownloadUrlResponse(
     mimeType: string;
     uploadId: string;
   },
-  accessType: "author" | "admin",
+  accessType: "author" | "admin" | "accepted_intro",
 ) {
   if (auth.config.storageProvider === "gcs") {
     return createGcsSignedDownloadUrl(auth.config, {

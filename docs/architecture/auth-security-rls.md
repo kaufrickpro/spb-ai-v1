@@ -114,6 +114,8 @@ Accepted-intro contact unlock is pair-scoped to one manuscript and one publisher
 
 For implementation simplicity and safety, expose unlocked contact details through the Node API instead of direct browser table reads if RLS becomes complex. Do not expose Supabase Auth account email unless that value has been intentionally stored as a profile relationship contact field.
 
+The current Step 11 implementation follows this API-read-model path. `public.has_accepted_intro(manuscript_id, publisher_profile_id)` is a lightweight database helper, while the Node API still performs current eligibility checks before returning `acceptedIntroContact` or issuing a publisher sample signed URL.
+
 ## File Access
 
 Manuscript samples live in private Google Cloud Storage.

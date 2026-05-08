@@ -200,6 +200,7 @@ Rules:
 - Reject accepts an optional short note. Create accepts an optional plain-text message. Neither message nor note should be copied into notifications, product audit metadata, emails, match explanations, or list payloads.
 - Sending consumes quota transactionally with request creation. Start with 10 intro requests per user/day until Step 13 wires plan-specific subscription quotas.
 - Intro lifecycle mutations should write `intro_requests`, `notifications`, and `product_audit_events` in one transaction or trusted RPC.
+- Current implementation uses service-role RPCs `public.create_intro_request(...)` and `public.transition_intro_request(...)` so the request row, quota usage event, notification, and product audit event commit or roll back together.
 - `GET /api/v1/intro-requests` supports bounded user lists with `box=sent|received|all`, `status=pending|accepted|rejected|cancelled|all`, and `limit` capped at 100.
 - Accepted requests unlock relationship contact details through access-checked API read models and publisher-only sample download access through the document download URL endpoint.
 - Profile and match read models should expose explicit `introState` values instead of requiring frontend inference: `can_request`, `pending_sent`, `pending_received`, `accepted`, `rejected_cooldown`, `cancelled_cooldown`, `not_eligible`, and `quota_exhausted`.
@@ -214,6 +215,7 @@ Rules:
 - Admin endpoints are read-only in Step 11.
 - List filtering starts with `status`, requester role/direction, manuscript id, author profile id, publisher profile id, created date range, and bounded `limit`.
 - Detail responses show safe metadata, current unlock status, and a timeline from `product_audit_events`.
+- The current admin UI exposes the read-only list surface first; the API also exposes the detail/timeline endpoint for investigation drill-downs.
 - Admin list views must not expose private contact details, signed sample URLs, intro message bodies, rejection notes, full manuscript text, document chunks, raw provider payloads, or billing state.
 - Do not add admin accept/reject/cancel-on-behalf actions in Step 11.
 

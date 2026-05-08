@@ -6,6 +6,7 @@ import { getApiErrorCode, getApiErrorMessage } from "../api/client";
 import { AxisBands, CandidateDetails } from "./MatchCandidateSummary";
 import { shouldShowExplanation, visibleText } from "./matchDisplay";
 import { useMatchCandidate } from "./useMatches";
+import { IntroRequestAction } from "../introRequests/IntroRequestAction";
 
 export function MatchCandidatePage() {
   const { t } = useTranslation();
@@ -77,13 +78,15 @@ export function MatchCandidatePage() {
                   {t("matches.openManuscript")}
                 </Link>
               ) : null}
-              <button
-                className="cursor-not-allowed rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-400"
-                disabled
-                type="button"
-              >
-                {t("matches.step10IntroPlaceholder")}
-              </button>
+              {query.data.candidate.introTarget ? (
+                <IntroRequestAction
+                  introState={query.data.candidate.introState}
+                  manuscriptId={query.data.candidate.introTarget.manuscriptId}
+                  publisherProfileId={
+                    query.data.candidate.introTarget.publisherProfileId
+                  }
+                />
+              ) : null}
             </div>
           </article>
         ) : (

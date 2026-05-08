@@ -46,7 +46,7 @@ describe("CandidateList", () => {
     );
   });
 
-  it("renders axis bands, profile links, manuscript links, and disabled intro placeholder", () => {
+  it("renders axis bands, profile links, manuscript links, and no stale intro placeholder", () => {
     const markup = renderCandidateList([createMatchCandidate()]);
 
     expect(markup).toContain("matches.axis.premise");
@@ -54,8 +54,7 @@ describe("CandidateList", () => {
     expect(markup).toContain("matches.axis.arc");
     expect(markup).toContain("/app/profiles/authors/");
     expect(markup).toContain("/app/profiles/manuscripts/");
-    expect(markup).toContain("matches.step10IntroPlaceholder");
-    expect(markup).toContain("disabled");
+    expect(markup).not.toContain("matches.step10IntroPlaceholder");
   });
 
   it("does not render redaction marker strings from explanation, reasons, penalties, or snippets", () => {

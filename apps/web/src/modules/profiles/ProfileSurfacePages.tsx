@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
-import { getApiErrorMessage } from "../api/client";
+import { ApiRoutes } from "@marketplace/contracts";
+import { getApiErrorMessage, webApiClient } from "../api/client";
 import { PlatformHeader } from "../layout/PlatformHeader";
 import { authorProfilePath, manuscriptProfilePath } from "../routing/routes";
 import {
@@ -38,6 +39,11 @@ export function PublisherProfileSurfacePage() {
               {query.data.publisher.name}
             </h1>
             <ContactList contact={query.data.publisher.contact} />
+            {query.data.publisher.acceptedIntroContact ? (
+              <AcceptedContact
+                contact={query.data.publisher.acceptedIntroContact}
+              />
+            ) : null}
           </aside>
           <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <Field
@@ -103,6 +109,11 @@ export function AuthorProfileSurfacePage() {
               {query.data.author.biography}
             </p>
             <ContactList contact={query.data.author.contact} />
+            {query.data.author.acceptedIntroContact ? (
+              <AcceptedContact
+                contact={query.data.author.acceptedIntroContact}
+              />
+            ) : null}
           </aside>
           <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <Field
@@ -202,6 +213,30 @@ export function ManuscriptProfileSurfacePage() {
             label={t("matchProfiles.themes")}
             values={query.data.manuscript.declaredThemes}
           />
+          {query.data.manuscript.acceptedIntroContact ? (
+            <AcceptedContact
+              contact={query.data.manuscript.acceptedIntroContact}
+            />
+          ) : null}
+          {query.data.manuscript.acceptedIntroSampleDocumentId ? (
+            <button
+              className="mt-5 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white"
+              onClick={async () => {
+                const response = await webApiClient.request(
+                  ApiRoutes.documents.downloadUrl,
+                  {
+                    params: {
+                      id: query.data.manuscript.acceptedIntroSampleDocumentId!,
+                    },
+                  },
+                );
+                window.location.assign(response.downloadUrl);
+              }}
+              type="button"
+            >
+              {t("matchProfiles.downloadAcceptedSample")}
+            </button>
+          ) : null}
           <Link
             className="mt-6 inline-flex text-sm font-medium underline underline-offset-4"
             to={authorProfilePath(query.data.manuscript.author.id)}
@@ -294,6 +329,27 @@ function ContactList({
         </li>
       ))}
     </ul>
+  );
+}
+
+function AcceptedContact({
+  contact,
+}: {
+  contact: {
+    displayName: string;
+    email: string | null;
+    phone: string | null;
+    websiteUrl: string | null;
+    socialLinks: Array<{ label: string; url: string }>;
+  };
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="mt-5 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
+      <p className="font-semibold">{t("matchProfiles.acceptedIntroContact")}</p>
+      <p className="mt-1">{contact.displayName}</p>
+      <ContactList contact={contact} />
+    </div>
   );
 }
 

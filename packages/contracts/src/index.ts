@@ -2,6 +2,7 @@ export * from "./admin.js";
 export * from "./client.js";
 export * from "./common.js";
 export * from "./documents.js";
+export * from "./introRequests.js";
 export * from "./manuscripts.js";
 export * from "./matching.js";
 export * from "./openapi.js";

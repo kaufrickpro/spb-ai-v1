@@ -19,6 +19,9 @@ import type { ProfileTestState } from "./modules/profiles/testState.js";
 import { registerMatchingRoutes } from "./modules/matching/registerMatchingRoutes.js";
 import { createMatchingTestState } from "./modules/matching/testState.js";
 import type { MatchingTestState } from "./modules/matching/testState.js";
+import { registerIntroRequestRoutes } from "./modules/introRequests/registerIntroRequestRoutes.js";
+import { createIntroRequestTestState } from "./modules/introRequests/testState.js";
+import type { IntroRequestTestState } from "./modules/introRequests/testState.js";
 import { initializeSentry } from "./lib/sentry/index.js";
 
 type BuildAppOptions = {
@@ -27,6 +30,7 @@ type BuildAppOptions = {
   jwtVerify?: JwtVerifyFn;
   testState?: {
     admin?: AdminTestState;
+    introRequests?: IntroRequestTestState;
     manuscripts?: ManuscriptTestState;
     matching?: MatchingTestState;
     profiles?: ProfileTestState;
@@ -90,6 +94,8 @@ export function buildApp({
     injectedTestState?.profiles ?? createProfileTestState();
   const matchingTestState =
     injectedTestState?.matching ?? createMatchingTestState();
+  const introRequestTestState =
+    injectedTestState?.introRequests ?? createIntroRequestTestState();
 
   app.addHook("onRequest", async (request, reply) => {
     const requestOrigin = request.headers.origin;
@@ -115,7 +121,14 @@ export function buildApp({
   });
 
   registerHealthRoutes(app);
-  registerProfileRoutes(app, auth, profileTestState, manuscriptTestState);
+  registerProfileRoutes(
+    app,
+    auth,
+    profileTestState,
+    manuscriptTestState,
+    introRequestTestState,
+    matchingTestState,
+  );
   registerAdminRoutes(app, {
     auth,
     manuscriptTestState,
@@ -125,14 +138,24 @@ export function buildApp({
   registerManuscriptRoutes(app, {
     auth,
     adminTestState: testState,
+    introTestState: introRequestTestState,
+    matchingTestState,
     profileTestState,
     testState: manuscriptTestState,
   });
   registerMatchingRoutes(app, {
     auth,
+    introTestState: introRequestTestState,
     manuscriptTestState,
     profileTestState,
     testState: matchingTestState,
+  });
+  registerIntroRequestRoutes(app, {
+    auth,
+    introTestState: introRequestTestState,
+    manuscriptTestState,
+    matchingTestState,
+    profileTestState,
   });
   registerErrorHandler(app);
 

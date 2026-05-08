@@ -7,6 +7,7 @@ import {
   visibleList,
   visibleText,
 } from "./matchDisplay";
+import { IntroRequestAction } from "../introRequests/IntroRequestAction";
 
 const AXES = ["premise", "voice", "arc"] as const;
 
@@ -87,13 +88,13 @@ export function MatchCandidateCard({
         <Link className="text-slate-600 hover:text-slate-900" to={detailPath}>
           {t("matches.details")}
         </Link>
-        <button
-          className="cursor-not-allowed rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-400"
-          disabled
-          type="button"
-        >
-          {t("matches.step10IntroPlaceholder")}
-        </button>
+        {candidate.introTarget ? (
+          <IntroRequestAction
+            introState={candidate.introState}
+            manuscriptId={candidate.introTarget.manuscriptId}
+            publisherProfileId={candidate.introTarget.publisherProfileId}
+          />
+        ) : null}
       </div>
     </article>
   );

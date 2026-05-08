@@ -5,6 +5,9 @@ import {
 } from "@marketplace/contracts";
 import type { ApiConfig } from "../config/config.js";
 import type { AuthenticatedUser } from "../auth/verifyJwt.js";
+import { getAcceptedIntroContactForProfile } from "../introRequests/service.js";
+import type { IntroRequestTestState } from "../introRequests/testState.js";
+import type { MatchingTestState } from "../matching/testState.js";
 import { createServiceRoleSupabaseClient } from "../supabase/client.js";
 import type { ManuscriptTestState } from "../manuscripts/testState.js";
 import { findTestProfileById, type ProfileTestState } from "./testState.js";
@@ -26,6 +29,8 @@ export async function getAuthorProfilePage(input: {
   config: ApiConfig;
   authorProfileId: string;
   manuscriptTestState: ManuscriptTestState;
+  introTestState?: IntroRequestTestState;
+  matchingTestState?: MatchingTestState;
   testState: ProfileTestState;
   user: AuthenticatedUser;
 }) {
@@ -65,6 +70,8 @@ export async function getAuthorProfilePage(input: {
           synopsis: item.synopsis,
           access: "full",
           requestStatus: requestStatusFor(input, item.id),
+          introState: null,
+          acceptedIntroContact: null,
         });
         continue;
       }
@@ -77,6 +84,8 @@ export async function getAuthorProfilePage(input: {
           shortTeaser: item.shortTeaser ?? null,
           access: "requestable_teaser",
           requestStatus: requestStatusFor(input, item.id),
+          introState: null,
+          acceptedIntroContact: null,
         });
       }
     }
@@ -98,6 +107,18 @@ export async function getAuthorProfilePage(input: {
       contact: buildVisibleContact(
         input.testState.matchVisibleContactsByProfileId.get(author.profile.id),
       ),
+      acceptedIntroContact:
+        input.introTestState && input.matchingTestState
+          ? await getAcceptedIntroContactForProfile({
+              config: input.config,
+              introTestState: input.introTestState,
+              manuscriptTestState: input.manuscriptTestState,
+              matchingTestState: input.matchingTestState,
+              profileTestState: input.testState,
+              targetProfileId: author.profile.id,
+              user: input.user,
+            })
+          : null,
       manuscripts: visibleManuscripts,
     };
 
@@ -179,6 +200,8 @@ export async function getAuthorProfilePage(input: {
           manuscriptId: manuscript.id,
           user: input.user,
         }),
+        introState: null,
+        acceptedIntroContact: null,
       });
     } else if (
       manuscript.author_profile_visibility === "requestable_from_author_profile"
@@ -195,6 +218,8 @@ export async function getAuthorProfilePage(input: {
           manuscriptId: manuscript.id,
           user: input.user,
         }),
+        introState: null,
+        acceptedIntroContact: null,
       });
     }
   }
@@ -208,6 +233,15 @@ export async function getAuthorProfilePage(input: {
       styleStatement: details?.style_statement ?? null,
       influences: details?.influences ?? [],
       contact: buildVisibleContact(fromDbContactSettings(profile)),
+      acceptedIntroContact: await getAcceptedIntroContactForProfile({
+        config: input.config,
+        introTestState: input.introTestState!,
+        manuscriptTestState: input.manuscriptTestState,
+        matchingTestState: input.matchingTestState!,
+        profileTestState: input.testState,
+        targetProfileId: profile.id,
+        user: input.user,
+      }),
       manuscripts: visibleManuscripts,
     },
   });

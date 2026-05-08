@@ -5,6 +5,10 @@ import {
   ReviewOutcomeSchema,
   UuidSchema,
 } from "./common.js";
+import {
+  AcceptedIntroContactSchema,
+  IntroStateSchema,
+} from "./introRequests.js";
 
 // ─── Status / enum schemas ───────────────────────────────────────────────────
 
@@ -168,6 +172,9 @@ export const ManuscriptProfileSchema = z.object({
   shortTeaser: z.string().trim().max(500).nullable(),
   wordCount: z.number().int().nonnegative().nullable(),
   language: z.string().trim().min(2).max(10),
+  introState: IntroStateSchema.nullable().default(null),
+  acceptedIntroContact: AcceptedIntroContactSchema.nullable().default(null),
+  acceptedIntroSampleDocumentId: UuidSchema.nullable().default(null),
 });
 
 export const ManuscriptProfileResponseSchema = z.object({

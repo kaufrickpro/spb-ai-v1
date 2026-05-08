@@ -51,6 +51,16 @@ import {
   UploadSignedUrlRequestSchema,
   UploadSignedUrlResponseSchema,
 } from "./documents.js";
+import {
+  AdminIntroRequestDetailResponseSchema,
+  AdminIntroRequestListQuerySchema,
+  AdminIntroRequestListResponseSchema,
+  CreateIntroRequestRequestSchema,
+  IntroRequestListQuerySchema,
+  IntroRequestListResponseSchema,
+  IntroRequestResponseSchema,
+  RejectIntroRequestRequestSchema,
+} from "./introRequests.js";
 
 export const route = <
   Method extends "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
@@ -208,6 +218,20 @@ export const ApiRoutes = {
       response: PublicDirectoryDecisionResponseSchema,
       auth: "admin",
     }),
+    introRequests: route({
+      method: "GET",
+      path: "/api/v1/admin/intro-requests",
+      query: AdminIntroRequestListQuerySchema,
+      response: AdminIntroRequestListResponseSchema,
+      auth: "admin",
+    }),
+    introRequestDetail: route({
+      method: "GET",
+      path: "/api/v1/admin/intro-requests/:requestId",
+      params: z.object({ requestId: z.string().uuid() }),
+      response: AdminIntroRequestDetailResponseSchema,
+      auth: "admin",
+    }),
   },
   manuscripts: {
     list: route({
@@ -308,6 +332,44 @@ export const ApiRoutes = {
         candidateId: z.string().uuid(),
       }),
       response: MatchCandidateResponseSchema,
+      auth: "user",
+    }),
+  },
+  introRequests: {
+    create: route({
+      method: "POST",
+      path: "/api/v1/intro-requests",
+      request: CreateIntroRequestRequestSchema,
+      response: IntroRequestResponseSchema,
+      auth: "user",
+    }),
+    list: route({
+      method: "GET",
+      path: "/api/v1/intro-requests",
+      query: IntroRequestListQuerySchema,
+      response: IntroRequestListResponseSchema,
+      auth: "user",
+    }),
+    accept: route({
+      method: "POST",
+      path: "/api/v1/intro-requests/:requestId/accept",
+      params: z.object({ requestId: z.string().uuid() }),
+      response: IntroRequestResponseSchema,
+      auth: "user",
+    }),
+    reject: route({
+      method: "POST",
+      path: "/api/v1/intro-requests/:requestId/reject",
+      params: z.object({ requestId: z.string().uuid() }),
+      request: RejectIntroRequestRequestSchema,
+      response: IntroRequestResponseSchema,
+      auth: "user",
+    }),
+    cancel: route({
+      method: "POST",
+      path: "/api/v1/intro-requests/:requestId/cancel",
+      params: z.object({ requestId: z.string().uuid() }),
+      response: IntroRequestResponseSchema,
       auth: "user",
     }),
   },

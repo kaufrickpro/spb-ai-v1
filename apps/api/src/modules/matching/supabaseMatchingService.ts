@@ -1,5 +1,13 @@
-import type { MatchRunRequest } from "@marketplace/contracts";
-import { MatchRunResponseSchema } from "@marketplace/contracts";
+import type {
+  IntroState,
+  MatchCandidate,
+  MatchRunRequest,
+} from "@marketplace/contracts";
+import {
+  IntroStateSchema,
+  MatchCandidateSchema,
+  MatchRunResponseSchema,
+} from "@marketplace/contracts";
 import type { ApiConfig } from "../config/config.js";
 import type { AuthenticatedUser } from "../auth/verifyJwt.js";
 import { createServiceRoleSupabaseClient } from "../supabase/client.js";
@@ -131,9 +139,135 @@ export async function getSupabaseMatchRun(input: {
     );
   }
 
+  const mappedRun = mapDbRun(run);
+  const mappedCandidates = [];
+  for (const candidate of candidates ?? []) {
+    mappedCandidates.push(
+      await decorateDbCandidate(
+        db,
+        viewer.id,
+        mappedRun,
+        mapDbCandidate(candidate),
+      ),
+    );
+  }
+
   return MatchRunResponseSchema.parse({
-    run: mapDbRun(run),
-    candidates: (candidates ?? []).map(mapDbCandidate),
+    run: mappedRun,
+    candidates: mappedCandidates,
+  });
+}
+
+async function decorateDbCandidate(
+  db: ServiceRoleDb,
+  viewerProfileId: unknown,
+  run: ReturnType<typeof mapDbRun>,
+  candidate: MatchCandidate,
+): Promise<MatchCandidate> {
+  const introTarget = getIntroTarget(run, candidate);
+  if (!introTarget || typeof viewerProfileId !== "string") {
+    return MatchCandidateSchema.parse(candidate);
+  }
+  return MatchCandidateSchema.parse({
+    ...candidate,
+    introTarget,
+    introState: await getDbIntroState(db, {
+      ...introTarget,
+      viewerProfileId,
+    }),
+  });
+}
+
+function getIntroTarget(
+  run: ReturnType<typeof mapDbRun>,
+  candidate: MatchCandidate,
+) {
+  if (
+    run.direction === "author_to_publisher" &&
+    run.sourceManuscriptId &&
+    candidate.candidateType === "publisher"
+  ) {
+    return {
+      manuscriptId: run.sourceManuscriptId,
+      publisherProfileId: candidate.candidateProfileId,
+    };
+  }
+  if (
+    run.direction === "publisher_to_manuscript" &&
+    run.sourcePublisherProfileId &&
+    candidate.candidateManuscriptId
+  ) {
+    return {
+      manuscriptId: candidate.candidateManuscriptId,
+      publisherProfileId: run.sourcePublisherProfileId,
+    };
+  }
+  return null;
+}
+
+async function getDbIntroState(
+  db: ServiceRoleDb,
+  pair: {
+    manuscriptId: string;
+    publisherProfileId: string;
+    viewerProfileId: string;
+  },
+): Promise<IntroState> {
+  const { data } = await db
+    .from("intro_requests")
+    .select()
+    .eq("manuscript_id", pair.manuscriptId)
+    .eq("publisher_profile_id", pair.publisherProfileId)
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const accepted = rows.find((row) => row.status === "accepted");
+  if (accepted) {
+    return IntroStateSchema.parse({
+      status: "accepted",
+      requestId: accepted.id,
+    });
+  }
+  const pending = rows.find((row) => row.status === "pending");
+  if (pending) {
+    const sent = pending.requester_profile_id === pair.viewerProfileId;
+    return IntroStateSchema.parse({
+      status: sent ? "pending_sent" : "pending_received",
+      requestId: pending.id,
+      viewerCanAccept: !sent,
+      viewerCanReject: !sent,
+      viewerCanCancel: sent,
+    });
+  }
+  const cooldown = rows.find(
+    (row) => row.status === "rejected" || row.status === "cancelled",
+  );
+  if (cooldown) {
+    const until = new Date(
+      String(cooldown.responded_at ?? cooldown.updated_at),
+    );
+    until.setUTCDate(until.getUTCDate() + 14);
+    if (until.getTime() > Date.now()) {
+      return IntroStateSchema.parse({
+        status:
+          cooldown.status === "rejected"
+            ? "rejected_cooldown"
+            : "cancelled_cooldown",
+        requestId: cooldown.id,
+        cooldownUntil: until.toISOString(),
+      });
+    }
+  }
+  const { count } = await db
+    .from("intro_request_usage_events")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", pair.viewerProfileId)
+    .eq("usage_date", new Date().toISOString().slice(0, 10));
+  const remaining = Math.max(0, 10 - (count ?? 0));
+  return IntroStateSchema.parse({
+    status: remaining === 0 ? "quota_exhausted" : "can_request",
+    requestId: null,
+    quotaRemaining: remaining,
   });
 }
 

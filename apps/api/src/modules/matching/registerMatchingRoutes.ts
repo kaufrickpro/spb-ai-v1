@@ -18,6 +18,7 @@ import {
 } from "../../lib/http/errors.js";
 import type { ManuscriptTestState } from "../manuscripts/testState.js";
 import type { ProfileTestState } from "../profiles/testState.js";
+import type { IntroRequestTestState } from "../introRequests/testState.js";
 import { MatchingServiceError } from "./errors.js";
 import {
   getMatchCandidate,
@@ -29,6 +30,7 @@ import type { MatchingTestState } from "./testState.js";
 
 type RegisterMatchingRoutesOptions = {
   auth: AuthDependencies;
+  introTestState: IntroRequestTestState;
   manuscriptTestState: ManuscriptTestState;
   profileTestState: ProfileTestState;
   testState: MatchingTestState;
@@ -38,6 +40,7 @@ export function registerMatchingRoutes(
   app: FastifyInstance,
   {
     auth,
+    introTestState,
     manuscriptTestState,
     profileTestState,
     testState,
@@ -59,6 +62,7 @@ export function registerMatchingRoutes(
     try {
       const response = await runMatch({
         config: auth.config,
+        introTestState,
         manuscriptTestState,
         profileTestState,
         request: parsed.data,
@@ -78,6 +82,7 @@ export function registerMatchingRoutes(
     try {
       const response = await listMatchRuns({
         config: auth.config,
+        introTestState,
         manuscriptTestState,
         profileTestState,
         testState,
@@ -96,6 +101,7 @@ export function registerMatchingRoutes(
     try {
       const response = await listMatchRuns({
         config: auth.config,
+        introTestState,
         manuscriptTestState,
         profileTestState,
         testState,
@@ -117,6 +123,7 @@ export function registerMatchingRoutes(
     try {
       const response = await getMatchRun({
         config: auth.config,
+        introTestState,
         matchRunId,
         manuscriptTestState,
         profileTestState,
@@ -145,6 +152,7 @@ export function registerMatchingRoutes(
         const response = await getMatchCandidate({
           candidateId,
           config: auth.config,
+          introTestState,
           matchRunId,
           manuscriptTestState,
           profileTestState,

@@ -216,7 +216,7 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 11. Build Intro Requests And Contact Unlock
 
-- Status: planned and decision-complete; implementation has not started.
+- Status: implemented for GitHub issues #67-#74 as a first end-to-end Step 11 slice. Intro requests can be created from match/access evidence, managed from `/app/requests`, surfaced through match/profile read models, investigated by admins, and used for accepted contact plus publisher sample unlocks.
 - Either author or publisher can send an intro request for one manuscript/publisher pair only when durable match/access evidence exists: a stored match candidate for that pair or an approved manuscript access request for that publisher/manuscript.
 - Prevent arbitrary outreach from guessed IDs, logged-out public directory browsing, or unrelated profile access. Both profiles, the manuscript, and the active sample must remain eligible for send, accept, and unlock behavior.
 - Prevent duplicate pending requests for the same pair. An accepted request is terminal for that pair. Rejected or cancelled requests can be retried only after a 14-day pair-level cooldown.
@@ -226,7 +226,7 @@ Use a workflow that makes mistakes cheap and visible:
 - Keep match-visible contact separate from accepted-intro contact. Use a clearly named `acceptedIntroContact` response block and continue to serve signed sample download URLs only through secure API endpoints.
 - Write in-app notification records and product audit events for create, accept, reject, and cancel. Product emails remain deferred to Step 14.
 - Add a read-only admin intro request investigation surface with filters, safe metadata, timeline, and unlock status. Do not add admin accept/reject/cancel-on-behalf actions in Step 11.
-- The detailed Step 11 implementation plan lives in `docs/step-11-intro-requests-implementation-plan.md`.
+- The detailed Step 11 implementation notes live in `docs/step-11-intro-requests-implementation-plan.md`. Existing remote databases must apply `supabase/migrations/20260508213000_step11_intro_requests.sql` after the Step 10 matching/access migrations.
 
 ### 12. Build Match Detail View
 

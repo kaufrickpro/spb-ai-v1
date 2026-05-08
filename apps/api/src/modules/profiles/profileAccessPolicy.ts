@@ -164,7 +164,23 @@ export async function canViewDbManuscript(input: {
       requestError,
     );
   }
-  return Boolean(request);
+  if (request) return true;
+  const { data: introRequest, error: introError } = await input.db
+    .from("intro_requests")
+    .select("id")
+    .eq("publisher_profile_id", viewer.id)
+    .eq("manuscript_id", input.manuscript.id)
+    .eq("status", "accepted")
+    .limit(1)
+    .maybeSingle();
+  if (introError) {
+    throw new MatchProfileServiceError(
+      "storage",
+      "Failed to resolve accepted intro access",
+      introError,
+    );
+  }
+  return Boolean(introRequest);
 }
 
 export async function dbRequestStatus(input: {

@@ -8,6 +8,7 @@ import { PlatformHeader } from "../layout/PlatformHeader";
 import { WEB_ROUTES } from "../routing/routes";
 import { useMarketplaceProfile } from "./useMarketplaceProfile";
 import { useUpdateMatchVisibleContacts } from "../profiles/useProfileSurfaces";
+import { buildMatchVisibleContactSettings } from "./matchVisibleContactForm";
 
 function buildInitials(displayName: string) {
   return displayName
@@ -173,18 +174,14 @@ export function ProfilePage() {
               className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                updateContacts.mutate({
-                  publicEmail: publicEmail || null,
-                  publicPhone: null,
-                  websiteUrl: websiteUrl || null,
-                  socialLinks: [],
-                  visibility: {
-                    publicEmail: showEmail,
-                    publicPhone: false,
-                    websiteUrl: showWebsite,
-                    socialLinks: false,
-                  },
-                });
+                updateContacts.mutate(
+                  buildMatchVisibleContactSettings({
+                    publicEmail,
+                    showEmail,
+                    showWebsite,
+                    websiteUrl,
+                  }),
+                );
               }}
             >
               <h2 className="text-sm font-semibold text-slate-900">
@@ -238,6 +235,11 @@ export function ProfilePage() {
               {updateContacts.isSuccess ? (
                 <p className="mt-3 text-sm text-emerald-700">
                   {t("profile.matchVisible.saved")}
+                </p>
+              ) : null}
+              {updateContacts.isError ? (
+                <p className="mt-3 text-sm text-rose-700">
+                  {getApiErrorMessage(updateContacts.error)}
                 </p>
               ) : null}
             </form>

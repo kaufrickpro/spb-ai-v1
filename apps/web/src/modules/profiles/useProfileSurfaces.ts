@@ -6,11 +6,14 @@ import {
 import { webApiClient } from "../api/client";
 
 export const profileSurfaceKeys = {
+  all: ["profile-surfaces"] as const,
   publicPublishers: ["public-publishers"] as const,
-  publisher: (id: string) => ["publisher-profile", id] as const,
-  author: (id: string) => ["author-profile", id] as const,
-  manuscript: (id: string) => ["manuscript-profile", id] as const,
-  accessRequests: ["manuscript-access-requests"] as const,
+  publisher: (id: string) =>
+    ["profile-surfaces", "publisher-profile", id] as const,
+  author: (id: string) => ["profile-surfaces", "author-profile", id] as const,
+  manuscript: (id: string) =>
+    ["profile-surfaces", "manuscript-profile", id] as const,
+  accessRequests: ["profile-surfaces", "manuscript-access-requests"] as const,
 };
 
 export function usePublicPublishers() {

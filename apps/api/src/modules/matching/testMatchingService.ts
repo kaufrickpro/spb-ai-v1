@@ -10,6 +10,8 @@ import {
   MatchRunSchema,
 } from "@marketplace/contracts";
 import type { AuthenticatedUser } from "../auth/verifyJwt.js";
+import type { ApiConfig } from "../config/config.js";
+import type { IntroRequestTestState } from "../introRequests/testState.js";
 import type { ManuscriptTestState } from "../manuscripts/testState.js";
 import {
   addTestProfileAccessGrant,
@@ -30,6 +32,8 @@ import {
 } from "./scoring.js";
 
 export function runTestMatch(input: {
+  config: ApiConfig;
+  introTestState: IntroRequestTestState;
   manuscriptTestState: ManuscriptTestState;
   profileTestState: ProfileTestState;
   request: MatchRunRequest;
@@ -64,6 +68,8 @@ export function listTestMatchRuns(input: {
 }
 
 export function getTestMatchRun(input: {
+  config: ApiConfig;
+  introTestState: IntroRequestTestState;
   matchRunId: string;
   manuscriptTestState: ManuscriptTestState;
   profileTestState: ProfileTestState;
@@ -81,14 +87,16 @@ export function getTestMatchRun(input: {
   }
   return MatchRunResponseSchema.parse({
     run: { ...run, stale: isTestRunStale(input, run) },
-    candidates: input.testState.candidates.filter(
-      (candidate) => candidate.runId === run.id,
-    ),
+    candidates: input.testState.candidates
+      .filter((candidate) => candidate.runId === run.id)
+      .map((candidate) => decorateTestCandidate(input, run, candidate)),
   });
 }
 
 function runTestAuthorMatch(
   input: {
+    config: ApiConfig;
+    introTestState: IntroRequestTestState;
     manuscriptTestState: ManuscriptTestState;
     profileTestState: ProfileTestState;
     request: Extract<MatchRunRequest, { direction: "author_to_publisher" }>;
@@ -190,11 +198,18 @@ function runTestAuthorMatch(
       source: "match_candidate",
     });
   }
-  return MatchRunResponseSchema.parse({ run, candidates });
+  return MatchRunResponseSchema.parse({
+    run,
+    candidates: candidates.map((candidate) =>
+      decorateTestCandidate(input, run, candidate),
+    ),
+  });
 }
 
 function runTestPublisherMatch(
   input: {
+    config: ApiConfig;
+    introTestState: IntroRequestTestState;
     manuscriptTestState: ManuscriptTestState;
     profileTestState: ProfileTestState;
     request: MatchRunRequest;
@@ -280,7 +295,123 @@ function runTestPublisherMatch(
       source: "match_candidate",
     });
   }
-  return MatchRunResponseSchema.parse({ run, candidates });
+  return MatchRunResponseSchema.parse({
+    run,
+    candidates: candidates.map((candidate) =>
+      decorateTestCandidate(input, run, candidate),
+    ),
+  });
+}
+
+function decorateTestCandidate(
+  input: {
+    config: ApiConfig;
+    introTestState: IntroRequestTestState;
+    manuscriptTestState: ManuscriptTestState;
+    profileTestState: ProfileTestState;
+    testState: MatchingTestState;
+    user: AuthenticatedUser;
+  },
+  run: MatchRun,
+  candidate: MatchCandidate,
+): MatchCandidate {
+  const introTarget = getIntroTarget(run, candidate);
+  if (!introTarget) {
+    return MatchCandidateSchema.parse(candidate);
+  }
+  const state = getTestIntroStateSync(input, introTarget);
+  return MatchCandidateSchema.parse({
+    ...candidate,
+    introTarget,
+    introState: state,
+  });
+}
+
+function getIntroTarget(run: MatchRun, candidate: MatchCandidate) {
+  if (
+    run.direction === "author_to_publisher" &&
+    run.sourceManuscriptId &&
+    candidate.candidateType === "publisher"
+  ) {
+    return {
+      manuscriptId: run.sourceManuscriptId,
+      publisherProfileId: candidate.candidateProfileId,
+    };
+  }
+  if (
+    run.direction === "publisher_to_manuscript" &&
+    run.sourcePublisherProfileId &&
+    candidate.candidateManuscriptId
+  ) {
+    return {
+      manuscriptId: candidate.candidateManuscriptId,
+      publisherProfileId: run.sourcePublisherProfileId,
+    };
+  }
+  return null;
+}
+
+function getTestIntroStateSync(
+  input: {
+    introTestState: IntroRequestTestState;
+    profileTestState: ProfileTestState;
+    user: AuthenticatedUser;
+  },
+  pair: { manuscriptId: string; publisherProfileId: string },
+) {
+  const viewer = findTestProfileByUserId(
+    input.profileTestState,
+    input.user.userId,
+  );
+  if (!viewer) {
+    return {
+      status: "not_eligible" as const,
+      requestId: null,
+      viewerCanAccept: false,
+      viewerCanReject: false,
+      viewerCanCancel: false,
+      cooldownUntil: null,
+      quotaRemaining: null,
+    };
+  }
+  const request = input.introTestState.requests.find(
+    (item) =>
+      item.manuscriptId === pair.manuscriptId &&
+      item.publisherProfileId === pair.publisherProfileId &&
+      ["pending", "accepted"].includes(item.status),
+  );
+  if (!request) {
+    return {
+      status: "can_request" as const,
+      requestId: null,
+      viewerCanAccept: false,
+      viewerCanReject: false,
+      viewerCanCancel: false,
+      cooldownUntil: null,
+      quotaRemaining: null,
+    };
+  }
+  if (request.status === "accepted") {
+    return {
+      status: "accepted" as const,
+      requestId: request.id,
+      viewerCanAccept: false,
+      viewerCanReject: false,
+      viewerCanCancel: false,
+      cooldownUntil: null,
+      quotaRemaining: null,
+    };
+  }
+  const sent = request.requesterProfileId === viewer.profile.id;
+  return {
+    status: sent ? ("pending_sent" as const) : ("pending_received" as const),
+    requestId: request.id,
+    viewerCanAccept: !sent,
+    viewerCanReject: !sent,
+    viewerCanCancel: sent,
+    cooldownUntil: null,
+    quotaRemaining: null,
+  };
 }
 
 function requireTestProfile(state: ProfileTestState, userId: string) {

@@ -9,6 +9,10 @@ import {
   ReviewOutcomeSchema,
   UuidSchema,
 } from "./common.js";
+import {
+  AcceptedIntroContactSchema,
+  IntroStateSchema,
+} from "./introRequests.js";
 
 export const OnboardingStepSchema = z.enum([
   "role_selection",
@@ -242,6 +246,8 @@ export const PublisherProfilePageSchema = z.object({
   recentAcquisitions: z.array(z.string().trim().min(1).max(160)),
   bestSellingBooks: z.array(z.string().trim().min(1).max(160)),
   contact: MatchVisibleContactSchema,
+  introState: IntroStateSchema.nullable().default(null),
+  acceptedIntroContact: AcceptedIntroContactSchema.nullable().default(null),
 });
 
 export const PublisherProfilePageResponseSchema = z.object({
@@ -260,6 +266,8 @@ export const AuthorVisibleManuscriptSchema = z.object({
   requestStatus: z
     .enum(["none", "pending", "approved", "rejected"])
     .default("none"),
+  introState: IntroStateSchema.nullable().default(null),
+  acceptedIntroContact: AcceptedIntroContactSchema.nullable().default(null),
 });
 
 export const AuthorProfilePageSchema = z.object({
@@ -270,6 +278,7 @@ export const AuthorProfilePageSchema = z.object({
   styleStatement: z.string().trim().max(1000).nullable(),
   influences: z.array(z.string().trim().min(1).max(120)),
   contact: MatchVisibleContactSchema,
+  acceptedIntroContact: AcceptedIntroContactSchema.nullable().default(null),
   manuscripts: z.array(AuthorVisibleManuscriptSchema),
 });
 

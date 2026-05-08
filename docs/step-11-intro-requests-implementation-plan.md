@@ -4,7 +4,7 @@
 
 Build intro requests as a controlled escalation from stored match/access evidence into a pair-scoped relationship for one manuscript and one publisher profile. Either side can initiate. Only the recipient can accept or reject. Only the requester can cancel while pending. Acceptance unlocks mutual relationship contact through API read models and publisher-only signed sample download access for the current active eligible sample.
 
-Step 11 is not blocked by final AI-service scoring persistence because it relies on stored `match_candidates`, `profile_access_grants`, and approved `manuscript_access_requests`, not on provider internals. The current project recommendation still prioritizes finishing the repository-backed Step 10 AI-service matching worker first unless product priority changes.
+Step 11 is implemented for GitHub issues #67-#74. It relies on stored `match_candidates` and approved `manuscript_access_requests`, not on provider internals. Remote environments must apply `supabase/migrations/20260508213000_step11_intro_requests.sql` before the Step 11 API can work against Supabase-backed data.
 
 ## Decisions
 
@@ -24,41 +24,49 @@ Step 11 is not blocked by final AI-service scoring persistence because it relies
 
 1. **Send Intro Request From Match Context**
    - Type: AFK
+   - Status: implemented in contracts, API, migration, match UI, and focused API tests.
    - Blocked by: none
    - Build the first end-to-end create path: schema, contract, API, durable pair-evidence eligibility, notification/product-audit write, and real send action replacing the disabled match-card placeholder.
 
 2. **Manage Pending Intro Requests In `/app/requests`**
    - Type: AFK
+   - Status: implemented in API lifecycle endpoints and `/app/requests`.
    - Blocked by: issue 1
    - Add sent/received intro request lists, recipient accept/reject, requester cancel, accept confirmation, optional rejection note, and state refresh in the existing requests workspace.
 
 3. **Enforce Duplicate, Terminal, Cooldown, And Quota Rules**
    - Type: AFK
+   - Status: implemented with partial unique indexes, RPC checks, 14-day cooldown, and 10/day starter quota.
    - Blocked by: issue 1
    - Add pending/accepted pair guards, 14-day retry cooldown after reject/cancel, simple 10/day send quota, and explicit `introState` values for quota and cooldown states.
 
 4. **Expose Accepted-Intro Contact Unlock**
    - Type: AFK
+   - Status: implemented through `acceptedIntroContact` read-model blocks.
    - Blocked by: issue 2
    - Add `public.has_accepted_intro`, shared API unlock policy, `acceptedIntroContact` in authorized read models, and UI sections on request/profile surfaces.
 
 5. **Unlock Publisher Sample Download After Acceptance**
    - Type: AFK
+   - Status: implemented through accepted-intro document download authorization and explicit UI click.
    - Blocked by: issue 2
    - Extend document download authorization for accepted-intro publisher counterparties and resolve the current active eligible sample at download time.
 
 6. **Add Admin Intro Request Investigation Surface**
    - Type: AFK
+   - Status: implemented as read-only admin API/UI.
    - Blocked by: issues 1 and 2
    - Add admin list/detail API and UI with filters, safe metadata, timeline from `product_audit_events`, current unlock status, and no admin accept/reject/cancel actions.
 
 7. **Propagate Intro State Across Match And Profile Surfaces**
    - Type: AFK
+   - Status: implemented for match candidates and profile/manuscript surfaces where the pair is known.
    - Blocked by: issues 1, 2, and 3
    - Add `introState` to match candidate/detail and match-revealed profile/manuscript responses, then update buttons across those surfaces without per-card status calls.
 
 8. **Step 11 Documentation And Harness Updates**
    - Type: AFK
+   - Status: implemented in project, architecture, and step docs.
    - Blocked by: issues 1-7
    - Update source-of-truth docs after implementation and add mechanical checks only for repeated safety rules that proved worth enforcing.
 
