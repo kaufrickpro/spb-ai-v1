@@ -38,6 +38,8 @@ import {
 import { RequestsPage } from "./modules/requests/RequestsPage";
 import { MatchesPage } from "./modules/matches/MatchesPage";
 import { MatchCandidatePage } from "./modules/matches/MatchCandidatePage";
+import { MatchRunPage } from "./modules/matches/MatchRunPage";
+import { ProfileHistoryPage } from "./modules/matches/ProfileHistoryPage";
 
 export function App() {
   return (
@@ -197,6 +199,14 @@ export function App() {
         }
       />
       <Route
+        path={WEB_ROUTES.matchRun}
+        element={
+          <AuthGuard>
+            <MatchRunPage />
+          </AuthGuard>
+        }
+      />
+      <Route
         path={WEB_ROUTES.matchCandidate}
         element={
           <AuthGuard>
@@ -257,7 +267,7 @@ export function App() {
         path={WEB_ROUTES.profileHistory}
         element={
           <AuthGuard>
-            <MatchesPage />
+            <ProfileHistoryPage />
           </AuthGuard>
         }
       />

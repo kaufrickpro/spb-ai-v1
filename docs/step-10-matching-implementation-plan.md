@@ -2,11 +2,18 @@
 
 ## Current Implementation Note
 
-As of 2026-05-07, GitHub issues #47-#51 are implemented as a tracer slice:
-matching input fields, durable run/candidate records, profile history, both
-match directions, private AI-service `{ match_run_id }` invocation, deterministic
-safe candidate persistence, and basic UI are in place. Real retrieval/scoring,
-Vertex/Gemini explanations, and production Vector Search remain future work.
+As of 2026-05-07, GitHub issues #52-#56 are partially implemented on top of
+the #47-#51 durable run lifecycle: reference-only signal records, deterministic
+soft-constraint scoring, visible-candidate thresholding, top-10 stored
+explanation display, result dropdowns, run detail, profile history, focused
+tests, and docs are in place. The AI service now has a real Vertex/Gemini
+explanation provider boundary with bounded evidence and JSON validation tests,
+an extra-field-forbidden `{ match_run_id }` request contract, matching
+repository protocol/REST methods, and Python-owned signal/fingerprint/reference
+helpers. Production-quality AI-service-owned retrieval/scoring persistence and
+Vertex Vector Search remain future work. Browser smoke coverage now lives in
+`docs/step-10-matching-smoke-checklist.md`, and the first matching eval fixture
+lives in `apps/ai-service/tests/fixtures/matching_eval.json`.
 
 ## Overview
 
@@ -37,9 +44,9 @@ Build match-revealed profile surfaces, manuscript access requests, public publis
 - `apps/api/src/modules/manuscripts`: add manuscript profile access checks, requestable teaser fields, and manuscript access request workflow.
 - `apps/api/src/modules/matching`: add API-owned authorization, eligibility, rate limits, run lifecycle, persistence, and response mapping.
 - `apps/api/src/modules/profiles` and `apps/api/src/modules/manuscripts`: extend profile and manuscript write/read services with matching-required fields.
-- `apps/ai-service/app/modules/matching.py`: replace placeholder protocol with the three-axis scoring orchestrator.
+- `apps/ai-service/app/modules/matching.py`: keep the private `{ match_run_id }` boundary and move the current API-owned scorer into an AI-service repository-backed three-axis orchestrator.
 - `apps/ai-service/app/modules/retrieval.py`: add retrieval provider interfaces for axis-based candidate retrieval.
-- `apps/ai-service/app/modules/explanations.py`: add Vertex/Gemini explanation provider that accepts bounded evidence and returns one paragraph per top-10 candidate.
+- `apps/ai-service/app/modules/explanations.py`: Vertex/Gemini explanation provider exists; next step is to connect it to stored candidate evidence and persist validated top-10 explanations from the AI service.
 - `apps/ai-service/app/modules/supabase_repository.py`: add matching read/write repository methods for signals, candidates, snippets, and fingerprints.
 - `apps/web/src/modules/marketing`: add the public publisher directory.
 - `apps/web/src/modules/profiles`: add match-revealed publisher, author, and manuscript profile pages.

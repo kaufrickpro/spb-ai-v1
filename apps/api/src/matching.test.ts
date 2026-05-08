@@ -37,8 +37,10 @@ describe("Matching routes", () => {
     expect(body.run.candidateCount).toBe(1);
     expect(body.candidates[0]).toMatchObject({
       candidateType: "publisher",
-      scoreBand: "strong",
+      explanationStatus: "generated",
+      safeSnippets: expect.any(Array),
     });
+    expect(JSON.stringify(body)).not.toContain("finalScore");
 
     const profileResponse = await app.inject({
       method: "GET",
@@ -84,6 +86,7 @@ describe("Matching routes", () => {
     });
     expect(JSON.stringify(body)).not.toContain("downloadUrl");
     expect(JSON.stringify(body)).not.toContain("sample text");
+    expect(JSON.stringify(body)).not.toContain("finalScore");
   });
 
   it("marks old history entries stale after a match-relevant manuscript edit", async () => {

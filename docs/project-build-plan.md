@@ -198,7 +198,7 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 10. Build Matching Vertical Slice
 
-- Status: Step 10 Phase 0 profile/access foundation is implemented for GitHub issues #40-#45. GitHub issues #47-#51 are partially implemented as a tracer matching slice: author/publisher matching input fields, durable match run/candidate records, profile history, author-to-publisher and publisher-to-manuscript run APIs, private AI-service `{ match_run_id }` boundary, deterministic safe candidate persistence, and basic match UI are in place. Real retrieval/scoring quality, Vertex/Gemini explanations, and production Vector Search remain future work.
+- Status: Step 10 Phase 0 profile/access foundation is implemented for GitHub issues #40-#45. GitHub issues #47-#51 are implemented as the durable run/profile-access lifecycle foundation. GitHub issues #52-#56 are partially implemented: reference-only signal records, deterministic soft-constraint scoring, top-10 bounded explanation display, richer result cards/detail dropdowns, profile history, focused tests, and docs are in place. The first AI-service handoff phases are now implemented: the matching endpoint rejects extra payload fields, the AI service has a Supabase matching repository boundary, and Python-owned signal/fingerprint/reference helpers exist for manuscript and publisher signals. The remaining production hardening is to implement AI-service retrieval/scoring/candidate persistence, profile-access grant persistence, and real Vertex Vector Search/Gemini explanation writes behind the `{ match_run_id }` boundary.
 - Phase 0: build the profile/access foundation before matching. Add match-revealed publisher, author, and manuscript profile pages; public `/publishers` directory with only admin-approved logo/name/website; owner-approved match-visible contact fields; manual manuscript access requests; and admin public directory approval.
 - Implement both author-to-publisher and publisher-to-manuscript match runs.
 - Keep hard gates narrow: requester authorization, eligible profile/manuscript where applicable, successful processed sample for manuscript candidates, discoverable publisher profile, entitlement checks, and rate limits.
@@ -207,8 +207,8 @@ Use a workflow that makes mistakes cheap and visible:
 - Use three manuscript semantic axes: `premise`, `voice`, and `arc`. Use publisher semantic signals: `guidelines`, optional `wishlist`, and optional `catalog`.
 - Track semantic signal freshness in `match_signal_sources`; keep numeric vectors out of Postgres and store only vector references in `embedding_records`.
 - Apply genre, audience, manuscript-form, word-count, and exclusion-topic conflicts as penalties and watch-outs, not broad hard filters.
-- Retrieve more candidates than are shown, hide final scores below `0.35`, store up to 25 visible candidates, and generate real Vertex/Gemini LLM explanations for the top 10.
-- Store `match_runs` and `match_candidates` with fingerprints, input snapshots, score breakdowns, penalties, safe snippets, explanation metadata, and stale-run support.
+- Retrieve more candidates than are shown, hide final scores below `0.35`, store up to 25 visible candidates, and show stored top-10 one-paragraph explanations. The AI service has the real Vertex/Gemini provider boundary; repository-backed explanation persistence is the next hardening step.
+- Store `match_runs`, `match_signal_sources`, and `match_candidates` with fingerprints, input snapshots, reference-only embedding records, score breakdowns, penalties, safe snippets, explanation metadata, and stale-run support.
 - Return score band, axis bands, one-paragraph explanation when present, fit reasons, risk reasons, snippets, intro CTA state, and match detail CTA state.
 - Expose prior match runs under profile history. Rematch always creates a new run; old runs remain visible and may be marked stale.
 - Ensure subscription plan never secretly boosts relevance.

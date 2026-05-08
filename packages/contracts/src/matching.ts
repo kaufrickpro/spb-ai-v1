@@ -9,6 +9,21 @@ export const MatchDirectionSchema = z.enum([
 export const MatchRunStatusSchema = z.enum(["running", "succeeded", "failed"]);
 export const MatchScoreBandSchema = z.enum(["strong", "moderate", "weak"]);
 export const MatchAxisSchema = z.enum(["premise", "voice", "arc"]);
+export const MatchExplanationStatusSchema = z.enum([
+  "generated",
+  "not_requested",
+]);
+
+export const MatchSafeSnippetSchema = z.object({
+  label: z.string().trim().min(1).max(80),
+  text: z.string().trim().min(1).max(360),
+});
+
+export const MatchPenaltySchema = z.object({
+  code: z.string().trim().min(1).max(80),
+  label: z.string().trim().min(1).max(160),
+  severity: z.enum(["low", "medium", "high"]),
+});
 
 export const MatchRunRequestSchema = z.discriminatedUnion("direction", [
   z.object({
@@ -32,8 +47,11 @@ export const MatchCandidateSchema = z.object({
   scoreBand: MatchScoreBandSchema,
   axisBands: z.record(MatchAxisSchema, MatchScoreBandSchema),
   explanation: z.string().trim().max(1200).nullable(),
+  explanationStatus: MatchExplanationStatusSchema,
   fitReasons: z.array(z.string().trim().min(1).max(240)).max(8),
   riskReasons: z.array(z.string().trim().min(1).max(240)).max(8),
+  penalties: z.array(MatchPenaltySchema).max(8),
+  safeSnippets: z.array(MatchSafeSnippetSchema).max(6),
   profilePath: z.string().trim().min(1).max(240),
   manuscriptProfilePath: z.string().trim().min(1).max(240).nullable(),
 });
@@ -70,6 +88,7 @@ export const MatchCandidateResponseSchema = z.object({
 
 export type MatchRunRequest = z.infer<typeof MatchRunRequestSchema>;
 export type MatchDirection = z.infer<typeof MatchDirectionSchema>;
+export type MatchScoreBand = z.infer<typeof MatchScoreBandSchema>;
 export type MatchRun = z.infer<typeof MatchRunSchema>;
 export type MatchCandidate = z.infer<typeof MatchCandidateSchema>;
 export type MatchRunResponse = z.infer<typeof MatchRunResponseSchema>;

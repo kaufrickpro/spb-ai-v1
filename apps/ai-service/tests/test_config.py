@@ -30,6 +30,26 @@ def test_vertex_mode_runtime_is_ready_with_required_settings() -> None:
     assert runtime.is_ready()
 
 
+def test_vertex_gemini_explanations_require_model_settings() -> None:
+    with pytest.raises(ValueError, match="Vertex/Gemini explanations"):
+        AiServiceConfig(
+            explanation_provider="vertex_gemini",
+            vertex_project_id="project-1",
+            vertex_location="europe-west1",
+        )
+
+
+def test_vertex_gemini_explanation_config_is_explicit() -> None:
+    config = AiServiceConfig(
+        explanation_provider="vertex_gemini",
+        vertex_project_id="project-1",
+        vertex_location="europe-west1",
+        gemini_explanation_model="gemini-2.5-flash",
+    )
+
+    assert config.gemini_explanation_model == "gemini-2.5-flash"
+
+
 def test_config_requires_positive_limits() -> None:
     with pytest.raises(ValueError):
         AiServiceConfig(provider_mode="local", max_chunks_per_document=0)

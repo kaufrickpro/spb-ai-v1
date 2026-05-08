@@ -5013,6 +5013,10 @@
                             "maxLength": 1200,
                             "nullable": true
                           },
+                          "explanationStatus": {
+                            "type": "string",
+                            "enum": ["generated", "not_requested"]
+                          },
                           "fitReasons": {
                             "type": "array",
                             "items": {
@@ -5030,6 +5034,52 @@
                               "maxLength": 240
                             },
                             "maxItems": 8
+                          },
+                          "penalties": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 160
+                                },
+                                "severity": {
+                                  "type": "string",
+                                  "enum": ["low", "medium", "high"]
+                                }
+                              },
+                              "required": ["code", "label", "severity"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 8
+                          },
+                          "safeSnippets": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                },
+                                "text": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 360
+                                }
+                              },
+                              "required": ["label", "text"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 6
                           },
                           "profilePath": {
                             "type": "string",
@@ -5055,8 +5105,11 @@
                           "scoreBand",
                           "axisBands",
                           "explanation",
+                          "explanationStatus",
                           "fitReasons",
                           "riskReasons",
+                          "penalties",
+                          "safeSnippets",
                           "profilePath",
                           "manuscriptProfilePath"
                         ],
@@ -5489,6 +5542,10 @@
                             "maxLength": 1200,
                             "nullable": true
                           },
+                          "explanationStatus": {
+                            "type": "string",
+                            "enum": ["generated", "not_requested"]
+                          },
                           "fitReasons": {
                             "type": "array",
                             "items": {
@@ -5506,6 +5563,52 @@
                               "maxLength": 240
                             },
                             "maxItems": 8
+                          },
+                          "penalties": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 160
+                                },
+                                "severity": {
+                                  "type": "string",
+                                  "enum": ["low", "medium", "high"]
+                                }
+                              },
+                              "required": ["code", "label", "severity"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 8
+                          },
+                          "safeSnippets": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                },
+                                "text": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 360
+                                }
+                              },
+                              "required": ["label", "text"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 6
                           },
                           "profilePath": {
                             "type": "string",
@@ -5531,8 +5634,11 @@
                           "scoreBand",
                           "axisBands",
                           "explanation",
+                          "explanationStatus",
                           "fitReasons",
                           "riskReasons",
+                          "penalties",
+                          "safeSnippets",
                           "profilePath",
                           "manuscriptProfilePath"
                         ],
@@ -5730,6 +5836,10 @@
                           "maxLength": 1200,
                           "nullable": true
                         },
+                        "explanationStatus": {
+                          "type": "string",
+                          "enum": ["generated", "not_requested"]
+                        },
                         "fitReasons": {
                           "type": "array",
                           "items": {
@@ -5747,6 +5857,52 @@
                             "maxLength": 240
                           },
                           "maxItems": 8
+                        },
+                        "penalties": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 160
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["low", "medium", "high"]
+                              }
+                            },
+                            "required": ["code", "label", "severity"],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 8
+                        },
+                        "safeSnippets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                              },
+                              "text": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 360
+                              }
+                            },
+                            "required": ["label", "text"],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 6
                         },
                         "profilePath": {
                           "type": "string",
@@ -5772,8 +5928,11 @@
                         "scoreBand",
                         "axisBands",
                         "explanation",
+                        "explanationStatus",
                         "fitReasons",
                         "riskReasons",
+                        "penalties",
+                        "safeSnippets",
                         "profilePath",
                         "manuscriptProfilePath"
                       ],

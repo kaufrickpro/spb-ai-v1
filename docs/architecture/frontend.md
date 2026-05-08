@@ -174,7 +174,7 @@ Authors create and manage manuscripts, upload sample files, and view eligibility
 
 Show the active matching workspace for both roles. Authors can run publisher matches for a selected manuscript. Publishers can run manuscript matches from their general publisher profile. Cards must include score band, premise/voice/arc bands, fit reasons, watch-outs, source snippets, intro request CTA state, and match detail CTA.
 
-Top-10 candidates show a stored one-paragraph LLM explanation generated during the match run. Ranks 11-25 remain inspectable through structured details without requiring an LLM paragraph.
+Top-10 candidates show a stored one-paragraph explanation generated during the match run. Ranks 11-25 remain inspectable through structured details without requiring an LLM paragraph. The UI must render stored structured details only; it must not generate explanations from the browser.
 
 ### Match Detail
 
@@ -192,7 +192,7 @@ Manuscript profile pages show manuscript title, logline, synopsis, primary genre
 
 ### Profile History
 
-`/app/profile/history` stores durable user history. Step 10 ships this with match runs only. Show latest runs first, include direction, source manuscript or publisher profile, created date, status, stale badge, candidate count, view results action, and rematch action. Rematch creates a new run and leaves older stale runs visible.
+`/app/profile/history` stores durable user history. Step 10 ships this with match runs only. Show latest runs first, include direction, source manuscript or publisher profile, created date, status, stale badge, candidate count, view results action, and rematch action. Rematch creates a new run and leaves older stale runs visible. History result links must route to `/app/matches/:matchRunId`, while individual candidate details route to `/app/matches/:matchRunId/candidates/:candidateId`.
 
 ### Requests
 

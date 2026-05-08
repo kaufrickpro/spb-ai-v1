@@ -56,11 +56,13 @@ They create `public.profiles`, `public.author_profiles`, `public.publisher_profi
 
 Step 9 reprocessing uses `public.replace_document_ingestion_outputs(...)` as a service-role-only RPC. It replaces one document's active `document_chunks` and chunk-scoped `embedding_records` in one database transaction, while preserving `public.document_processing_jobs` history and keeping original file bytes out of Postgres.
 
-Step 10 tracer matching adds `match_signal_sources`, `match_runs`, and
+Step 10 matching adds `match_signal_sources`, `match_runs`, and
 `match_candidates` in `20260507124500_step10_matching_runs.sql`, plus the
 remaining manuscript/publisher matching fields needed by GitHub issues #47-#51.
-Existing remote databases must apply this migration after
-`20260507103000_step10_profile_access_foundation.sql`.
+`20260507160000_step10_signal_scoring_explanations.sql` adds signal freshness
+columns, explanation status, and a guard that keeps `embedding_records.metadata`
+free of vector arrays. Existing remote databases must apply both migrations
+after `20260507103000_step10_profile_access_foundation.sql`.
 
 Do not create the full V1 schema upfront. Matching, intro requests, billing, and the broader discovery/runtime tables should still arrive in later vertical slices. Larger future domains may split schema and RLS into separate migrations when review clarity matters.
 
@@ -627,25 +629,26 @@ Tracks the semantic signals that can be embedded and scored for matching.
 Columns:
 
 - `id uuid primary key default gen_random_uuid()`
-- `owner_type text not null check (owner_type in ('manuscript', 'publisher_profile'))`
-- `owner_id uuid not null`
+- `owner_profile_id uuid not null references profiles(id) on delete cascade`
+- `manuscript_id uuid references manuscripts(id) on delete cascade`
+- `publisher_profile_id uuid references profiles(id) on delete cascade`
 - `signal_type text not null check (signal_type in ('premise', 'voice', 'arc', 'guidelines', 'wishlist', 'catalog'))`
+- `fingerprint text not null`
 - `source_fingerprint text not null`
-- `source_summary text`
+- `summary text`
 - `embedding_record_id uuid references embedding_records(id) on delete set null`
-- `status text not null check (status in ('ready', 'stale', 'missing', 'failed'))`
-- `last_embedded_at timestamptz`
+- `status text not null check (status in ('current', 'stale', 'missing_optional'))`
 - `metadata jsonb not null default '{}'::jsonb`
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`
 
 Rules:
 
-- The AI service owns writes through service-role paths.
+- Trusted server/service-role paths own writes. The current implementation writes reference-only signal records from the API scoring path; the next hardening step moves these writes into the AI-service matching worker.
 - Store summaries and metadata only after redaction and bounds checks.
 - `premise`, `voice`, and `arc` belong to manuscripts. `guidelines`, `wishlist`, and `catalog` belong to publisher profiles.
 - `wishlist` and `catalog` may be missing without blocking publisher eligibility.
-- Use a unique constraint on `(owner_type, owner_id, signal_type)` for the initial Step 10 profile-level model. V1.5 can add editor-specific signal ownership for targeted editor queries.
+- Use uniqueness across `(owner_profile_id, manuscript_id, publisher_profile_id, signal_type)` for the initial Step 10 profile-level model. V1.5 can add editor-specific signal ownership for targeted editor queries.
 
 ### `match_runs`
 
@@ -698,21 +701,14 @@ Columns:
 - `match_run_id uuid not null references match_runs(id) on delete cascade`
 - `candidate_profile_id uuid references profiles(id) on delete cascade`
 - `candidate_manuscript_id uuid references manuscripts(id) on delete cascade`
-- `final_score numeric not null`
 - `score_band text not null check (score_band in ('strong', 'moderate', 'weak'))`
-- `axis_scores jsonb not null default '{}'::jsonb`
-- `publisher_signal_scores jsonb not null default '{}'::jsonb`
-- `penalties jsonb not null default '[]'::jsonb`
+- `axis_bands jsonb not null default '{}'::jsonb`
 - `fit_reasons text[] not null default '{}'`
 - `risk_reasons text[] not null default '{}'`
-- `shared_genres text[] not null default '{}'`
-- `source_snippets jsonb not null default '[]'::jsonb`
-- `llm_explanation text`
-- `explanation_status text not null default 'not_requested' check (explanation_status in ('generated', 'not_requested', 'failed'))`
-- `explanation_version text not null`
-- `explanation_provider text not null`
-- `explanation_model text`
-- `explanation_prompt_version text`
+- `score_details jsonb not null default '{}'::jsonb`
+- `safe_snippets jsonb not null default '[]'::jsonb`
+- `explanation text`
+- `explanation_status text not null default 'not_requested' check (explanation_status in ('generated', 'not_requested'))`
 - `rank integer not null`
 - `created_at timestamptz not null default now()`
 

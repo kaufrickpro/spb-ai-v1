@@ -1,10 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiRoutes, type MatchRunRequest } from "@marketplace/contracts";
+import {
+  ApiRoutes,
+  type MatchRun,
+  type MatchRunRequest,
+} from "@marketplace/contracts";
 import { webApiClient } from "../api/client";
+
+type MatchRunListResponse = { runs: MatchRun[] };
 
 export const matchKeys = {
   all: ["matches"] as const,
   list: () => [...matchKeys.all, "list"] as const,
+  profileHistory: () => [...matchKeys.all, "profileHistory"] as const,
   detail: (id: string) => [...matchKeys.all, "detail", id] as const,
   candidate: (runId: string, candidateId: string) =>
     [...matchKeys.detail(runId), "candidate", candidateId] as const,
@@ -14,6 +21,18 @@ export function useMatchRuns() {
   return useQuery({
     queryKey: matchKeys.list(),
     queryFn: () => webApiClient.request(ApiRoutes.matches.list),
+  });
+}
+
+export function useProfileHistory() {
+  const routes = ApiRoutes.matches as typeof ApiRoutes.matches & {
+    profileHistory?: typeof ApiRoutes.matches.list;
+  };
+  const route = routes.profileHistory ?? ApiRoutes.matches.list;
+
+  return useQuery<MatchRunListResponse>({
+    queryKey: matchKeys.profileHistory(),
+    queryFn: () => webApiClient.request(route as typeof ApiRoutes.matches.list),
   });
 }
 

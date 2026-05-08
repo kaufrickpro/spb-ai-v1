@@ -117,14 +117,23 @@ Steps:
 2. Run three semantic retrieval paths, one each for `premise`, `voice`, and `arc`, then merge and de-duplicate candidates.
 3. Score each candidate by axis and publisher signal. Normalize publisher-side semantic weights across available signals. When all publisher signals exist, start with wishlist `0.40`, catalog `0.30`, and guidelines `0.30`.
 4. Apply structured penalties instead of broad hard filters. Genre mismatch, audience mismatch, manuscript-form mismatch, word-count concerns, and high-confidence exclusion-topic hits are watch-outs and score penalties, not candidate removal.
-5. Hide candidates with final score below `0.35`, store up to 25 visible candidates, and generate real Vertex/Gemini LLM explanations for the top 10 only.
-6. Store `match_runs`, `match_candidates`, input fingerprints, snapshots, score breakdowns, penalties, snippets, and explanation metadata.
+5. Hide candidates with final score below `0.35`, store up to 25 visible candidates, and generate/store bounded top-10 explanations.
+6. Store `match_runs`, `match_signal_sources`, `match_candidates`, input fingerprints, snapshots, reference-only embedding records, score breakdowns, penalties, snippets, and explanation metadata.
 
-Current tracer status: the Node API now calls the private AI service at
+Current matching status: the Node API calls the private AI service at
 `POST /internal/matching/run` with `{ match_run_id }` only, then persists safe
-deterministic candidates for both directions. The AI endpoint is currently a
-placeholder boundary and does not yet perform retrieval, scoring, embeddings, or
-Vertex/Gemini explanation generation.
+deterministic scored candidates for both directions and writes reference-only
+signal records. The AI service has a real Vertex/Gemini explanation provider
+boundary with bounded evidence and strict JSON validation. The AI-service
+matching handoff now also has an extra-field-forbidden `{ match_run_id }`
+request contract, a Supabase matching repository boundary, and Python-owned
+signal/fingerprint/embedding-reference helpers for manuscript
+premise/voice/arc and publisher guidelines/wishlist/catalog signals. The
+default matching endpoint still only acknowledges the run so the current
+product path can finish through API-owned persistence. The next hardening step
+is to implement the repository-backed matching worker that performs retrieval,
+scoring, candidate writes, profile-access grant writes, and explanation
+persistence inside the AI service.
 
 Do not use paid subscription status as a hidden relevance boost.
 

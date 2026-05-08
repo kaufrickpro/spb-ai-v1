@@ -23,6 +23,11 @@ import {
   fingerprint,
   type MatchingTestState,
 } from "./testState.js";
+import {
+  compareScoredCandidates,
+  isVisibleMatch,
+  scoreMatchCandidate,
+} from "./scoring.js";
 
 export function runTestMatch(input: {
   manuscriptTestState: ManuscriptTestState;
@@ -109,16 +114,16 @@ function runTestAuthorMatch(
   }
   assertTestManuscriptReady(input.manuscriptTestState, manuscript.id);
 
-  const publisherRecords = [...input.profileTestState.profilesByUserId.values()]
-    .filter(
-      (record) =>
-        record.profile.role === "publisher" &&
-        record.profile.eligibilityStatus === "eligible" &&
-        record.details?.role === "publisher",
-    )
-    .slice(0, 25);
+  const publisherRecords = [
+    ...input.profileTestState.profilesByUserId.values(),
+  ].filter(
+    (record) =>
+      record.profile.role === "publisher" &&
+      record.profile.eligibilityStatus === "eligible" &&
+      record.details?.role === "publisher",
+  );
   const run = createTestMatchRun({
-    candidateCount: publisherRecords.length,
+    candidateCount: 0,
     direction: "author_to_publisher",
     requesterProfileId: requester.profile.id,
     sourceManuscriptId: manuscript.id,
@@ -126,20 +131,52 @@ function runTestAuthorMatch(
     sourceTitle: manuscript.title,
     stale: false,
   });
-  const candidates = publisherRecords.map((record, index) => {
-    if (record.details?.role !== "publisher") {
-      throw new MatchingServiceError(
-        "not_ready",
-        "Publisher profile is incomplete",
-      );
-    }
-    return buildTestPublisherCandidate({
-      candidateProfileId: record.profile.id,
-      rank: index + 1,
-      runId: run.id,
-      title: record.details.publisherName ?? record.profile.displayName,
-    });
-  });
+  const candidates = publisherRecords
+    .map((record) => {
+      if (record.details?.role !== "publisher") {
+        throw new MatchingServiceError(
+          "not_ready",
+          "Publisher profile is incomplete",
+        );
+      }
+      const candidate = {
+        ...record.details,
+        acceptedPrimaryGenres: record.details.focusGenres,
+        acceptedAudienceCategories: record.details.acceptedAudienceCategories,
+        acceptedManuscriptForms: record.details.acceptedManuscriptForms,
+        editorWishlist: record.details.editorWishlist,
+        excludedTopics: record.details.excludedTopics,
+        submissionGuidelines: record.details.submissionGuidelines,
+      };
+      return {
+        record,
+        result: scoreMatchCandidate({
+          candidate,
+          candidateKind: "publisher",
+          rankSeed: `${run.id}:${record.profile.id}`,
+          source: manuscript as unknown as Record<string, unknown>,
+        }),
+        stableId: record.profile.id,
+      };
+    })
+    .filter((item) => isVisibleMatch(item.result))
+    .sort(compareScoredCandidates)
+    .slice(0, 25)
+    .map((item, index) =>
+      buildTestPublisherCandidate({
+        candidateProfileId: item.record.profile.id,
+        explanation: index < 10,
+        rank: index + 1,
+        result: item.result,
+        runId: run.id,
+        title:
+          item.record.details?.role === "publisher"
+            ? (item.record.details.publisherName ??
+              item.record.profile.displayName)
+            : item.record.profile.displayName,
+      }),
+    );
+  run.candidateCount = candidates.length;
 
   input.testState.runs.push({
     ...run,
@@ -183,10 +220,9 @@ function runTestPublisherMatch(
     .filter((manuscript) => manuscript.eligibilityStatus === "eligible")
     .filter((manuscript) =>
       hasTestProcessedSample(input.manuscriptTestState, manuscript.id),
-    )
-    .slice(0, 25);
+    );
   const run = createTestMatchRun({
-    candidateCount: manuscripts.length,
+    candidateCount: 0,
     direction: "publisher_to_manuscript",
     requesterProfileId: requester.profile.id,
     sourceManuscriptId: null,
@@ -197,19 +233,39 @@ function runTestPublisherMatch(
         : requester.profile.displayName,
     stale: false,
   });
-  const candidates = manuscripts.map((manuscript, index) => {
-    const author = findTestProfileByUserId(
-      input.profileTestState,
-      manuscript.authorId,
+  const source = (requester.details ?? {}) as unknown as Record<
+    string,
+    unknown
+  >;
+  const candidates = manuscripts
+    .map((manuscript) => {
+      const author = findTestProfileByUserId(
+        input.profileTestState,
+        manuscript.authorId,
+      );
+      const result = scoreMatchCandidate({
+        candidate: manuscript as unknown as Record<string, unknown>,
+        candidateKind: "manuscript",
+        rankSeed: `${run.id}:${manuscript.id}`,
+        source,
+      });
+      return { author, manuscript, result, stableId: manuscript.id };
+    })
+    .filter((item) => isVisibleMatch(item.result))
+    .sort(compareScoredCandidates)
+    .slice(0, 25)
+    .map((item, index) =>
+      buildTestManuscriptCandidate({
+        authorProfileId: item.author?.profile.id ?? requester.profile.id,
+        explanation: index < 10,
+        manuscriptId: item.manuscript.id,
+        rank: index + 1,
+        result: item.result,
+        runId: run.id,
+        title: item.manuscript.title,
+      }),
     );
-    return buildTestManuscriptCandidate({
-      authorProfileId: author?.profile.id ?? requester.profile.id,
-      manuscriptId: manuscript.id,
-      rank: index + 1,
-      runId: run.id,
-      title: manuscript.title,
-    });
-  });
+  run.candidateCount = candidates.length;
 
   input.testState.runs.push({
     ...run,
@@ -282,7 +338,9 @@ function hasTestProcessedSample(
 
 function buildTestPublisherCandidate(input: {
   candidateProfileId: string;
+  explanation: boolean;
   rank: number;
+  result: ReturnType<typeof scoreMatchCandidate>;
   runId: string;
   title: string;
 }): MatchCandidate {
@@ -295,14 +353,16 @@ function buildTestPublisherCandidate(input: {
     candidateType: "publisher",
     title: input.title,
     subtitle: "Publisher profile",
-    scoreBand: input.rank === 1 ? "strong" : "moderate",
-    axisBands: { premise: "strong", voice: "moderate", arc: "moderate" },
-    explanation:
-      input.rank <= 10
-        ? "This publisher is a plausible fit based on declared acquisition interests."
-        : null,
-    fitReasons: ["Genre and audience signals overlap."],
-    riskReasons: [],
+    scoreBand: input.result.scoreBand,
+    axisBands: input.result.axisBands,
+    explanation: input.explanation
+      ? `${input.title} is a visible match because its declared editorial signals overlap with the manuscript profile after soft-constraint checks.`
+      : null,
+    explanationStatus: input.explanation ? "generated" : "not_requested",
+    fitReasons: input.result.fitReasons,
+    riskReasons: input.result.riskReasons,
+    penalties: input.result.penalties,
+    safeSnippets: input.result.safeSnippets,
     profilePath: `/app/profiles/publishers/${input.candidateProfileId}`,
     manuscriptProfilePath: null,
   });
@@ -310,8 +370,10 @@ function buildTestPublisherCandidate(input: {
 
 function buildTestManuscriptCandidate(input: {
   authorProfileId: string;
+  explanation: boolean;
   manuscriptId: string;
   rank: number;
+  result: ReturnType<typeof scoreMatchCandidate>;
   runId: string;
   title: string;
 }): MatchCandidate {
@@ -324,14 +386,16 @@ function buildTestManuscriptCandidate(input: {
     candidateType: "manuscript",
     title: input.title,
     subtitle: "Manuscript candidate",
-    scoreBand: input.rank === 1 ? "strong" : "moderate",
-    axisBands: { premise: "moderate", voice: "moderate", arc: "strong" },
-    explanation:
-      input.rank <= 10
-        ? "This manuscript is a plausible fit based on declared publisher interests."
-        : null,
-    fitReasons: ["Manuscript metadata aligns with publisher interests."],
-    riskReasons: [],
+    scoreBand: input.result.scoreBand,
+    axisBands: input.result.axisBands,
+    explanation: input.explanation
+      ? `${input.title} is a visible match because its manuscript signals overlap with the publisher profile after soft-constraint checks.`
+      : null,
+    explanationStatus: input.explanation ? "generated" : "not_requested",
+    fitReasons: input.result.fitReasons,
+    riskReasons: input.result.riskReasons,
+    penalties: input.result.penalties,
+    safeSnippets: input.result.safeSnippets,
     profilePath: `/app/profiles/authors/${input.authorProfileId}`,
     manuscriptProfilePath: `/app/profiles/manuscripts/${input.manuscriptId}`,
   });

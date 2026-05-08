@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Literal, Protocol
 
 
 @dataclass(frozen=True)
@@ -33,6 +33,59 @@ class EmbeddingRecordWrite:
     vector_datapoint_id: str
     embedding_model: str
     metadata: dict[str, object]
+
+
+MatchDirection = Literal["author_to_publisher", "publisher_to_manuscript"]
+MatchSignalType = Literal[
+    "premise",
+    "voice",
+    "arc",
+    "guidelines",
+    "wishlist",
+    "catalog",
+]
+MatchSignalStatus = Literal["current", "stale", "missing_optional"]
+
+
+@dataclass(frozen=True)
+class MatchRunRecord:
+    id: str
+    direction: MatchDirection
+    requester_profile_id: str
+    source_manuscript_id: str | None
+    source_publisher_profile_id: str | None
+    input_snapshot: dict[str, object]
+
+
+@dataclass(frozen=True)
+class MatchSignalSourceWrite:
+    owner_profile_id: str
+    manuscript_id: str | None
+    publisher_profile_id: str | None
+    signal_type: MatchSignalType
+    fingerprint: str
+    source_fingerprint: str
+    status: MatchSignalStatus
+    summary: str | None
+    embedding: EmbeddingRecordWrite | None
+    metadata: dict[str, object]
+
+
+@dataclass(frozen=True)
+class MatchCandidateWrite:
+    match_run_id: str
+    rank: int
+    candidate_profile_id: str
+    candidate_manuscript_id: str | None
+    candidate_type: Literal["publisher", "manuscript"]
+    score_band: Literal["strong", "moderate", "weak"]
+    axis_bands: dict[str, object]
+    explanation: str | None
+    explanation_status: Literal["generated", "not_requested"]
+    fit_reasons: list[str]
+    risk_reasons: list[str]
+    score_details: dict[str, object]
+    safe_snippets: list[dict[str, object]]
 
 
 class IngestionRepository(Protocol):
@@ -69,6 +122,37 @@ class IngestionRepository(Protocol):
 
     def mark_document_failed(self, document_id: str, failure_code: str) -> None:
         """Move the document to failed state with a user-safe code."""
+
+
+class MatchingRepository(Protocol):
+    def get_match_run(self, match_run_id: str) -> MatchRunRecord | None:
+        """Load a trusted match run by durable id."""
+
+    def get_manuscript_matching_source(self, manuscript_id: str) -> dict[str, object] | None:
+        """Load bounded manuscript metadata needed to build matching signals."""
+
+    def get_publisher_matching_source(
+        self, publisher_profile_id: str
+    ) -> dict[str, object] | None:
+        """Load bounded publisher profile metadata needed to build matching signals."""
+
+    def list_eligible_publishers(self, limit: int) -> list[dict[str, object]]:
+        """Load eligible publisher candidates without private account fields."""
+
+    def list_eligible_manuscripts(self, limit: int) -> list[dict[str, object]]:
+        """Load eligible manuscript candidates without document bytes or signed URLs."""
+
+    def upsert_match_signal_source(self, signal: MatchSignalSourceWrite) -> str:
+        """Create or update a signal source and its optional embedding reference."""
+
+    def insert_match_candidates(self, candidates: list[MatchCandidateWrite]) -> None:
+        """Persist already-ranked match candidates."""
+
+    def mark_match_run_succeeded(self, match_run_id: str, candidate_count: int) -> None:
+        """Mark a match run as succeeded after candidates are persisted."""
+
+    def mark_match_run_failed(self, match_run_id: str, failure_code: str) -> None:
+        """Mark a match run as failed with a stable safe code."""
 
 
 @dataclass

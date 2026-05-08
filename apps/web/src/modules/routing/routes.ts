@@ -25,6 +25,7 @@ export const WEB_ROUTES = {
   manuscripts: "/app/manuscripts",
   manuscriptDetail: "/app/manuscripts/:id",
   matches: "/app/matches",
+  matchRun: "/app/matches/:matchRunId",
   matchCandidate: "/app/matches/:matchRunId/candidates/:candidateId",
   discoverAuthors: "/app/discover/authors",
   discoverPublishers: "/app/discover/publishers",
@@ -73,6 +74,7 @@ export const DOCUMENTED_APP_ROUTES = [
   WEB_ROUTES.manuscripts,
   WEB_ROUTES.manuscriptDetail,
   WEB_ROUTES.matches,
+  WEB_ROUTES.matchRun,
   WEB_ROUTES.matchCandidate,
   WEB_ROUTES.discoverAuthors,
   WEB_ROUTES.discoverPublishers,
@@ -115,6 +117,7 @@ export const APP_REGISTERED_ROUTE_PATHS = [
   WEB_ROUTES.admin,
   WEB_ROUTES.adminMfa,
   WEB_ROUTES.matches,
+  WEB_ROUTES.matchRun,
   WEB_ROUTES.matchCandidate,
   WEB_ROUTES.discoverAuthors,
   WEB_ROUTES.discoverPublishers,
@@ -139,6 +142,10 @@ export const APP_REGISTERED_ROUTE_PATHS = [
 
 export function manuscriptDetailPath(id: string): string {
   return `/app/manuscripts/${id}`;
+}
+
+export function matchRunPath(matchRunId: string): string {
+  return `/app/matches/${matchRunId}`;
 }
 
 export function matchCandidatePath(input: {

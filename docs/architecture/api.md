@@ -143,12 +143,12 @@ Rules:
 
 - Match runs are rate-limited but not monthly quota-limited.
 - Step 10 supports both `author_to_publisher` and `publisher_to_manuscript` runs. Author-to-publisher runs are tied to one manuscript; publisher-to-manuscript runs use the publisher's general profile.
-- The current Step 10 tracer implementation creates durable match runs, calls the private AI service with only `{ match_run_id }`, and persists deterministic safe candidates so the product path is usable while real retrieval/scoring is built.
+- The current Step 10 implementation creates durable match runs, calls the private AI service with only `{ match_run_id }`, persists deterministic safe scored candidates, records reference-only match signal sources, and keeps raw numeric scores out of frontend responses. The next hardening step is to move scoring and explanation persistence fully into the AI service.
 - Full match visibility requires eligible profile state, eligible manuscript/document state where a manuscript is the source or candidate, successful sample processing for manuscript candidates, publisher discoverability, and entitlement checks.
 - The Node API owns authorization, eligibility, rate limits, run creation, persistence, response validation, and role-based redaction.
 - The FastAPI AI service owns three-axis retrieval/scoring, soft-constraint penalties, ranking, safe snippet selection, and real Vertex/Gemini explanation generation.
 - The AI service is called with trusted identifiers such as `{ match_run_id }` and loads data through service-role repositories. Browser requests must not include raw manuscript text, signed URLs, provider credentials, or AI-service internals.
-- API returns explanation fields, not raw model internals.
+- API returns score bands, axis bands, explanation fields, penalties/watch-outs, safe snippets, and profile paths. It must not return raw model internals, raw final numeric scores, private contact, signed URLs, admin notes, provider payloads, or full manuscript/sample text.
 - Candidate detail returns stored explanation data, structured score details, penalties, and source snippets; it does not generate a separate report.
 - Match runs and candidates must store algorithm/version metadata, input fingerprints, and compact safe input snapshots for auditability and stale-run badges.
 - Rematch creates a new run. Previous runs remain available in profile history.

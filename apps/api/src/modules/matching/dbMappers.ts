@@ -34,8 +34,13 @@ export function mapDbCandidate(row: Record<string, unknown>): MatchCandidate {
     scoreBand: row.score_band,
     axisBands: row.axis_bands,
     explanation: row.explanation ?? null,
+    explanationStatus:
+      row.explanation_status ??
+      (row.explanation ? "generated" : "not_requested"),
     fitReasons: row.fit_reasons ?? [],
     riskReasons: row.risk_reasons ?? [],
+    penalties: details["penalties"] ?? [],
+    safeSnippets: row.safe_snippets ?? [],
     profilePath:
       details["profilePath"] ?? `/app/profiles/${row.candidate_profile_id}`,
     manuscriptProfilePath: details["manuscriptProfilePath"] ?? null,

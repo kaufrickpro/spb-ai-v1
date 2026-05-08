@@ -1,0 +1,43 @@
+{
+  "name": "step10_matching_eval_fixture_v1",
+  "direction": "author_to_publisher",
+  "source": {
+    "title": "Gece Yarisi Sehri",
+    "genre": "Distopya",
+    "audience_categories": ["adult"],
+    "manuscript_form": "novel",
+    "themes": ["memory", "power"],
+    "content_warnings": ["state violence"]
+  },
+  "expected": {
+    "top_k": [
+      {
+        "candidate_key": "publisher_memory_city",
+        "score_band": "moderate",
+        "axis_bands": {
+          "premise": "moderate",
+          "voice": "moderate",
+          "arc": "moderate"
+        },
+        "watch_out_codes": ["genre_gap"],
+        "requires_explanation": true,
+        "requires_safe_snippet": true
+      }
+    ],
+    "hidden_candidates": [
+      {
+        "candidate_key": "publisher_children_poetry",
+        "reason": "Below the 0.35 final score threshold after soft penalties"
+      }
+    ],
+    "redaction_forbidden_terms": [
+      "downloadUrl",
+      "signedUrl",
+      "sample text",
+      "private email",
+      "admin note",
+      "provider_payload",
+      "service_role"
+    ]
+  }
+}

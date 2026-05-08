@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Header, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.modules.config import AiServiceConfig, load_config
 from app.modules.ingestion import IngestionResult
 from app.modules.ingestion_worker import IngestionWorker, create_local_ingestion_worker
+from app.modules.matching import MatchingResult, MatchingWorker
 from app.modules.runtime import RuntimeAdapter, create_runtime_adapter
 from app.modules.storage import GcsDocumentStorage, LocalFileStorage
 from app.modules.supabase_repository import SupabaseIngestionRepository
@@ -19,19 +20,16 @@ class InternalIngestionRequest(BaseModel):
 
 
 class InternalMatchingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     match_run_id: str
-
-
-class MatchingResult(BaseModel):
-    status: str
-    candidate_count: int
-    failure_code: str | None = None
 
 
 def create_app(
     config: AiServiceConfig | None = None,
     runtime_adapter: RuntimeAdapter | None = None,
     ingestion_worker: IngestionWorker | None = None,
+    matching_worker: MatchingWorker | None = None,
 ) -> FastAPI:
     resolved_config = config or load_config()
     runtime = runtime_adapter or create_runtime_adapter(resolved_config)
@@ -66,7 +64,8 @@ def create_app(
         authorization: str | None = Header(default=None),
     ) -> MatchingResult:
         require_internal_auth(resolved_config, authorization)
-        _ = request.match_run_id
+        if matching_worker is not None:
+            return matching_worker.process_run(request.match_run_id)
         return MatchingResult(status="succeeded", candidate_count=0)
 
     return app

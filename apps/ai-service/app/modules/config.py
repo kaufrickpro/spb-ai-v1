@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator, model_v
 
 AppConfigMode = Literal["local", "staging", "production"]
 ProviderMode = Literal["local", "vertex"]
+ExplanationProviderMode = Literal["disabled", "vertex_gemini"]
 ScannerMode = Literal["local_fake", "real"]
 StorageProvider = Literal["local", "gcs"]
 LocalFakeScannerResult = Literal[
@@ -40,6 +41,8 @@ class AiServiceConfig(BaseModel):
     local_fake_scanner_result: LocalFakeScannerResult = Field(default="not_scanned")
     vertex_project_id: str | None = None
     vertex_location: str | None = None
+    explanation_provider: ExplanationProviderMode = Field(default="disabled")
+    gemini_explanation_model: str | None = None
 
     @field_validator(
         "max_upload_bytes",
@@ -95,6 +98,16 @@ class AiServiceConfig(BaseModel):
                 "VERTEX_AI_EMBEDDING_MODEL, and VERTEX_AI_VECTOR_INDEX"
             )
 
+        if self.explanation_provider == "vertex_gemini" and (
+            not self.vertex_project_id
+            or not self.vertex_location
+            or not self.gemini_explanation_model
+        ):
+            raise ValueError(
+                "Vertex/Gemini explanations require VERTEX_PROJECT_ID, "
+                "VERTEX_LOCATION, and VERTEX_GEMINI_EXPLANATION_MODEL"
+            )
+
         if self.document_scanner_mode == "real":
             if self.local_fake_scanner_result != "not_scanned":
                 raise ValueError(
@@ -117,6 +130,14 @@ class AiServiceConfig(BaseModel):
                 )
 
         if self.app_config_mode != "local":
+            if (
+                self.provider_mode == "vertex"
+                and self.explanation_provider != "vertex_gemini"
+            ):
+                raise ValueError(
+                    "Staging/production Vertex matching requires "
+                    "MATCH_EXPLANATION_PROVIDER=vertex_gemini"
+                )
             if self.local_fake_scanner_result != "not_scanned":
                 raise ValueError(
                     "LOCAL_FAKE_SCANNER_RESULT is allowed only in local config"
@@ -175,6 +196,10 @@ def load_config() -> AiServiceConfig:
             ),
             vertex_project_id=os.getenv("VERTEX_PROJECT_ID"),
             vertex_location=os.getenv("VERTEX_LOCATION"),
+            explanation_provider=parse_explanation_provider(
+                os.getenv("MATCH_EXPLANATION_PROVIDER", "disabled")
+            ),
+            gemini_explanation_model=os.getenv("VERTEX_GEMINI_EXPLANATION_MODEL"),
         )
     except (ValueError, ValidationError) as exc:
         raise RuntimeError("Invalid AI service configuration") from exc
@@ -186,6 +211,14 @@ def parse_provider_mode(value: str) -> ProviderMode:
     if value == "vertex":
         return "vertex"
     raise ValueError("AI_PROVIDER_MODE must be local or vertex")
+
+
+def parse_explanation_provider(value: str) -> ExplanationProviderMode:
+    if value == "disabled":
+        return "disabled"
+    if value == "vertex_gemini":
+        return "vertex_gemini"
+    raise ValueError("MATCH_EXPLANATION_PROVIDER must be disabled or vertex_gemini")
 
 
 def parse_storage_provider(value: str) -> StorageProvider:

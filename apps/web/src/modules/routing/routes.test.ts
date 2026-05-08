@@ -5,6 +5,7 @@ import {
   DOCUMENTED_PUBLIC_ROUTES,
   WEB_ROUTES,
   matchCandidatePath,
+  matchRunPath,
 } from "./routes";
 
 describe("web route map", () => {
@@ -35,6 +36,7 @@ describe("web route map", () => {
       "/app/manuscripts",
       "/app/manuscripts/:id",
       "/app/matches",
+      "/app/matches/:matchRunId",
       "/app/matches/:matchRunId/candidates/:candidateId",
       "/app/discover/authors",
       "/app/discover/publishers",
@@ -59,6 +61,7 @@ describe("web route map", () => {
   });
 
   it("builds match candidate detail paths", () => {
+    expect(matchRunPath("run-1")).toBe("/app/matches/run-1");
     expect(
       matchCandidatePath({
         matchRunId: "run-1",

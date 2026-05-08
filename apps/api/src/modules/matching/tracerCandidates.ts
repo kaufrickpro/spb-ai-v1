@@ -1,5 +1,14 @@
 import { createServiceRoleSupabaseClient } from "../supabase/client.js";
 import { MatchingServiceError } from "./errors.js";
+import {
+  compareScoredCandidates,
+  isVisibleMatch,
+  scoreMatchCandidate,
+} from "./scoring.js";
+import {
+  upsertManuscriptSignals,
+  upsertPublisherSignals,
+} from "./signalSources.js";
 
 type ServiceRoleDb = ReturnType<typeof createServiceRoleSupabaseClient>;
 
@@ -31,28 +40,96 @@ async function createPublisherCandidates(
     );
   }
 
-  const rows = (profiles ?? []).map((profile, index) => ({
+  const publisherIds = (profiles ?? []).map((profile) => profile.id);
+  const { data: details, error: detailsError } =
+    publisherIds.length > 0
+      ? await db
+          .from("publisher_profiles")
+          .select()
+          .in("profile_id", publisherIds)
+      : { data: [], error: null };
+  if (detailsError) {
+    throw new MatchingServiceError(
+      "storage",
+      "Failed to load publisher matching details",
+      detailsError,
+    );
+  }
+  const detailsByProfileId = new Map(
+    (details ?? []).map((detail) => [detail.profile_id, detail]),
+  );
+  const source = (run.input_snapshot ?? {}) as Record<string, unknown>;
+  await upsertManuscriptSignals(db, {
+    manuscript: normalizeManuscriptForSignals(source),
+    manuscriptId: run.source_manuscript_id,
+    ownerProfileId: run.requester_profile_id,
+  });
+  const scored = (profiles ?? [])
+    .map((profile) => {
+      const detail = detailsByProfileId.get(profile.id) ?? {};
+      const candidate = {
+        ...detail,
+        displayName: profile.display_name,
+        acceptedPrimaryGenres:
+          detail.accepted_primary_genres ?? detail.focus_genres ?? [],
+        acceptedAudienceCategories: detail.accepted_audience_categories ?? [],
+        acceptedManuscriptForms: detail.accepted_manuscript_forms ?? [],
+        submissionGuidelines: detail.submission_guidelines,
+        editorWishlist: detail.editor_wishlist,
+        recentAcquisitions: detail.recent_acquisitions ?? [],
+        excludedTopics: detail.excluded_topics ?? [],
+        whatWeAreLookingFor: detail.what_we_are_looking_for,
+        imprintTone: detail.imprint_tone,
+        marketPositioning: detail.market_positioning,
+      };
+      return {
+        candidate,
+        profile,
+        result: scoreMatchCandidate({
+          candidate,
+          candidateKind: "publisher",
+          rankSeed: `${run.id}:${profile.id}`,
+          source,
+        }),
+        stableId: profile.id,
+      };
+    })
+    .filter((item) => isVisibleMatch(item.result))
+    .sort(compareScoredCandidates)
+    .slice(0, 25);
+
+  const rows = scored.map((item, index) => ({
     match_run_id: run.id,
     rank: index + 1,
-    candidate_profile_id: profile.id,
+    candidate_profile_id: item.profile.id,
     candidate_manuscript_id: null,
     candidate_type: "publisher",
-    score_band: index === 0 ? "strong" : "moderate",
-    axis_bands: { premise: "strong", voice: "moderate", arc: "moderate" },
+    score_band: item.result.scoreBand,
+    axis_bands: item.result.axisBands,
     explanation:
       index < 10
-        ? "This publisher is a plausible fit based on declared acquisition interests."
+        ? buildBoundedExplanation("publisher", item.profile.display_name)
         : null,
-    fit_reasons: ["Genre and audience signals overlap."],
-    risk_reasons: [],
+    explanation_status: index < 10 ? "generated" : "not_requested",
+    fit_reasons: item.result.fitReasons,
+    risk_reasons: item.result.riskReasons,
     score_details: {
-      title: profile.display_name,
+      title: item.profile.display_name,
       subtitle: "Publisher profile",
-      profilePath: `/app/profiles/publishers/${profile.id}`,
+      profilePath: `/app/profiles/publishers/${item.profile.id}`,
       manuscriptProfilePath: null,
+      penalties: item.result.penalties,
+      finalScore: item.result.finalScore,
     },
-    safe_snippets: [],
+    safe_snippets: item.result.safeSnippets,
   }));
+  for (const item of scored) {
+    await upsertPublisherSignals(db, {
+      ownerProfileId: item.profile.id,
+      publisher: item.candidate,
+      publisherProfileId: item.profile.id,
+    });
+  }
   await persistCandidatesAndGrants(db, run, rows);
   return rows.length;
 }
@@ -63,7 +140,7 @@ async function createManuscriptCandidates(
 ): Promise<number> {
   const { data: manuscripts, error } = await db
     .from("manuscripts")
-    .select("id,author_id,title,genre,sample_document_id,eligibility_status")
+    .select()
     .eq("eligibility_status", "eligible")
     .limit(50);
   if (error) {
@@ -96,12 +173,20 @@ async function createManuscriptCandidates(
     (authors ?? []).map((author) => [author.user_id, author]),
   );
 
-  const rows: Array<Record<string, unknown>> = [];
+  const source = (run.input_snapshot ?? {}) as Record<string, unknown>;
+  await upsertPublisherSignals(db, {
+    ownerProfileId: run.requester_profile_id,
+    publisher: source,
+    publisherProfileId: run.source_publisher_profile_id,
+  });
+  const scored: Array<{
+    author: Record<string, unknown>;
+    manuscript: Record<string, unknown>;
+    result: ReturnType<typeof scoreMatchCandidate>;
+    stableId: string;
+  }> = [];
   for (const manuscript of manuscripts ?? []) {
-    if (
-      rows.length >= 25 ||
-      !(await dbManuscriptHasProcessedSample(db, manuscript))
-    ) {
+    if (!(await dbManuscriptHasProcessedSample(db, manuscript))) {
       continue;
     }
 
@@ -110,31 +195,99 @@ async function createManuscriptCandidates(
       continue;
     }
 
-    rows.push({
+    const candidate = {
+      ...manuscript,
+      genre: manuscript.genre,
+      primaryGenre: manuscript.genre,
+      subgenres: manuscript.subgenres ?? [],
+      audienceCategories: manuscript.audience_categories ?? [],
+      manuscriptForm: manuscript.manuscript_form,
+      logline: manuscript.logline,
+      synopsis: manuscript.synopsis,
+      declaredThemes: manuscript.declared_themes ?? [],
+      declaredContentWarnings: manuscript.declared_content_warnings ?? [],
+      arcSummary: manuscript.arc_summary,
+      chapterSummaries: manuscript.chapter_summaries ?? [],
+      shortTeaser: manuscript.short_teaser ?? manuscript.profile_teaser,
+    };
+    const result = scoreMatchCandidate({
+      candidate,
+      candidateKind: "manuscript",
+      rankSeed: `${run.id}:${manuscript.id}`,
+      source,
+    });
+    if (!isVisibleMatch(result)) {
+      continue;
+    }
+    scored.push({ author, manuscript, result, stableId: manuscript.id });
+  }
+
+  const rows = scored
+    .sort(compareScoredCandidates)
+    .slice(0, 25)
+    .map((item, index) => ({
       match_run_id: run.id,
-      rank: rows.length + 1,
-      candidate_profile_id: author.id,
-      candidate_manuscript_id: manuscript.id,
+      rank: index + 1,
+      candidate_profile_id: item.author.id,
+      candidate_manuscript_id: item.manuscript.id,
       candidate_type: "manuscript",
-      score_band: rows.length === 0 ? "strong" : "moderate",
-      axis_bands: { premise: "moderate", voice: "moderate", arc: "strong" },
+      score_band: item.result.scoreBand,
+      axis_bands: item.result.axisBands,
       explanation:
-        rows.length < 10
-          ? "This manuscript is a plausible fit based on declared publisher interests."
+        index < 10
+          ? buildBoundedExplanation("manuscript", item.manuscript.title)
           : null,
-      fit_reasons: ["Manuscript metadata aligns with publisher interests."],
-      risk_reasons: [],
+      explanation_status: index < 10 ? "generated" : "not_requested",
+      fit_reasons: item.result.fitReasons,
+      risk_reasons: item.result.riskReasons,
       score_details: {
-        title: manuscript.title,
-        subtitle: manuscript.genre,
-        profilePath: `/app/profiles/authors/${author.id}`,
-        manuscriptProfilePath: `/app/profiles/manuscripts/${manuscript.id}`,
+        title: item.manuscript.title,
+        subtitle: item.manuscript.genre,
+        profilePath: `/app/profiles/authors/${item.author.id}`,
+        manuscriptProfilePath: `/app/profiles/manuscripts/${item.manuscript.id}`,
+        penalties: item.result.penalties,
+        finalScore: item.result.finalScore,
       },
-      safe_snippets: [],
+      safe_snippets: item.result.safeSnippets,
+    }));
+  for (const item of scored) {
+    await upsertManuscriptSignals(db, {
+      manuscript: {
+        ...item.manuscript,
+        audienceCategories: item.manuscript.audience_categories ?? [],
+        declaredContentWarnings:
+          item.manuscript.declared_content_warnings ?? [],
+        declaredThemes: item.manuscript.declared_themes ?? [],
+        manuscriptForm: item.manuscript.manuscript_form,
+        profileTeaser: item.manuscript.profile_teaser,
+      },
+      manuscriptId: item.manuscript.id,
+      ownerProfileId: item.author.id,
     });
   }
   await persistCandidatesAndGrants(db, run, rows);
   return rows.length;
+}
+
+function normalizeManuscriptForSignals(source: Record<string, unknown>) {
+  return {
+    ...source,
+    audienceCategories: source.audienceCategories ?? [],
+    declaredContentWarnings: source.declaredContentWarnings ?? [],
+    declaredThemes: source.declaredThemes ?? [],
+    manuscriptForm: source.manuscriptForm,
+  };
+}
+
+function buildBoundedExplanation(
+  kind: "publisher" | "manuscript",
+  title: unknown,
+) {
+  const safeTitle =
+    typeof title === "string" && title.trim() ? title.trim() : "this candidate";
+  return kind === "publisher"
+    ? `${safeTitle} is a visible match because its declared editorial signals overlap with the manuscript profile after soft-constraint checks.`
+    : `${safeTitle} is a visible match because its manuscript signals overlap with the publisher profile after soft-constraint checks.`;
 }
 
 async function persistCandidatesAndGrants(
