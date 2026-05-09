@@ -463,6 +463,7 @@ class SupabaseMatchingRepository:
                     "risk_reasons": candidate.risk_reasons,
                     "score_details": candidate.score_details,
                     "safe_snippets": candidate.safe_snippets,
+                    "detail_snapshot": candidate.detail_snapshot,
                 }
                 for candidate in candidates
             ],

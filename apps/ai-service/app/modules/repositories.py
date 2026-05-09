@@ -86,6 +86,7 @@ class MatchCandidateWrite:
     risk_reasons: list[str]
     score_details: dict[str, object]
     safe_snippets: list[dict[str, object]]
+    detail_snapshot: dict[str, object]
 
 
 @dataclass(frozen=True)

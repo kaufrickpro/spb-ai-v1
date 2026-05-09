@@ -68,7 +68,7 @@ export function MatchCandidateCard({
         <p className="mt-3 text-sm leading-6 text-slate-700">{explanation}</p>
       ) : null}
 
-      <CandidateDetails candidate={candidate} />
+      <CandidatePreview candidate={candidate} />
 
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
         <Link
@@ -188,6 +188,36 @@ export function CandidateDetails({ candidate }: { candidate: MatchCandidate }) {
           </p>
         )}
       </details>
+    </div>
+  );
+}
+
+function CandidatePreview({ candidate }: { candidate: MatchCandidate }) {
+  const { t } = useTranslation();
+  const fitReasons = visibleList(candidate.fitReasons).slice(0, 2);
+  const riskReasons = visibleList(candidate.riskReasons).slice(0, 2);
+
+  return (
+    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <PreviewList title={t("matches.fitPreview")} values={fitReasons} />
+      <PreviewList title={t("matches.watchOutPreview")} values={riskReasons} />
+    </div>
+  );
+}
+
+function PreviewList({ title, values }: { title: string; values: string[] }) {
+  if (values.length === 0) return null;
+
+  return (
+    <div>
+      <h3 className="text-xs font-semibold uppercase text-slate-500">
+        {title}
+      </h3>
+      <ul className="mt-2 space-y-1 text-sm text-slate-700">
+        {values.map((value) => (
+          <li key={value}>{value}</li>
+        ))}
+      </ul>
     </div>
   );
 }

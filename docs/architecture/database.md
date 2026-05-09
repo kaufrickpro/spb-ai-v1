@@ -64,6 +64,13 @@ columns, explanation status, and a guard that keeps `embedding_records.metadata`
 free of vector arrays. Existing remote databases must apply both migrations
 after `20260507103000_step10_profile_access_foundation.sql`.
 
+Step 12 match detail adds `match_candidates.detail_snapshot` in
+`20260509120000_step12_match_detail_snapshot.sql`. The migration also removes
+legacy `scoreDebug` from `score_details`, forbids new `scoreDebug` writes, and
+adds lightweight JSON object/top-level forbidden-key checks. Existing remote
+databases must apply it after the Step 10 matching/access migrations and the
+Step 11 intro-request migration.
+
 Do not create the full V1 schema upfront. Matching, intro requests, billing, and the broader discovery/runtime tables should still arrive in later vertical slices. Larger future domains may split schema and RLS into separate migrations when review clarity matters.
 
 Every future schema change must be introduced with a new migration. Never make manual dashboard-only schema edits without backfilling a migration.

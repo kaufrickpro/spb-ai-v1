@@ -12,7 +12,7 @@ import type { ApiConfig } from "../config/config.js";
 import type { AuthenticatedUser } from "../auth/verifyJwt.js";
 import { createServiceRoleSupabaseClient } from "../supabase/client.js";
 import { runAiMatching } from "./aiClient.js";
-import { mapDbCandidate, mapDbRun } from "./dbMappers.js";
+import { mapDbCandidate, mapDbCandidateDetail, mapDbRun } from "./dbMappers.js";
 import { MatchingServiceError } from "./errors.js";
 import {
   ALGORITHM_VERSION,
@@ -158,24 +158,84 @@ export async function getSupabaseMatchRun(input: {
   });
 }
 
-async function decorateDbCandidate(
+export async function getSupabaseMatchCandidate(input: {
+  config: ApiConfig;
+  candidateId: string;
+  matchRunId: string;
+  user: AuthenticatedUser;
+}) {
+  const db = createDb(input.config);
+  const viewer = await getDbProfileForUser(db, input.user.userId);
+  if (!viewer) {
+    throw new MatchingServiceError("forbidden", "Marketplace profile required");
+  }
+
+  const { data: run, error: runError } = await db
+    .from("match_runs")
+    .select()
+    .eq("id", input.matchRunId)
+    .eq("requester_profile_id", viewer.id)
+    .maybeSingle();
+  if (runError) {
+    throw new MatchingServiceError(
+      "storage",
+      "Failed to fetch match run",
+      runError,
+    );
+  }
+  if (!run) {
+    throw new MatchingServiceError("not_found", "Match run not found");
+  }
+
+  const { data: candidate, error: candidateError } = await db
+    .from("match_candidates")
+    .select()
+    .eq("id", input.candidateId)
+    .eq("match_run_id", run.id)
+    .maybeSingle();
+  if (candidateError) {
+    throw new MatchingServiceError(
+      "storage",
+      "Failed to fetch match candidate",
+      candidateError,
+    );
+  }
+  if (!candidate) {
+    throw new MatchingServiceError("not_found", "Match candidate not found");
+  }
+
+  const mappedRun = mapDbRun(run);
+  const mappedCandidate = await decorateDbCandidate(
+    db,
+    viewer.id,
+    mappedRun,
+    mapDbCandidateDetail(candidate, mappedRun),
+  );
+
+  return { run: mappedRun, candidate: mappedCandidate };
+}
+
+async function decorateDbCandidate<TCandidate extends MatchCandidate>(
   db: ServiceRoleDb,
   viewerProfileId: unknown,
   run: ReturnType<typeof mapDbRun>,
-  candidate: MatchCandidate,
-): Promise<MatchCandidate> {
+  candidate: TCandidate,
+): Promise<TCandidate> {
   const introTarget = getIntroTarget(run, candidate);
   if (!introTarget || typeof viewerProfileId !== "string") {
-    return MatchCandidateSchema.parse(candidate);
+    MatchCandidateSchema.parse(candidate);
+    return candidate;
   }
-  return MatchCandidateSchema.parse({
+  const decorated = {
     ...candidate,
     introTarget,
     introState: await getDbIntroState(db, {
       ...introTarget,
       viewerProfileId,
     }),
-  });
+  };
+  MatchCandidateSchema.parse(decorated);
+  return decorated;
 }
 
 function getIntroTarget(

@@ -25,6 +25,7 @@ import {
   ProfileResponseSchema,
   DocumentProcessingFailureCodeSchema,
   DocumentSchema,
+  MatchCandidateResponseSchema,
   MatchRunRequestSchema,
   MatchRunResponseSchema,
 } from "./index";
@@ -136,6 +137,137 @@ describe("first-slice API contracts", () => {
     });
 
     expect(response.candidates[0]?.candidateType).toBe("publisher");
+  });
+
+  it("accepts enriched match candidate detail responses without changing run cards", () => {
+    const cardResponse = MatchRunResponseSchema.parse({
+      run: {
+        id,
+        direction: "author_to_publisher",
+        requesterProfileId: userId,
+        sourceManuscriptId: id,
+        sourcePublisherProfileId: null,
+        status: "succeeded",
+        stale: false,
+        candidateCount: 1,
+        failureCode: null,
+        inputFingerprint: "abc123",
+        sourceTitle: "Gece Yarısı Şehri",
+        createdAt: now,
+        updatedAt: now,
+      },
+      candidates: [
+        {
+          id: "00000000-0000-4000-8000-000000000003",
+          runId: id,
+          rank: 1,
+          candidateProfileId: userId,
+          candidateManuscriptId: null,
+          candidateType: "publisher",
+          title: "İstanbul Kitapları",
+          subtitle: "Publisher profile",
+          scoreBand: "strong",
+          axisBands: { premise: "strong", voice: "moderate", arc: "weak" },
+          explanation: "A bounded explanation.",
+          explanationStatus: "generated",
+          fitReasons: ["Genre overlap."],
+          riskReasons: [],
+          penalties: [],
+          safeSnippets: [{ label: "Source", text: "A safe bounded snippet." }],
+          profilePath: "/app/profiles/publishers/example",
+          manuscriptProfilePath: null,
+        },
+      ],
+    });
+
+    expect("detail" in cardResponse.candidates[0]!).toBe(false);
+
+    const detailResponse = MatchCandidateResponseSchema.parse({
+      run: cardResponse.run,
+      candidate: {
+        ...cardResponse.candidates[0],
+        detail: {
+          pair: {
+            manuscriptId: id,
+            manuscriptTitle: "Gece Yarısı Şehri",
+            publisherProfileId: userId,
+            publisherName: "İstanbul Kitapları",
+            sourceSide: "manuscript",
+          },
+          publisherContext: {
+            acceptedGenres: ["Roman"],
+            acceptedAudienceCategories: ["adult"],
+            acceptedManuscriptForms: ["novel"],
+            excludedTopics: [],
+            guidelinesSummary: "Bounded guidelines.",
+            wishlistSummary: null,
+            catalogSummary: null,
+          },
+          manuscriptContext: {
+            genre: "Roman",
+            subgenres: [],
+            audienceCategories: ["adult"],
+            manuscriptForm: "novel",
+            language: "tr",
+            wordCount: 72000,
+            themes: [],
+            declaredContentWarnings: [],
+            logline: "Bounded logline.",
+            teaser: null,
+          },
+          comparison: [
+            {
+              key: "genre",
+              status: "match",
+              manuscriptValues: ["Roman"],
+              publisherValues: ["Roman"],
+              noteCode: "matches.comparisonNotes.genre.match",
+              noteParams: {},
+            },
+          ],
+          axisEvidence: {
+            premise: {
+              band: "strong",
+              manuscriptSignal: "premise",
+              publisherSignal: "guidelines",
+              manuscriptSummary: "Bounded premise summary.",
+              publisherSummary: "Bounded guidelines summary.",
+              reasons: ["Premise overlap."],
+            },
+            voice: {
+              band: "moderate",
+              manuscriptSignal: "voice",
+              publisherSignal: "wishlist",
+              manuscriptSummary: null,
+              publisherSummary: null,
+              reasons: ["Voice review needed."],
+            },
+            arc: {
+              band: "weak",
+              manuscriptSignal: "arc",
+              publisherSignal: "catalog",
+              manuscriptSummary: null,
+              publisherSummary: null,
+              reasons: ["Arc evidence is limited."],
+            },
+          },
+          evidence: {
+            fitReasons: ["Genre overlap."],
+            watchOuts: [],
+            safeSnippets: [
+              {
+                label: "Source",
+                text: "A safe bounded snippet.",
+                sourceType: "manuscript_metadata",
+              },
+            ],
+          },
+          limitations: [],
+        },
+      },
+    });
+
+    expect(detailResponse.candidate.detail.comparison[0]?.status).toBe("match");
   });
 
   it("rejects client-created admin profiles", () => {

@@ -80,8 +80,25 @@ describe("CandidateList", () => {
     ]);
 
     expect(markup).toContain("Clear fit");
-    expect(markup).toContain("Visible safe snippet.");
+    expect(markup).not.toContain("Visible safe snippet.");
     expect(markup).not.toMatch(/REDACTED|hidden subtitle|private risk/i);
+  });
+
+  it("keeps full detail-only evidence off compact cards", () => {
+    const markup = renderCandidateList([
+      createMatchCandidate({
+        fitReasons: ["First fit", "Second fit", "Third full detail fit"],
+        riskReasons: ["First risk", "Second risk", "Third full detail risk"],
+        safeSnippets: [
+          { label: "Guidelines", text: "Full source snippet belongs on detail." },
+        ],
+      }),
+    ]);
+
+    expect(markup).toContain("First fit");
+    expect(markup).toContain("Second fit");
+    expect(markup).not.toContain("Third full detail fit");
+    expect(markup).not.toContain("Full source snippet belongs on detail.");
   });
 });
 

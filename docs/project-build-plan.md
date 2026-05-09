@@ -230,10 +230,15 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 12. Build Match Detail View
 
-- Build a synchronous match detail view from stored `match_candidates` data.
-- Show full fit reasons, mismatch/risk reasons, source snippets, publisher preferences, manuscript metadata comparison, and intro request state.
-- Keep match details read-only and deterministic; do not create report jobs, generated narrative reports, or PDF exports in V1.
-- Keep the stored explanation data structured enough to support future V1.5 report generation.
+- Status: implemented locally for GitHub issues #75-#82. New AI-service candidates persist a validated historical `detail_snapshot`; the existing candidate detail endpoint/page is enriched in place; and the match run endpoint stays a lightweight card/list response.
+- The forward migration is `supabase/migrations/20260509120000_step12_match_detail_snapshot.sql`. Existing remote databases must apply it after the Step 10 and Step 11 migrations before deployed AI-service writers can persist Step 12 detail snapshots.
+- `detail_snapshot` stores bounded publisher context, manuscript metadata context, comparison rows, axis evidence, source-labeled snippets, and limitations for every newly persisted visible candidate, including ranks 11-25.
+- Match details remain requester-owned, read-only, and deterministic. The only live computed field on candidate detail is `introState`; old rows without `detail_snapshot` use a limited fallback and never reconstruct history from live profile/manuscript tables.
+- New candidate writes no longer store raw numeric `scoreDebug`; the migration strips existing `scoreDebug` from `score_details` and adds durable checks against writing it again.
+- Match detail shows intro request state/action, but accepted-intro contact and sample download controls remain on request/profile/manuscript surfaces.
+- Match result cards are compact previews with score/axis bands, generated explanation when available, two-item fit/watch-out previews, profile/detail links, and intro state/action. Full comparison/evidence/watch-out detail lives on the candidate detail route.
+- No report jobs, generated narrative reports, detail-time LLM calls, admin diagnostics, PDF exports, or Google ADK workflows were added in V1.
+- The detailed Step 12 implementation notes and validation record live in `docs/step-12-match-detail-implementation-plan.md`; browser smoke coverage lives in `docs/step-12-match-detail-smoke-checklist.md`.
 
 ### 13. Build Billing And Usage
 

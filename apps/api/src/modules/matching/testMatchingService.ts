@@ -5,6 +5,7 @@ import type {
   MatchRunRequest,
 } from "@marketplace/contracts";
 import {
+  MatchCandidateDetailSchema,
   MatchCandidateSchema,
   MatchRunResponseSchema,
   MatchRunSchema,
@@ -20,6 +21,7 @@ import {
   type ProfileTestState,
 } from "../profiles/testState.js";
 import { MatchingServiceError } from "./errors.js";
+import { toMatchCandidateDetail } from "./dbMappers.js";
 import {
   createTestMatchRun,
   fingerprint,
@@ -91,6 +93,25 @@ export function getTestMatchRun(input: {
       .filter((candidate) => candidate.runId === run.id)
       .map((candidate) => decorateTestCandidate(input, run, candidate)),
   });
+}
+
+export function getTestMatchCandidate(
+  input: Parameters<typeof getTestMatchRun>[0] & { candidateId: string },
+) {
+  const response = getTestMatchRun(input);
+  const candidate = response.candidates.find(
+    (item) => item.id === input.candidateId,
+  );
+  if (!candidate) {
+    throw new MatchingServiceError("not_found", "Match candidate not found");
+  }
+
+  return {
+    run: response.run,
+    candidate: MatchCandidateDetailSchema.parse(
+      toMatchCandidateDetail(candidate, null, response.run),
+    ),
+  };
 }
 
 function runTestAuthorMatch(

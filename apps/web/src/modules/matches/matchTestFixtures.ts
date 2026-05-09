@@ -1,5 +1,7 @@
 import type {
   MatchCandidate,
+  MatchCandidateDetail,
+  MatchDetailSnapshot,
   MatchRun,
   MatchRunResponse,
 } from "@marketplace/contracts";
@@ -23,6 +25,107 @@ export function createMatchRun(input: Partial<MatchRun> = {}): MatchRun {
     createdAt: "2026-05-07T10:00:00.000Z",
     updatedAt: "2026-05-07T10:00:00.000Z",
     ...input,
+  };
+}
+
+export function createMatchDetailSnapshot(
+  input: Partial<MatchDetailSnapshot> = {},
+): MatchDetailSnapshot {
+  return {
+    pair: {
+      manuscriptId: "66666666-6666-4666-8666-666666666666",
+      manuscriptTitle: "Bright Candidate",
+      publisherProfileId: "55555555-5555-4555-8555-555555555555",
+      publisherName: "Bridge Publishing",
+      sourceSide: "manuscript",
+    },
+    publisherContext: {
+      acceptedGenres: ["Literary fiction"],
+      acceptedAudienceCategories: ["adult"],
+      acceptedManuscriptForms: ["novel"],
+      excludedTopics: ["graphic violence"],
+      guidelinesSummary: "Looks for literary fiction with a clear voice.",
+      wishlistSummary: "Istanbul stories with memory themes.",
+      catalogSummary: "Recent literary mysteries.",
+    },
+    manuscriptContext: {
+      genre: "Literary fiction",
+      subgenres: ["mystery"],
+      audienceCategories: ["adult"],
+      manuscriptForm: "novel",
+      language: "tr",
+      wordCount: 72000,
+      themes: ["memory"],
+      declaredContentWarnings: ["grief"],
+      logline: "A family follows a lost archive through Istanbul.",
+      teaser: "A quiet literary mystery with archival stakes.",
+    },
+    comparison: [
+      {
+        key: "genre",
+        status: "match",
+        manuscriptValues: ["Literary fiction"],
+        publisherValues: ["Literary fiction"],
+        noteCode: "matches.comparisonNotes.genre.match",
+        noteParams: {},
+      },
+      {
+        key: "content_warnings",
+        status: "unknown",
+        manuscriptValues: ["grief"],
+        publisherValues: [],
+        noteCode: "matches.comparisonNotes.content_warnings.unknown",
+        noteParams: {},
+      },
+    ],
+    axisEvidence: {
+      premise: {
+        band: "strong",
+        manuscriptSignal: "premise",
+        publisherSignal: "guidelines",
+        manuscriptSummary: "A family follows a lost archive.",
+        publisherSummary: "Guidelines favor literary mystery.",
+        reasons: ["Premise and market signals overlap."],
+      },
+      voice: {
+        band: "moderate",
+        manuscriptSignal: "voice",
+        publisherSignal: "wishlist",
+        manuscriptSummary: "Quiet archival voice.",
+        publisherSummary: "Wishlist mentions Istanbul stories.",
+        reasons: ["Voice and positioning signals are compatible."],
+      },
+      arc: {
+        band: "weak",
+        manuscriptSignal: "arc",
+        publisherSignal: "catalog",
+        manuscriptSummary: "Archive changes the family.",
+        publisherSummary: "Catalog evidence is limited.",
+        reasons: ["Story arc needs review."],
+      },
+    },
+    evidence: {
+      fitReasons: ["Clear editorial overlap", "Strong audience alignment"],
+      watchOuts: ["Longer than stated preference"],
+      safeSnippets: [
+        {
+          label: "Guidelines",
+          text: "Looks for literary fiction with a clear authorial voice.",
+          sourceType: "publisher_guidelines",
+        },
+      ],
+    },
+    limitations: [],
+    ...input,
+  };
+}
+
+export function createMatchCandidateDetail(
+  input: Partial<MatchCandidateDetail> = {},
+): MatchCandidateDetail {
+  return {
+    ...createMatchCandidate(input),
+    detail: createMatchDetailSnapshot(input.detail),
   };
 }
 

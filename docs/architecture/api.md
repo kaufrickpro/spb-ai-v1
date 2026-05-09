@@ -149,7 +149,9 @@ Rules:
 - The FastAPI AI service owns three-axis retrieval/scoring, soft-constraint penalties, ranking, safe snippet selection, and real Vertex/Gemini explanation generation.
 - The AI service is called with trusted identifiers such as `{ match_run_id }` and loads data through service-role repositories. Browser requests must not include raw manuscript text, signed URLs, provider credentials, or AI-service internals.
 - API returns score bands, axis bands, explanation fields, penalties/watch-outs, safe snippets, and profile paths. It must not return raw model internals, raw final numeric scores, private contact, signed URLs, admin notes, provider payloads, or full manuscript/sample text.
-- Candidate detail returns stored explanation data, structured score details, penalties, and source snippets; it does not generate a separate report.
+- Candidate detail returns a richer stored `detail_snapshot` through the existing `GET /api/v1/matches/:matchRunId/candidates/:candidateId` endpoint. Match run responses stay light for cards/lists. Candidate detail may compute `introState` live, but it must not reconstruct historical evidence from live profile/manuscript tables.
+- Older candidates without `detail_snapshot` should return a limited fallback detail with a `detail_snapshot_unavailable` limitation instead of failing or doing live reconstruction.
+- Candidate detail must not return raw numeric scores, score debug data, vectors, embeddings, provider prompts/payloads, private contact, signed URLs, full manuscript text, full synopsis, chapter summaries, document chunks, admin notes, or billing state.
 - Match runs and candidates must store algorithm/version metadata, input fingerprints, and compact safe input snapshots for auditability and stale-run badges.
 - Rematch creates a new run. Previous runs remain available in profile history.
 - Full profile pages are match-revealed app resources, not public profiles. Access must be granted by owner/admin status, stored match candidate, approved manuscript access request, or later accepted intro.

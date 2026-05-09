@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, cast
 
 import pytest
 
@@ -8,6 +8,7 @@ from app.modules.explanations import (
     MatchCandidateEvidence,
     MatchExplanation,
 )
+from app.modules.match_detail import MatchDetailSnapshot
 from app.modules.matching_signals import LocalSignalEmbeddingProvider
 from app.modules.matching_worker import (
     MATCHING_EXPLANATION_FAILED,
@@ -111,6 +112,18 @@ def test_author_to_publisher_worker_retrieves_scores_and_persists_top_candidates
     assert repository.candidates[0].candidate_profile_id == "publisher-1"
     assert repository.candidates[0].candidate_type == "publisher"
     assert repository.candidates[0].explanation_status == "generated"
+    assert "scoreDebug" not in repository.candidates[0].score_details
+    detail = repository.candidates[0].detail_snapshot
+    pair = cast(dict[str, object], detail["pair"])
+    comparison = cast(list[dict[str, object]], detail["comparison"])
+    evidence = cast(dict[str, object], detail["evidence"])
+    snippets = cast(list[dict[str, object]], evidence["safeSnippets"])
+    assert pair["publisherProfileId"] == "publisher-1"
+    assert comparison[0]["status"] == "match"
+    assert (
+        snippets[0]["sourceType"]
+        != ""
+    )
     assert repository.profile_access_grants[0].target_profile_id == "publisher-1"
     assert repository.run_statuses["run-author"] == ("succeeded", 1, None)
 
@@ -141,6 +154,9 @@ def test_publisher_to_manuscript_worker_persists_manuscript_candidates() -> None
     assert candidate.candidate_type == "manuscript"
     assert candidate.candidate_profile_id == "author-profile-1"
     assert candidate.candidate_manuscript_id == "manuscript-1"
+    pair = cast(dict[str, object], candidate.detail_snapshot["pair"])
+    assert pair["manuscriptId"] == "manuscript-1"
+    assert pair["sourceSide"] == "publisher"
     assert repository.profile_access_grants[0].manuscript_id == "manuscript-1"
 
 
@@ -191,6 +207,26 @@ def test_worker_fails_safely_when_top_ten_explanation_is_incomplete() -> None:
         0,
         MATCHING_EXPLANATION_FAILED,
     )
+
+
+def test_detail_snapshot_validation_rejects_sensitive_payloads() -> None:
+    with pytest.raises(ValueError, match="forbidden"):
+        MatchDetailSnapshot.model_validate(
+            {
+                **safe_detail_snapshot(),
+                "evidence": {
+                    "fitReasons": ["Safe reason."],
+                    "watchOuts": [],
+                    "safeSnippets": [
+                        {
+                            "label": "Provider",
+                            "text": "private-contact@example.com",
+                            "sourceType": "unknown",
+                        }
+                    ],
+                },
+            }
+        )
 
 
 def test_worker_preserves_safe_vertex_adapter_failure_code() -> None:
@@ -302,3 +338,59 @@ def matching_repository() -> InMemoryMatchingRepository:
             },
         },
     )
+
+
+def safe_detail_snapshot() -> dict[str, object]:
+    return {
+        "pair": {
+            "manuscriptId": "manuscript-1",
+            "manuscriptTitle": "Kayıp Şehir",
+            "publisherProfileId": "publisher-1",
+            "publisherName": "Bridge Publishing",
+            "sourceSide": "manuscript",
+        },
+        "publisherContext": {
+            "acceptedGenres": ["Roman"],
+            "acceptedAudienceCategories": ["adult"],
+            "acceptedManuscriptForms": ["novel"],
+            "excludedTopics": [],
+            "guidelinesSummary": "Literary mystery with a strong arc.",
+            "wishlistSummary": None,
+            "catalogSummary": None,
+        },
+        "manuscriptContext": {
+            "genre": "Roman",
+            "subgenres": [],
+            "audienceCategories": ["adult"],
+            "manuscriptForm": "novel",
+            "language": None,
+            "wordCount": 42000,
+            "themes": ["memory"],
+            "declaredContentWarnings": [],
+            "logline": "A literary mystery across Istanbul.",
+            "teaser": None,
+        },
+        "comparison": [],
+        "axisEvidence": {
+            "premise": safe_axis_evidence("premise", "guidelines"),
+            "voice": safe_axis_evidence("voice", "wishlist"),
+            "arc": safe_axis_evidence("arc", "catalog"),
+        },
+        "evidence": {
+            "fitReasons": ["Safe reason."],
+            "watchOuts": [],
+            "safeSnippets": [],
+        },
+        "limitations": [],
+    }
+
+
+def safe_axis_evidence(axis: str, publisher_signal: str) -> dict[str, object]:
+    return {
+        "band": "strong",
+        "manuscriptSignal": axis,
+        "publisherSignal": publisher_signal,
+        "manuscriptSummary": "Safe manuscript summary.",
+        "publisherSummary": "Safe publisher summary.",
+        "reasons": ["Safe reason."],
+    }

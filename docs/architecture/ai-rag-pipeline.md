@@ -124,8 +124,8 @@ Steps:
 2. Run three semantic retrieval paths, one each for `premise`, `voice`, and `arc`, then merge and de-duplicate candidates.
 3. Score each candidate by axis and publisher signal. Normalize publisher-side semantic weights across available signals. When all publisher signals exist, start with wishlist `0.40`, catalog `0.30`, and guidelines `0.30`.
 4. Apply structured penalties instead of broad hard filters. Genre mismatch, audience mismatch, manuscript-form mismatch, word-count concerns, and high-confidence exclusion-topic hits are watch-outs and score penalties, not candidate removal.
-5. Hide candidates with final score below `0.35`, store up to 25 visible candidates, and generate/store bounded top-10 explanations.
-6. Store `match_runs`, `match_signal_sources`, `match_candidates`, input fingerprints, snapshots, reference-only embedding records, score breakdowns, penalties, snippets, and explanation metadata.
+5. Hide candidates with final score below `0.35`, store up to 25 visible candidates, generate/store bounded top-10 explanations, and build a safe deterministic detail snapshot for every visible candidate.
+6. Store `match_runs`, `match_signal_sources`, `match_candidates`, input fingerprints, snapshots, reference-only embedding records, score bands, penalties, snippets, explanation metadata, and Step 12 `detail_snapshot` data. Raw numeric score debug data must not be stored in user-detail-adjacent JSON.
 
 Current matching status: the Node API calls the private AI service at
 `POST /internal/matching/run` with `{ match_run_id }` only, then reads
@@ -156,20 +156,34 @@ Persist version metadata with every run:
 
 V1 exposes match detail data directly from stored match candidates instead of generating separate AI reports.
 
+Step 12 enriches the existing candidate detail endpoint with a stored historical
+`detail_snapshot` for every newly persisted visible candidate. The snapshot is
+validated by the AI service before insertion and read by the API without
+detail-time LLM calls or live reconstruction from mutable profile/manuscript
+tables. Match run/card responses remain light; candidate detail returns the
+full typed detail shape plus live `introState`.
+
 Match detail output must include:
 
 - score band
 - one-paragraph LLM explanation for top-10 candidates
 - premise, voice, and arc bands
+- axis-specific evidence with bounded manuscript and publisher signal summaries
 - strong fit reasons
 - weak fit or mismatch reasons
 - structured penalties and watch-outs
-- source snippets
-- publisher preference context
-- manuscript metadata comparison
+- safe source snippets with source labels
+- bounded publisher preference/catalog context
+- bounded manuscript metadata comparison
 - intro request CTA state
+- stale-run limitations or `detail_snapshot_unavailable` fallback when applicable
 
-Ranks 11-25 remain inspectable through structured score details, fit reasons, watch-outs, and snippets, but do not require a stored LLM paragraph in Step 10. AI-generated fit reports, report agents, PDF exports, Google ADK workflows, comp-title catalog resolution, and specific editor-wishlist query runs are deferred to V1.5.
+Ranks 11-25 remain inspectable through structured detail snapshots, fit reasons, watch-outs, and snippets, but do not require a stored LLM paragraph in Step 10. AI-generated fit reports, report agents, PDF exports, Google ADK workflows, comp-title catalog resolution, and specific editor-wishlist query runs are deferred to V1.5.
+
+Match detail output must not expose raw scores, raw vector distances, embeddings,
+provider prompts or payloads, signed URLs, private contact, full manuscript text,
+document chunks, full synopsis, chapter summaries, admin notes, billing state, or
+accepted-intro sample download controls.
 
 ## Evaluation
 

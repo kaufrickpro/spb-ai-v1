@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ApiConfig } from "../config/config.js";
-import { runSupabaseMatch } from "./supabaseMatchingService.js";
+import {
+  getSupabaseMatchCandidate,
+  runSupabaseMatch,
+} from "./supabaseMatchingService.js";
 
 const mocks = vi.hoisted(() => ({
   createServiceRoleSupabaseClient: vi.fn(),
@@ -142,6 +145,72 @@ describe("runSupabaseMatch", () => {
   });
 });
 
+describe("getSupabaseMatchCandidate", () => {
+  let db: MockSupabaseDb;
+
+  beforeEach(() => {
+    db = new MockSupabaseDb();
+    mocks.createServiceRoleSupabaseClient.mockReturnValue(db);
+    db.rows.runs.push({
+      id: RUN_ID,
+      direction: "author_to_publisher",
+      requester_profile_id: AUTHOR_PROFILE_ID,
+      source_manuscript_id: MANUSCRIPT_ID,
+      source_publisher_profile_id: null,
+      status: "succeeded",
+      stale: false,
+      candidate_count: 1,
+      failure_code: null,
+      input_fingerprint: "fingerprint",
+      input_snapshot: { title: "Persisted Manuscript" },
+      created_at: NOW,
+      updated_at: NOW,
+    });
+  });
+
+  it("returns stored detail snapshots only from the candidate detail path", async () => {
+    db.persistAiCandidate(persistedCandidate({ detail_snapshot: detailSnapshot() }));
+
+    const response = await getSupabaseMatchCandidate({
+      candidateId: CANDIDATE_ID,
+      config,
+      matchRunId: RUN_ID,
+      user: {
+        userId: AUTHOR_USER_ID,
+        jwt: "jwt",
+        authAssuranceLevel: null,
+      },
+    });
+
+    expect(response.candidate.detail.comparison[0]?.status).toBe("match");
+    expect(JSON.stringify(response)).not.toMatch(
+      /scoreDebug|finalScore|downloadUrl|signedUrl|privateContact|documentChunks/i,
+    );
+  });
+
+  it("uses an honest limited fallback for old rows without detail snapshots", async () => {
+    db.persistAiCandidate(persistedCandidate());
+
+    const response = await getSupabaseMatchCandidate({
+      candidateId: CANDIDATE_ID,
+      config,
+      matchRunId: RUN_ID,
+      user: {
+        userId: AUTHOR_USER_ID,
+        jwt: "jwt",
+        authAssuranceLevel: null,
+      },
+    });
+
+    expect(response.candidate.detail.limitations).toEqual([
+      "detail_snapshot_unavailable",
+    ]);
+    expect(response.candidate.detail.evidence.safeSnippets[0]?.sourceType).toBe(
+      "unknown",
+    );
+  });
+});
+
 type QueryResult = {
   count?: number | null;
   data?: unknown;
@@ -194,6 +263,115 @@ class MockSupabaseDb {
   persistAiCandidate(row: Record<string, unknown>) {
     this.rows.candidates.push(row);
   }
+}
+
+function persistedCandidate(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    id: CANDIDATE_ID,
+    match_run_id: RUN_ID,
+    rank: 1,
+    candidate_profile_id: PUBLISHER_PROFILE_ID,
+    candidate_manuscript_id: null,
+    candidate_type: "publisher",
+    score_band: "strong",
+    axis_bands: { premise: "strong", voice: "moderate", arc: "strong" },
+    explanation: "Persisted by AI service.",
+    explanation_status: "generated",
+    fit_reasons: ["Editorial focus overlaps."],
+    risk_reasons: [],
+    score_details: {
+      title: "Persisted Publisher",
+      subtitle: "Publisher profile",
+      profilePath: `/app/profiles/publishers/${PUBLISHER_PROFILE_ID}`,
+      manuscriptProfilePath: null,
+      penalties: [],
+    },
+    safe_snippets: [{ label: "Guidelines", text: "Send literary fiction." }],
+    ...overrides,
+  };
+}
+
+function detailSnapshot() {
+  return {
+    pair: {
+      manuscriptId: MANUSCRIPT_ID,
+      manuscriptTitle: "Persisted Manuscript",
+      publisherProfileId: PUBLISHER_PROFILE_ID,
+      publisherName: "Persisted Publisher",
+      sourceSide: "manuscript",
+    },
+    publisherContext: {
+      acceptedGenres: ["Roman"],
+      acceptedAudienceCategories: ["adult"],
+      acceptedManuscriptForms: ["novel"],
+      excludedTopics: [],
+      guidelinesSummary: "Send literary fiction.",
+      wishlistSummary: null,
+      catalogSummary: null,
+    },
+    manuscriptContext: {
+      genre: "Roman",
+      subgenres: [],
+      audienceCategories: ["adult"],
+      manuscriptForm: "novel",
+      language: "tr",
+      wordCount: 42000,
+      themes: [],
+      declaredContentWarnings: [],
+      logline: "A durable test logline.",
+      teaser: null,
+    },
+    comparison: [
+      {
+        key: "genre",
+        status: "match",
+        manuscriptValues: ["Roman"],
+        publisherValues: ["Roman"],
+        noteCode: "matches.comparisonNotes.genre.match",
+        noteParams: {},
+      },
+    ],
+    axisEvidence: {
+      premise: {
+        band: "strong",
+        manuscriptSignal: "premise",
+        publisherSignal: "guidelines",
+        manuscriptSummary: "A durable test logline.",
+        publisherSummary: "Send literary fiction.",
+        reasons: ["Editorial focus overlaps."],
+      },
+      voice: {
+        band: "moderate",
+        manuscriptSignal: "voice",
+        publisherSignal: "wishlist",
+        manuscriptSummary: null,
+        publisherSummary: null,
+        reasons: ["Editorial focus overlaps."],
+      },
+      arc: {
+        band: "strong",
+        manuscriptSignal: "arc",
+        publisherSignal: "catalog",
+        manuscriptSummary: "A durable test arc.",
+        publisherSummary: null,
+        reasons: ["Editorial focus overlaps."],
+      },
+    },
+    evidence: {
+      fitReasons: ["Editorial focus overlaps."],
+      watchOuts: [],
+      safeSnippets: [
+        {
+          label: "Guidelines",
+          text: "Send literary fiction.",
+          sourceType: "publisher_guidelines",
+        },
+      ],
+    },
+    limitations: [],
+  };
 }
 
 class MockQueryBuilder implements PromiseLike<QueryResult> {

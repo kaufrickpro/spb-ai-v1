@@ -172,7 +172,7 @@ Authors create and manage manuscripts, upload sample files, and view eligibility
 
 ### Matches
 
-Show the active matching workspace for both roles. Authors can run publisher matches for a selected manuscript. Publishers can run manuscript matches from their general publisher profile. Cards must include score band, premise/voice/arc bands, fit reasons, watch-outs, source snippets, intro request CTA state, and match detail CTA.
+Show the active matching workspace for both roles. Authors can run publisher matches for a selected manuscript. Publishers can run manuscript matches from their general publisher profile. Cards should stay compact and include score band, premise/voice/arc bands, the generated explanation when available, a short fit/watch-out preview, intro request CTA state, profile links, and match detail CTA.
 
 Top-10 candidates show a stored one-paragraph explanation generated during the match run. Ranks 11-25 remain inspectable through structured details without requiring an LLM paragraph. The UI must render stored structured details only; it must not generate explanations from the browser.
 
@@ -180,7 +180,11 @@ Intro request buttons must be driven by API-provided `introState`, not frontend 
 
 ### Match Detail
 
-Show stored candidate explanation data in a user-friendly details dropdown: one-paragraph explanation when present, premise/voice/arc bands, good signs, watch-outs, safe source snippets, publisher preference context, manuscript metadata comparison, and intro request state. Do not generate a separate report from the frontend or on detail open.
+Show stored candidate explanation data as the full comparison/evidence surface for one manuscript-publisher pair. Candidate detail is requester-owned, historical, and deterministic: render the stored `detail_snapshot` when present, fall back honestly for older rows, and compute only `introState` live.
+
+Use major tabs for Overview, Comparison, Evidence, and Watch-outs/limitations. The first view should show score band, stale-run warning when relevant, intro request state/action, explanation paragraph when present, and the highest-signal fit/watch-out summary. Evidence-heavy areas may use compact accordions.
+
+Render premise/voice/arc bands with axis-specific evidence, bounded publisher context, manuscript metadata comparison, safe snippets with source labels, and limitations. Do not generate a separate report from the frontend or on detail open. Do not show accepted-intro contact or sample download controls here; link to profile/request/manuscript surfaces for those unlocks.
 
 ### Match-Revealed Profiles
 

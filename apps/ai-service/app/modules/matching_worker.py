@@ -7,6 +7,7 @@ from app.modules.explanations import (
     ExplanationSafetyError,
     MatchCandidateEvidence,
 )
+from app.modules.match_detail import build_detail_snapshot
 from app.modules.matching import MatchingResult
 from app.modules.matching_scoring import (
     MatchScoringResult,
@@ -196,7 +197,7 @@ class RepositoryBackedMatchingWorker:
             retrieval_scores=retrieval_scores,
             candidate_type=candidate_type,
         )
-        writes = self._build_candidate_writes(run, ranked[:25])
+        writes = self._build_candidate_writes(run, source, ranked[:25])
         self._attach_top_ten_explanations(writes)
         self.repository.insert_match_candidates(writes)
         self.repository.insert_profile_access_grants(build_profile_access_grants(run, writes))
@@ -338,6 +339,7 @@ class RepositoryBackedMatchingWorker:
     def _build_candidate_writes(
         self,
         run: MatchRunRecord,
+        source: dict[str, object],
         ranked: list[tuple[str, dict[str, object], MatchScoringResult]],
     ) -> list[MatchCandidateWrite]:
         writes: list[MatchCandidateWrite] = []
@@ -368,6 +370,15 @@ class RepositoryBackedMatchingWorker:
                         {"label": snippet.label, "text": snippet.text}
                         for snippet in result.safe_snippets
                     ],
+                    detail_snapshot=build_detail_snapshot(
+                        run=run,
+                        source=source,
+                        candidate=candidate,
+                        result=result,
+                        candidate_profile_id=candidate_profile_id,
+                        candidate_manuscript_id=candidate_manuscript_id,
+                        is_manuscript=is_manuscript,
+                    ),
                 )
             )
         return writes
@@ -454,9 +465,6 @@ def score_details(
             }
             for penalty in result.penalties
         ],
-        "scoreDebug": {
-            "rawScoreStoredForAuditOnly": result.final_score,
-        },
     }
 
 
@@ -502,6 +510,7 @@ def candidate_with_explanation(
         risk_reasons=candidate.risk_reasons,
         score_details=candidate.score_details,
         safe_snippets=candidate.safe_snippets,
+        detail_snapshot=candidate.detail_snapshot,
     )
 
 

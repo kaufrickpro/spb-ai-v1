@@ -5,13 +5,14 @@ import type { ApiConfig } from "../config/config.js";
 import type { ManuscriptTestState } from "../manuscripts/testState.js";
 import type { ProfileTestState } from "../profiles/testState.js";
 import type { IntroRequestTestState } from "../introRequests/testState.js";
-import { MatchingServiceError } from "./errors.js";
 import {
+  getSupabaseMatchCandidate,
   getSupabaseMatchRun,
   listSupabaseMatchRuns,
   runSupabaseMatch,
 } from "./supabaseMatchingService.js";
 import {
+  getTestMatchCandidate,
   getTestMatchRun,
   listTestMatchRuns,
   runTestMatch,
@@ -69,14 +70,14 @@ export async function getMatchRun(
 export async function getMatchCandidate(
   input: MatchingContext & { candidateId: string; matchRunId: string },
 ) {
-  const response = await getMatchRun(input);
-  const candidate = response.candidates.find(
-    (item) => item.id === input.candidateId,
-  );
-
-  if (!candidate) {
-    throw new MatchingServiceError("not_found", "Match candidate not found");
+  if (input.config.authMode === "test") {
+    return getTestMatchCandidate(input);
   }
 
-  return { candidate, run: response.run };
+  return getSupabaseMatchCandidate({
+    candidateId: input.candidateId,
+    config: input.config,
+    matchRunId: input.matchRunId,
+    user: input.user,
+  });
 }

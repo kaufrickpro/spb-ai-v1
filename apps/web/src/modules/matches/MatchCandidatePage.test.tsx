@@ -2,7 +2,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MatchCandidatePage } from "./MatchCandidatePage";
-import { createMatchCandidate, createMatchRun } from "./matchTestFixtures";
+import {
+  createMatchCandidateDetail,
+  createMatchRun,
+} from "./matchTestFixtures";
 
 const mockUseMatchCandidate = vi.fn();
 const mockGetApiErrorCode = vi.fn();
@@ -35,7 +38,7 @@ describe("MatchCandidatePage", () => {
     mockUseMatchCandidate.mockReturnValue({
       data: {
         run: createMatchRun(),
-        candidate: createMatchCandidate(),
+        candidate: createMatchCandidateDetail(),
       },
       isError: false,
       isPending: false,
@@ -68,7 +71,7 @@ describe("MatchCandidatePage", () => {
     mockUseMatchCandidate.mockReturnValue({
       data: {
         run: createMatchRun(),
-        candidate: createMatchCandidate({
+        candidate: createMatchCandidateDetail({
           rank: 11,
           explanation: "Rank eleven paragraph should not render.",
         }),
@@ -82,7 +85,32 @@ describe("MatchCandidatePage", () => {
     expect(markup).toContain("matches.axis.premise");
     expect(markup).toContain("Clear editorial overlap");
     expect(markup).toContain("Looks for literary fiction");
+    expect(markup).toContain("matches.detailTabs.comparison");
+    expect(markup).toContain("matches.detailTabs.evidence");
     expect(markup).not.toContain("Rank eleven paragraph should not render.");
+  });
+
+  it("shows stale detail warning and fallback limitations", () => {
+    mockUseMatchCandidate.mockReturnValue({
+      data: {
+        run: createMatchRun({ stale: true }),
+        candidate: createMatchCandidateDetail({
+          detail: {
+            ...createMatchCandidateDetail().detail,
+            comparison: [],
+            limitations: ["detail_snapshot_unavailable"],
+          },
+        }),
+      },
+      isError: false,
+      isPending: false,
+    });
+
+    const markup = renderCandidatePage();
+
+    expect(markup).toContain("matches.staleDetailTitle");
+    expect(markup).toContain("matches.rematchFromHistory");
+    expect(markup).toContain("matches.limitation.detail_snapshot_unavailable");
   });
 });
 
