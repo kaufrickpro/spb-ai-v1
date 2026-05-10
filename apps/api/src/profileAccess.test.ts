@@ -16,6 +16,10 @@ import {
   TEST_AUTHOR_MANUSCRIPT_ID,
   TEST_OTHER_AUTHOR_MANUSCRIPT_ID,
 } from "./modules/manuscripts/testState.js";
+import {
+  addTestSubscription,
+  createBillingTestState,
+} from "./modules/billing/testState.js";
 
 const testConfig = {
   authMode: "test" as const,
@@ -27,6 +31,7 @@ const testConfig = {
 };
 
 function buildProfileAccessFixture() {
+  const billing = createBillingTestState();
   const profiles = createProfileTestState();
   const manuscripts = createManuscriptTestState();
 
@@ -79,6 +84,16 @@ function buildProfileAccessFixture() {
     recentAcquisitions: ["Sonbahar Defteri"],
     bestSellingBooks: ["Kiyidaki Ev"],
   });
+  addTestSubscription(billing, {
+    profileId: publisher.profile.id,
+    userId: TEST_PUBLISHER_USER_ID,
+    planSlug: "publisher-trial",
+    status: "trialing",
+    currentPeriodStart: "2026-05-09T00:00:00.000Z",
+    currentPeriodEnd: "2026-06-09T00:00:00.000Z",
+    trialStartedAt: "2026-05-09T00:00:00.000Z",
+    trialEndsAt: "2026-06-09T00:00:00.000Z",
+  });
 
   addTestProfileAccessGrant(profiles, {
     viewerUserId: TEST_PUBLISHER_USER_ID,
@@ -94,7 +109,10 @@ function buildProfileAccessFixture() {
   });
 
   return {
-    app: buildApp({ config: testConfig, testState: { manuscripts, profiles } }),
+    app: buildApp({
+      config: testConfig,
+      testState: { billing, manuscripts, profiles },
+    }),
     author,
     manuscripts,
     otherAuthor,

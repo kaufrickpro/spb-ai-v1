@@ -7,7 +7,13 @@ This file is the local quick-reference knowledge base for the publisher-author S
 ## Current Status
 
 - Last updated: 2026-05-09
-- Current phase: Step 12 match detail is implemented locally for GitHub issues #75-#82 on top of the Step 11 intro-request slice. New AI-service match candidates persist a validated historical `detail_snapshot`; the API keeps run/card responses light while returning enriched candidate detail from the existing candidate endpoint; the web detail page renders overview, comparison, evidence, stale warnings, legacy fallbacks, limitations, and intro state/action without accepted-intro contact or sample download controls. Live remote validation still depends on applying the existing Step 10 and Step 11 migrations plus the new Step 12 migration and configured Vertex/Gemini credentials for matching.
+- Current phase: Step 14 notifications/email is implemented locally for GitHub issues #94-#101 on top of Step 13b. The app now has notification metadata guardrails, shared notification contracts, `GET /api/v1/notifications`, notification read/read-all APIs, API-owned `ctaPath`, a header bell preview, `/app/notifications`, polling/refetch invalidation, an async `email_outbox`, local fake email processing, bilingual server-rendered product email templates, a typed Resend send adapter, and signature-verified Resend delivery/failure webhooks. Live Resend delivery validation is blocked until sender domain verification and `EMAIL_PROVIDER_MODE=resend`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, and `RESEND_WEBHOOK_SECRET` are configured in the target environment.
+- Recently changed for Step 14 / GitHub issues #94-#101: added `supabase/migrations/20260509180000_step14_notifications_email.sql`, which hardens `public.notifications.metadata`, creates `email_outbox` and `email_delivery_events`, adds notification-to-email and decision/billing email triggers, and adds the service-role-only `claim_email_outbox(...)` worker RPC. Existing remote databases must apply this migration after the Step 13b migration.
+- Recently changed for Step 14 / GitHub issues #94-#101: notification API responses hide raw metadata and unknown notification types, support cursor pagination and `all|unread` filtering, deny cross-profile read attempts with not-found behavior, and keep intro messages, rejection notes, contact details, signed URLs, manuscript text, document chunks, provider payloads, secrets, and tokens out of browser responses.
+- Recently changed for Step 14 / GitHub issues #94-#101: product email is async and idempotent. Intro lifecycle, profile/manuscript decisions, and billing/payment update emails use allowlisted template data and authenticated app links; local processing runs with `npm run emails:process --workspace apps/api -- <limit>`.
+- Recently fixed for author matching: `/app/matches` now lets authors choose which manuscript to use for an author-to-publisher run instead of silently choosing the first ready manuscript. The run button remains disabled unless the selected manuscript is eligible and has an uploaded sample.
+- Recently fixed for author eligibility: `/app/profile` now shows author details in a view-first card with an explicit edit button; edit mode submits biography, primary genre, and writing languages to `POST /api/v1/profiles/me/onboarding-details`, enabling the existing trusted RPC/evaluator path to promote complete authors from `limited` to `eligible`. The dashboard prompts limited authors to finish this step, and profile summary copy labels `eligibilityStatus` as eligibility rather than approval.
+- Recently confirmed for manuscript workspace access: `AuthorGuard` remains role-only by design. Limited, blocked, or quarantined authors can still enter safe author workspace pages, while discovery, matching, intro, download, and exposure gates remain enforced by API eligibility checks.
 - Recently changed for Step 12 / GitHub issues #75-#82: added `supabase/migrations/20260509120000_step12_match_detail_snapshot.sql`, which adds `match_candidates.detail_snapshot`, strips existing `scoreDebug` from `score_details`, forbids new `scoreDebug`, and adds lightweight JSON object/top-level forbidden-key checks. Existing remote databases must apply this migration after the Step 10/Step 11 migrations.
 - Recently changed for Step 12 / GitHub issues #75-#82: added shared Zod and AI-service Pydantic detail snapshot models for pair context, publisher/manuscript context, comparison rows, axis evidence, source-labeled snippets, and limitations. The AI matching worker validates the snapshot before insertion and no longer writes raw numeric score debug data.
 - Recently changed for Step 12 / GitHub issues #75-#82: `GET /api/v1/matches/:matchRunId/candidates/:candidateId` now returns `MatchCandidateDetailSchema` with stored detail plus live `introState`; `GET /api/v1/matches/:matchRunId` remains a compact card response. Old candidates without snapshots return a limited fallback with `detail_snapshot_unavailable`.
@@ -18,6 +24,14 @@ This file is the local quick-reference knowledge base for the publisher-author S
 - Recently changed for Step 11 / GitHub issue #72: admins have a read-only intro request investigation page and API with safe metadata, current unlock state, and product audit timeline. No admin accept/reject/cancel-on-behalf controls were added.
 - Recently decided for Step 12: match detail will deepen the existing requester-owned candidate detail endpoint/page with a stored historical `detail_snapshot` for every visible candidate. Match run/card responses stay light; candidate detail gets typed publisher context, manuscript comparison, axis evidence, snippets with source labels, limitations, and live `introState` only. No report jobs, detail-time LLM calls, PDF exports, admin diagnostics, raw scores, vectors, provider payloads, signed URLs, private contact, full synopsis, chapter summaries, or full sample text are exposed.
 - Recently decided for Step 12: new candidate writes should stop storing `scoreDebug`, a forward migration should strip existing `scoreDebug` from `match_candidates.score_details`, and a durable check should forbid it from returning. The full plan lives in `docs/step-12-match-detail-implementation-plan.md`.
+- Recently decided for Step 13: split billing into `13a` billing/usage core and `13b` PayTR checkout/webhooks. V1 has no permanent free tier and no admin comp/manual pilot plan. Users explicitly start one role-derived 1-month trial after completing an eligible role-specific profile; active entitlement gates sample uploads, match run creation, intro sends, and effective public directory visibility, while historical matches, profile access, intro history, and accepted-intro unlocks downgrade gracefully. The full plan lives in `docs/step-13-billing-usage-implementation-plan.md`.
+- Recently decided for Step 14: split notifications/email into `14a` in-app marketplace notifications and `14b` product email. `14a` starts with existing Step 11 intro-request notification rows and adds Fastify-only read models, shared contracts, metadata guardrails, cursor pagination, read/read-all, a latest-5 bell preview, `/app/notifications`, frontend i18n copy, API-owned `ctaPath`, polling, and a 180-day notification retention rule. `14b` adds an async idempotent email outbox, typed Resend adapter, worker, bilingual templates, delivery events, and signature-verified Resend webhooks. The full plan lives in `docs/step-14-notifications-email-implementation-plan.md`.
+- Recently changed for Step 13a / GitHub issues #83-#89: added `supabase/migrations/20260509080705_step13a_billing_usage_core.sql`, which creates `plans`, `subscriptions`, `billing_trial_starts`, `payment_events`, and `usage_ledger`, seeds the trial/pro plan catalog, adds the trusted `start_role_trial(...)` RPC, and replaces intro request quota consumption with `usage_ledger`.
+- Recently changed for Step 13a / GitHub issues #83-#89: added billing contracts and API routes for `GET /api/v1/billing/subscription`, `GET /api/v1/billing/usage`, and `POST /api/v1/billing/trial/start`. Trial start is idempotent for an active trial, denies staff identities and incomplete/ineligible profiles, and returns structured entitlement/usage summaries.
+- Recently changed for Step 13a / GitHub issues #83-#89: sample upload signed URL creation and upload completion, match run creation, intro request sending, and public publisher directory visibility now call the central entitlement path. Billing state remains out of AI-service calls, scoring, candidate persistence, and match detail snapshots.
+- Recently changed for Step 13a / GitHub issues #83-#89: `/app/billing` now shows entitlement, trial state, plan limits, intro usage, storage usage, and directory visibility; `/pricing` shows trial and plan categories without checkout; dashboard, upload, match, and intro surfaces use structured recovery states.
+- Recently changed for Step 13b / GitHub issues #90-#93: added `supabase/migrations/20260509153000_step13b_paytr_checkout_webhooks.sql`, which creates PayTR checkout sessions, extends `payment_events` with hash verification status, and adds service-role RPCs for idempotent webhook processing and narrow billing repair. Because live PayTR wiring is deferred, apply this migration with the post-Step-21 PayTR wiring work rather than the next non-PayTR staging pass.
+- Recently changed for Step 13b / GitHub issues #90-#93: added `POST /api/v1/billing/paytr/checkout-token` for paid monthly/annual plans, a typed PayTR iframe token adapter, `POST /api/v1/webhooks/paytr` with hash verification before mutation and PayTR-required plain `OK` responses, inactive paid state downgrade handling, and admin-only billing repair actions that cannot create free/manual comp entitlement.
 - Recently changed for staging Vertex setup: created the dedicated staging PSC network plan in GCP for AI-service-to-Vertex Vector Search access: VPC `spb-ai-staging-vpc`, Cloud Run subnet `spb-ai-staging-run-euw3` (`10.42.0.0/26`), PSC endpoint subnet `spb-ai-staging-psc-euw3` (`10.42.1.0/28`), service connection policy `spb-ai-staging-vertex-psc`, streaming Vector Search index `6107839868853813248`, PSC-enabled index endpoint `737156575726141440`, deployed index ID `publisher_author_staging_v1`, and PSC match address `10.42.1.2`. A synthetic staging smoke datapoint `smoke-match-signal-staging-001` was upserted for connectivity checks.
 - Recently changed for staging AI service deployment: added `apps/ai-service/cloudbuild.yaml`, built and pushed `europe-west3-docker.pkg.dev/spb-ai/spb-services/ai-service:staging` through Cloud Build for `linux/amd64` with digest `sha256:0f512722eced03a41d00dfe12104ae9e4777035f7c20a0d95d799a37d0cac262`, and deployed Cloud Run revision `spb-ai-service-staging-00003-wgf` on `spb-ai-staging-vpc` / `spb-ai-staging-run-euw3`. Authenticated `/health` and `/ready` return ok. A Cloud Run job on the same VPC path completed a PSC `findNeighbors` smoke and returned `smoke-match-signal-staging-001`.
 - Recently changed for Step 10 / GitHub issues #60-#64: the private AI-service matching endpoint still accepts only `{ match_run_id }`, and deployed defaults now build a repository-backed matching worker instead of a placeholder acknowledgement when Vertex/Gemini and Supabase service-role config are present.
@@ -111,7 +125,7 @@ This file is the local quick-reference knowledge base for the publisher-author S
 - Recently fixed: the legacy admin profile decision endpoint now resolves a pending profile review and routes through the audited admin review decision workflow; repeated or non-pending profile decisions are rejected.
 - Recently fixed: public auth callbacks and signup now keep staff identities out of marketplace flows; staff sessions that hit `/auth/callback` are signed out and sent to `/admin/login?reason=staff`, while `/signup` redirects `allowed`, `mfa_required`, and `revoked` staff states away from the wizard.
 - Recently fixed: dashboard, admin feeds, legal routes, match/discovery placeholder routes, manuscript sample loading states, and upload controls now distinguish loading/error/empty states instead of rendering misleading fallbacks.
-- Next recommended step: apply/verify the existing Step 10 remote migrations, `supabase/migrations/20260508213000_step11_intro_requests.sql`, and `supabase/migrations/20260509120000_step12_match_detail_snapshot.sql` in staging; configure the AI-service Vertex/Gemini env contract; run a staging match, match-detail, legacy-fallback, and intro-request smoke against the PSC Vector Search endpoint; then continue billing/usage hardening.
+- Next recommended step: apply/verify the existing Step 10 remote migrations, `supabase/migrations/20260508213000_step11_intro_requests.sql`, `supabase/migrations/20260509120000_step12_match_detail_snapshot.sql`, and `supabase/migrations/20260509080705_step13a_billing_usage_core.sql` in staging; configure the AI-service Vertex/Gemini env contract; run staging smoke for match, match detail, intro request, billing trial start, inactive entitlement gates, upload/match/intro entitlement denials, and publisher directory entitlement visibility. Defer `supabase/migrations/20260509153000_step13b_paytr_checkout_webhooks.sql`, PayTR sandbox credentials, final non-zero prices, callback URL setup, PayTR checkout/webhook smoke, and admin billing repair smoke until after Step 21.
 - Known blockers: actual GCP bucket provisioning/IAM, production Cloud Tasks/private Cloud Run invocation, live staging/production Vertex/Gemini secret configuration and smoke validation, staging scanner deployment/smoke tests and production scanner rollout, production prices and quotas, account deletion flow, Resend domain verification and secret entry, Sentry project creation/DSN secret entry plus CI source-map release upload, and remote GitHub branch protection enforcement are still open.
 
 ## Product Snapshot
@@ -440,10 +454,15 @@ PayTR is used for SaaS subscriptions only.
 
 Starter plans:
 
-- Free or Trial.
-- Author Pro monthly.
-- Publisher Pro monthly.
-- Admin comp/manual pilot plan.
+- 1-month explicit author trial.
+- 1-month explicit publisher trial.
+- Author Pro monthly and annual.
+- Publisher Pro monthly and annual.
+
+There is no permanent free tier and no admin comp/manual pilot plan in V1.
+Trial activation is explicit, role-derived, allowed once per Supabase Auth user,
+and requires completed role-specific profile setup plus an eligible marketplace
+profile.
 
 Plan gates:
 
@@ -456,11 +475,22 @@ Never store card data. PayTR callbacks must be hash-verified, stored for audit, 
 
 Quota-consuming actions must be transactionally written with usage ledger rows. Usage rows need a source event key or equivalent uniqueness guard to prevent duplicate consumption.
 
+Intro request quota should use monthly plan-backed `usage_ledger` rows. Storage
+quota is current-state based and should be computed from active documents.
+Expired trials or inactive subscriptions downgrade gracefully: historical
+workspace data and accepted-intro unlocks remain readable, while new gated
+marketplace actions are blocked.
+
 ## Email Knowledge
 
 Resend is used for transactional email only.
 
-Initial email events:
+Step 14 is split into:
+
+- `14a` in-app marketplace notifications, starting with existing intro-request notifications.
+- `14b` product email through an async idempotent outbox and Resend adapter.
+
+Initial product email events:
 
 - profile eligibility/exception decision
 - manuscript eligibility/exception decision
@@ -468,13 +498,25 @@ Initial email events:
 - intro request accepted or rejected
 - payment/subscription update
 
+In-app notification rules:
+
+- Marketplace profile-scoped only; admin/system alerts stay on admin and ops surfaces.
+- Browser reads notifications only through the Fastify API, not direct Supabase table reads.
+- Store typed routing data and safe metadata, not rendered title/body text.
+- Frontend i18n generates in-app notification copy.
+- API returns compact actor/target summaries and safe `ctaPath` values.
+- Use cursor pagination, `all`/`unread` filters, idempotent mark-read, and read-all for the current profile.
+- Use polling/refetch instead of realtime or browser push in V1.
+- Treat notifications as ephemeral UX records with 180-day retention; durable history lives in product and audit tables.
+
 Email rules:
 
-- Send from the API or trusted async workers.
+- Send from trusted async workers through an email outbox; do not send inline from product routes.
 - Browser must never call Resend directly.
-- Verify Resend webhook signatures before processing delivery events.
+- Verify Resend webhook signatures before processing delivery/failure events.
 - Use Turkish and English templates.
-- Do not include full manuscript text, document chunks, signed URLs, raw PayTR payloads, or unreleased contact details.
+- Do not include full manuscript text, document chunks, signed URLs, raw PayTR payloads, intro messages, rejection notes, provider payloads, secrets, tokens, or unreleased contact details.
+- Ignore opens and clicks for V1 product state.
 - Prefer emails that bring users back into the authenticated app for sensitive details.
 
 ## Observability Knowledge

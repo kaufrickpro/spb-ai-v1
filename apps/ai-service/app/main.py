@@ -3,12 +3,13 @@ from pydantic import BaseModel, ConfigDict
 
 from app.modules.config import AiServiceConfig, load_config
 from app.modules.embeddings import VertexTextEmbeddingAdapter
-from app.modules.explanations import VertexGeminiExplanationProvider
+from app.modules.explanations import LocalExplanationProvider, VertexGeminiExplanationProvider
 from app.modules.ingestion import IngestionResult
 from app.modules.ingestion_worker import IngestionWorker, create_local_ingestion_worker
 from app.modules.matching import MatchingResult, MatchingWorker
 from app.modules.matching_signals import VertexSignalEmbeddingProvider
 from app.modules.matching_worker import (
+    LocalSignalRetrievalProvider,
     RepositoryBackedMatchingWorker,
     VertexSignalRetrievalProvider,
 )
@@ -114,6 +115,21 @@ def create_default_ingestion_worker(config: AiServiceConfig) -> IngestionWorker 
 
 
 def create_default_matching_worker(config: AiServiceConfig) -> MatchingWorker | None:
+    if (
+        config.provider_mode == "local"
+        and config.supabase_url
+        and config.supabase_service_role_key
+    ):
+        repository = SupabaseMatchingRepository(
+            config.supabase_url,
+            config.supabase_service_role_key,
+        )
+        return RepositoryBackedMatchingWorker(
+            repository=repository,
+            retrieval_provider=LocalSignalRetrievalProvider(repository),
+            explanation_provider=LocalExplanationProvider(),
+        )
+
     if (
         config.provider_mode != "vertex"
         or config.explanation_provider != "vertex_gemini"

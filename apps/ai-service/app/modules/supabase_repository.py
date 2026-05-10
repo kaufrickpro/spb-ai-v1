@@ -248,7 +248,7 @@ class SupabaseMatchingRepository:
                     "id,author_id,title,genre,language,word_count,logline,synopsis,"
                     "subgenres,audience_categories,manuscript_form,declared_themes,"
                     "declared_content_warnings,arc_summary,chapter_summaries,"
-                    "short_teaser,profile_teaser,sample_document_id,eligibility_status"
+                    "sample_document_id,eligibility_status"
                 ),
                 "limit": "1",
             },
@@ -331,7 +331,7 @@ class SupabaseMatchingRepository:
                     "id,author_id,title,genre,language,word_count,logline,synopsis,"
                     "subgenres,audience_categories,manuscript_form,declared_themes,"
                     "declared_content_warnings,arc_summary,chapter_summaries,"
-                    "short_teaser,profile_teaser,sample_document_id"
+                    "sample_document_id"
                 ),
                 "limit": str(limit),
             },

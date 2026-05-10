@@ -90,7 +90,10 @@ describe("CandidateList", () => {
         fitReasons: ["First fit", "Second fit", "Third full detail fit"],
         riskReasons: ["First risk", "Second risk", "Third full detail risk"],
         safeSnippets: [
-          { label: "Guidelines", text: "Full source snippet belongs on detail." },
+          {
+            label: "Guidelines",
+            text: "Full source snippet belongs on detail.",
+          },
         ],
       }),
     ]);

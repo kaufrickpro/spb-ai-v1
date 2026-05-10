@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiRoutes } from "@marketplace/contracts";
 import { useTranslation } from "react-i18next";
 import { AdminShell } from "./AdminShell";
@@ -7,6 +7,7 @@ import { getApiErrorMessage, webApiClient } from "../api/client";
 
 export function AdminPaymentsPage() {
   const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
   const dateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(i18n.resolvedLanguage === "en" ? "en" : "tr", {
@@ -20,6 +21,21 @@ export function AdminPaymentsPage() {
     queryKey: ["admin", "payments-health"],
     queryFn: () => webApiClient.request(ApiRoutes.admin.paymentsHealth),
     retry: false,
+  });
+  const repairMutation = useMutation({
+    mutationFn: (paymentEventId: string) =>
+      webApiClient.request(ApiRoutes.admin.billingRepair, {
+        body: {
+          action: "mark_event_processed",
+          paymentEventId,
+          internalNote: "Provider callback was manually reconciled.",
+        },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "payments-health"],
+      });
+    },
   });
 
   return (
@@ -90,6 +106,9 @@ export function AdminPaymentsPage() {
                     <th className="px-4 py-3 font-medium">
                       {t("admin.payments.time")}
                     </th>
+                    <th className="px-4 py-3 font-medium">
+                      {t("admin.payments.action")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -109,6 +128,21 @@ export function AdminPaymentsPage() {
                       <td className="px-4 py-3 text-slate-700">
                         {dateFormatter.format(new Date(event.occurredAt))}
                       </td>
+                      <td className="px-4 py-3">
+                        {event.status === "pending" ||
+                        event.status === "failed" ? (
+                          <button
+                            type="button"
+                            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                            disabled={repairMutation.isPending}
+                            onClick={() => repairMutation.mutate(event.id)}
+                          >
+                            {t("admin.payments.markProcessed")}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-500">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -116,6 +150,11 @@ export function AdminPaymentsPage() {
             </div>
           )}
         </section>
+        {repairMutation.isError ? (
+          <div role="alert" className="text-sm font-medium text-rose-700">
+            {getApiErrorMessage(repairMutation.error)}
+          </div>
+        ) : null}
       </main>
     </AdminShell>
   );

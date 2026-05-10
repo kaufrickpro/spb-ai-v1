@@ -1,6 +1,7 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CreateManuscriptRequest } from "@marketplace/contracts";
+import { NumberInput, TextareaInput, TextInput } from "./ManuscriptFormFields";
+import { useManuscriptFormState } from "./useManuscriptFormState";
 
 type Props = {
   defaultValues?: Partial<CreateManuscriptRequest>;
@@ -17,8 +18,6 @@ const LANGUAGE_OPTIONS = [
   { value: "es", label: "Español" },
 ];
 
-type FormErrors = Partial<Record<"title" | "genre" | "language", string>>;
-
 export function ManuscriptForm({
   defaultValues,
   onSubmit,
@@ -26,79 +25,44 @@ export function ManuscriptForm({
   isSaving,
 }: Props) {
   const { t } = useTranslation();
-  const [title, setTitle] = useState(defaultValues?.title ?? "");
-  const [genre, setGenre] = useState(defaultValues?.genre ?? "");
-  const [language, setLanguage] = useState(defaultValues?.language ?? "tr");
-  const [wordCount, setWordCount] = useState<string>(
-    defaultValues?.wordCount?.toString() ?? "",
-  );
-  const [synopsis, setSynopsis] = useState(defaultValues?.synopsis ?? "");
-  const [logline, setLogline] = useState(defaultValues?.logline ?? "");
-  const [subgenres, setSubgenres] = useState(
-    defaultValues?.subgenres?.join(", ") ?? "",
-  );
-  const [audienceCategories, setAudienceCategories] = useState(
-    defaultValues?.audienceCategories?.join(", ") ?? "",
-  );
-  const [manuscriptForm, setManuscriptForm] = useState(
-    defaultValues?.manuscriptForm ?? "",
-  );
-  const [compTitles, setCompTitles] = useState(
-    defaultValues?.compTitles?.join(", ") ?? "",
-  );
-  const [declaredThemes, setDeclaredThemes] = useState(
-    defaultValues?.declaredThemes?.join(", ") ?? "",
-  );
-  const [declaredContentWarnings, setDeclaredContentWarnings] = useState(
-    defaultValues?.declaredContentWarnings?.join(", ") ?? "",
-  );
-  const [arcSummary, setArcSummary] = useState(defaultValues?.arcSummary ?? "");
-  const [shortTeaser, setShortTeaser] = useState(
-    defaultValues?.shortTeaser ?? "",
-  );
-  const [requestable, setRequestable] = useState(
-    defaultValues?.requestable ?? false,
-  );
-  const [targetAgeMin, setTargetAgeMin] = useState<string>(
-    defaultValues?.targetAgeMin?.toString() ?? "",
-  );
-  const [targetAgeMax, setTargetAgeMax] = useState<string>(
-    defaultValues?.targetAgeMax?.toString() ?? "",
-  );
-  const [errors, setErrors] = useState<FormErrors>({});
-
-  function validate(): boolean {
-    const next: FormErrors = {};
-    if (!title.trim()) next.title = "Title is required.";
-    if (!genre.trim()) next.genre = "Genre is required.";
-    if (!language.trim()) next.language = "Language is required.";
-    setErrors(next);
-    return Object.keys(next).length === 0;
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!validate()) return;
-    void onSubmit({
-      title: title.trim(),
-      genre: genre.trim(),
-      language: language.trim(),
-      wordCount: wordCount ? Number(wordCount) : undefined,
-      synopsis: synopsis.trim() || undefined,
-      logline: logline.trim() || undefined,
-      subgenres: splitCsv(subgenres),
-      audienceCategories: splitCsv(audienceCategories),
-      manuscriptForm: manuscriptForm.trim() || undefined,
-      compTitles: splitCsv(compTitles),
-      declaredThemes: splitCsv(declaredThemes),
-      declaredContentWarnings: splitCsv(declaredContentWarnings),
-      arcSummary: arcSummary.trim() || undefined,
-      shortTeaser: shortTeaser.trim() || undefined,
-      requestable,
-      targetAgeMin: targetAgeMin ? Number(targetAgeMin) : undefined,
-      targetAgeMax: targetAgeMax ? Number(targetAgeMax) : undefined,
-    });
-  }
+  const {
+    arcSummary,
+    audienceCategories,
+    compTitles,
+    declaredContentWarnings,
+    declaredThemes,
+    errors,
+    genre,
+    handleSubmit,
+    language,
+    logline,
+    manuscriptForm,
+    requestable,
+    setArcSummary,
+    setAudienceCategories,
+    setCompTitles,
+    setDeclaredContentWarnings,
+    setDeclaredThemes,
+    setGenre,
+    setLanguage,
+    setLogline,
+    setManuscriptForm,
+    setRequestable,
+    setShortTeaser,
+    setSubgenres,
+    setSynopsis,
+    setTargetAgeMax,
+    setTargetAgeMin,
+    setTitle,
+    setWordCount,
+    shortTeaser,
+    subgenres,
+    synopsis,
+    targetAgeMax,
+    targetAgeMin,
+    title,
+    wordCount,
+  } = useManuscriptFormState({ defaultValues, onSubmit });
 
   const inputClass =
     "mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600";
@@ -111,40 +75,34 @@ export function ManuscriptForm({
       className="grid grid-cols-1 gap-4 sm:grid-cols-2"
       noValidate
     >
-      {/* Title */}
       <div className="sm:col-span-2">
-        <label htmlFor="manuscript-title" className={labelClass}>
-          {t("manuscripts.form.title")}
-          <span className="ml-1 text-red-500">*</span>
-        </label>
-        <input
+        <TextInput
           id="manuscript-title"
-          type="text"
-          placeholder={t("manuscripts.form.titlePlaceholder")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          inputClass={inputClass}
+          label={t("manuscripts.form.title")}
+          labelClass={labelClass}
           maxLength={200}
-          className={inputClass}
+          onChange={setTitle}
+          placeholder={t("manuscripts.form.titlePlaceholder")}
+          required
+          value={title}
         />
         {errors.title && (
           <p className="mt-1 text-xs text-red-600">{errors.title}</p>
         )}
       </div>
 
-      {/* Genre */}
       <div>
-        <label htmlFor="manuscript-genre" className={labelClass}>
-          {t("manuscripts.form.genre")}
-          <span className="ml-1 text-red-500">*</span>
-        </label>
-        <input
+        <TextInput
           id="manuscript-genre"
-          type="text"
-          placeholder={t("manuscripts.form.genrePlaceholder")}
-          value={genre}
-          onChange={(e) => setGenre(e.target.value)}
+          inputClass={inputClass}
+          label={t("manuscripts.form.genre")}
+          labelClass={labelClass}
           maxLength={80}
-          className={inputClass}
+          onChange={setGenre}
+          placeholder={t("manuscripts.form.genrePlaceholder")}
+          required
+          value={genre}
         />
         {errors.genre && (
           <p className="mt-1 text-xs text-red-600">{errors.genre}</p>
@@ -171,80 +129,59 @@ export function ManuscriptForm({
         </select>
       </div>
 
-      {/* Word count */}
-      <div>
-        <label htmlFor="manuscript-word-count" className={labelClass}>
-          {t("manuscripts.form.wordCount")}
-        </label>
-        <input
-          id="manuscript-word-count"
-          type="number"
-          min={0}
-          value={wordCount}
-          onChange={(e) => setWordCount(e.target.value)}
-          className={inputClass}
-        />
-      </div>
+      <NumberInput
+        id="manuscript-word-count"
+        inputClass={inputClass}
+        label={t("manuscripts.form.wordCount")}
+        labelClass={labelClass}
+        min={0}
+        onChange={setWordCount}
+        value={wordCount}
+      />
 
-      {/* Target age min */}
-      <div>
-        <label htmlFor="manuscript-age-min" className={labelClass}>
-          {t("manuscripts.form.targetAgeMin")}
-        </label>
-        <input
-          id="manuscript-age-min"
-          type="number"
-          min={0}
-          max={120}
-          value={targetAgeMin}
-          onChange={(e) => setTargetAgeMin(e.target.value)}
-          className={inputClass}
-        />
-      </div>
+      <NumberInput
+        id="manuscript-age-min"
+        inputClass={inputClass}
+        label={t("manuscripts.form.targetAgeMin")}
+        labelClass={labelClass}
+        max={120}
+        min={0}
+        onChange={setTargetAgeMin}
+        value={targetAgeMin}
+      />
 
-      {/* Target age max */}
-      <div>
-        <label htmlFor="manuscript-age-max" className={labelClass}>
-          {t("manuscripts.form.targetAgeMax")}
-        </label>
-        <input
-          id="manuscript-age-max"
-          type="number"
-          min={0}
-          max={120}
-          value={targetAgeMax}
-          onChange={(e) => setTargetAgeMax(e.target.value)}
-          className={inputClass}
-        />
-      </div>
+      <NumberInput
+        id="manuscript-age-max"
+        inputClass={inputClass}
+        label={t("manuscripts.form.targetAgeMax")}
+        labelClass={labelClass}
+        max={120}
+        min={0}
+        onChange={setTargetAgeMax}
+        value={targetAgeMax}
+      />
 
-      {/* Synopsis */}
-      <div className="sm:col-span-2">
-        <label htmlFor="manuscript-synopsis" className={labelClass}>
-          {t("manuscripts.form.synopsis")}
-        </label>
-        <textarea
-          id="manuscript-synopsis"
-          rows={4}
-          placeholder={t("manuscripts.form.synopsisPlaceholder")}
-          maxLength={2000}
-          value={synopsis}
-          onChange={(e) => setSynopsis(e.target.value)}
-          className={inputClass}
-        />
-      </div>
+      <TextareaInput
+        id="manuscript-synopsis"
+        inputClass={inputClass}
+        label={t("manuscripts.form.synopsis")}
+        labelClass={labelClass}
+        maxLength={2000}
+        onChange={setSynopsis}
+        placeholder={t("manuscripts.form.synopsisPlaceholder")}
+        rows={4}
+        value={synopsis}
+      />
 
       <div className="sm:col-span-2">
-        <label htmlFor="manuscript-logline" className={labelClass}>
-          {t("manuscripts.form.logline")}
-        </label>
-        <input
+        <TextInput
           id="manuscript-logline"
-          type="text"
+          inputClass={inputClass}
+          label={t("manuscripts.form.logline")}
+          labelClass={labelClass}
           maxLength={500}
+          onChange={setLogline}
           value={logline}
-          onChange={(e) => setLogline(e.target.value)}
-          className={inputClass}
         />
       </div>
 
@@ -297,31 +234,27 @@ export function ManuscriptForm({
         value={declaredContentWarnings}
       />
 
-      <div className="sm:col-span-2">
-        <label htmlFor="manuscript-arc" className={labelClass}>
-          {t("manuscripts.form.arcSummary")}
-        </label>
-        <textarea
-          id="manuscript-arc"
-          rows={4}
-          maxLength={2000}
-          value={arcSummary}
-          onChange={(e) => setArcSummary(e.target.value)}
-          className={inputClass}
-        />
-      </div>
+      <TextareaInput
+        id="manuscript-arc"
+        inputClass={inputClass}
+        label={t("manuscripts.form.arcSummary")}
+        labelClass={labelClass}
+        maxLength={2000}
+        onChange={setArcSummary}
+        rows={4}
+        value={arcSummary}
+      />
 
       <div className="sm:col-span-2">
-        <label htmlFor="manuscript-teaser" className={labelClass}>
-          {t("manuscripts.form.shortTeaser")}
-        </label>
-        <textarea
+        <TextareaInput
           id="manuscript-teaser"
-          rows={3}
+          inputClass={inputClass}
+          label={t("manuscripts.form.shortTeaser")}
+          labelClass={labelClass}
           maxLength={500}
+          onChange={setShortTeaser}
+          rows={3}
           value={shortTeaser}
-          onChange={(e) => setShortTeaser(e.target.value)}
-          className={inputClass}
         />
         <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
           <input
@@ -354,43 +287,5 @@ export function ManuscriptForm({
         )}
       </div>
     </form>
-  );
-}
-
-function splitCsv(value: string): string[] {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function TextInput({
-  id,
-  inputClass,
-  label,
-  labelClass,
-  onChange,
-  value,
-}: {
-  id: string;
-  inputClass: string;
-  label: string;
-  labelClass: string;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className={labelClass}>
-        {label}
-      </label>
-      <input
-        id={id}
-        type="text"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={inputClass}
-      />
-    </div>
   );
 }

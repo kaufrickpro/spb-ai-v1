@@ -142,7 +142,7 @@ Use a workflow that makes mistakes cheap and visible:
 - Added `GET /api/v1/profiles/me` to fetch the current user's profile.
 - Replaced the standalone onboarding journey with a profile-first flow. `/onboarding*` routes now behave as compatibility redirects to `/app/profile`.
 - Added a basic profile placeholder page as the first post-signup destination.
-- Add author profile and publisher preference forms on `/app/profile` in the next slice.
+- `/app/profile` now includes the author detail form for biography, primary genre, and writing languages and calls `POST /api/v1/profiles/me/onboarding-details`; publisher preference editing on `/app/profile` remains for a later slice.
 - Add automated profile eligibility checks after the richer profile fields are in place.
 - Profiles that pass deterministic checks can become discoverable automatically; profiles with uncertain or high-risk signals enter admin exception review.
 - Production rollout rule: before production auth testing, replace all `localhost:5173` app callback values with the public domain in frontend config, backend `WEB_APP_URL`, and Supabase Auth URL Configuration. Provider callback URLs such as Google should continue to use the Supabase project callback unless the project itself changes.
@@ -242,20 +242,29 @@ Use a workflow that makes mistakes cheap and visible:
 
 ### 13. Build Billing And Usage
 
-- Implement plans with free/trial, Author Pro monthly/annual, Publisher Pro monthly/annual, and admin comp/manual pilot.
-- Add quota checks for intro requests, upload storage, directory visibility, and support level.
-- Keep match runs rate-limited but not monthly quota-gated.
-- Implement PayTR checkout token creation through a typed adapter.
-- Implement hash-verified, idempotent PayTR webhook handling.
-- Store payment events and subscription changes for audit.
+- Status: Step 13a billing/usage core is implemented locally for GitHub issues #83-#89, and Step 13b PayTR checkout/webhook core is implemented locally for GitHub issues #90-#93. Existing remote databases must apply `supabase/migrations/20260509080705_step13a_billing_usage_core.sql` after the Step 10, Step 11, and Step 12 migrations before deployed entitlement gates and intro quota can work. Live PayTR wiring is deferred until after Step 21; apply `supabase/migrations/20260509153000_step13b_paytr_checkout_webhooks.sql` with that post-Step-21 PayTR wiring pass.
+- Split Step 13 into `13a` billing/usage core and `13b` PayTR checkout/webhooks.
+- `13a` now adds explicit 1-month role-derived trials, Author Pro monthly/annual, Publisher Pro monthly/annual, central entitlement checks, plan-backed intro usage, author storage enforcement, public directory entitlement visibility, `/app/billing`, and public `/pricing`. No permanent free tier or admin comp/manual pilot plan was added.
+- Trials start only through `POST /api/v1/billing/trial/start` after role-specific profile setup is complete and the profile is eligible. One trial per Supabase Auth user is enforced by `billing_trial_starts`.
+- Step 11 fixed intro request quota has been replaced for new sends by monthly `usage_ledger` consumption, transactionally inside `public.create_intro_request(...)`; daily/hourly controls remain abuse controls only when added separately.
+- Storage usage is computed from active document state, with upload quota precheck at signed URL creation and completion-time enforcement that avoids unfair double-counting for replacements.
+- Match runs are entitlement-gated and remain rate-limited but not monthly quota-metered. Billing state must never affect match relevance, scoring, AI-service inputs, or match detail.
+- Downgrade gracefully when trial/subscription entitlement expires: keep historical workspace data, match history/details, match-revealed profiles, intro history, and accepted-intro unlocks readable, but block new gated actions.
+- `13b` implements PayTR checkout token creation through a typed adapter, hash-verified idempotent webhook handling, payment event storage, subscription changes, inactive paid downgrade behavior, and narrow audited billing repair for provider-sync incidents. It does not add manual/free comp entitlement. Keep `PAYTR_PROVIDER_MODE=disabled` in deployed environments until the post-Step-21 PayTR wiring checkpoint.
+- The detailed Step 13 implementation plan lives in `docs/step-13-billing-usage-implementation-plan.md`.
 
 ### 14. Build Notifications And Email
 
-- Implement in-app notifications first.
-- Send transactional emails for profile decisions, manuscript decisions, intro request updates, and subscription updates.
-- Verify Resend webhook signatures before processing delivery events.
-- Do not email manuscript text, document chunks, signed URLs, raw PayTR payloads, or unreleased contact details.
+- Status: implemented locally for GitHub issues #94-#101. The detailed Step 14 implementation plan and validation record live in `docs/step-14-notifications-email-implementation-plan.md`.
+- Split Step 14 into `14a` in-app marketplace notifications and `14b` product email.
+- `14a` starts with existing Step 11 intro-request notifications as the tracer slice. Build a Fastify-only notification read model, shared contracts, metadata guardrails, cursor pagination, read/read-all mutations, a latest-5 header bell preview, and `/app/notifications` with `all`/`unread` filters.
+- Keep in-app notification writes transactional with the domain mutation. Use frontend i18n for in-app notification copy, API-owned safe `ctaPath` values, compact actor/target summaries, polling instead of realtime/push, and a 180-day notification retention rule.
+- `14b` adds product email through an async idempotent email outbox, typed Resend adapter, worker, bilingual Turkish/English templates, delivery event storage, and signature-verified Resend webhooks.
+- Product email triggers are an allowlisted subset of product events such as intro request updates, profile/manuscript decisions, and subscription updates. Do not send email for every in-app notification.
+- Verify Resend webhook signatures before processing delivery/failure lifecycle events. Ignore opens/clicks for V1 product state.
+- Do not email manuscript text, document chunks, signed URLs, raw PayTR payloads, intro messages, rejection notes, unreleased contact details, provider payloads, secrets, or tokens.
 - Keep Supabase Auth emails out of this adapter. Auth lifecycle emails are configured in Supabase custom SMTP through Resend SMTP using dedicated auth senders such as `no-reply@auth.spb-ai.com` for production and `no-reply@auth.spb-ai.dev` for staging.
+- Existing remote databases must apply `supabase/migrations/20260509180000_step14_notifications_email.sql` after the Step 13b migration. Live Resend validation requires a verified sender/domain plus `EMAIL_PROVIDER_MODE=resend`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, and `RESEND_WEBHOOK_SECRET`.
 
 ### 15. Build Frontend Product Screens
 
@@ -332,9 +341,20 @@ Use a workflow that makes mistakes cheap and visible:
 - Deploy API, AI service, and frontend containers to Cloud Run.
 - Wire real Sentry and Resend.
 - Wire real GCS and Cloud Tasks.
-- Wire PayTR sandbox/test credentials.
+- Keep PayTR disabled during the initial Step 21 staging rollout unless the
+  separate post-Step-21 PayTR wiring checkpoint has started.
 - Wire Vertex AI Vector Search when provider config is ready.
 - Run smoke, integration, E2E, security, webhook replay, and AI eval checks.
+
+### Post-Step-21 PayTR Wiring Checkpoint
+
+- Apply `supabase/migrations/20260509153000_step13b_paytr_checkout_webhooks.sql`
+  after the Step 13a billing migration is already live.
+- Configure PayTR sandbox/test credentials and callback URL.
+- Set final non-zero TRY prices in the paid `plans.price_minor` rows.
+- Switch staging to `PAYTR_PROVIDER_MODE=sandbox`.
+- Smoke checkout-token creation, PayTR callback success/replay/invalid hash,
+  inactive downgrade gates, and narrow admin billing repair.
 
 ### 22. Production Launch
 
@@ -464,5 +484,6 @@ Use a workflow that makes mistakes cheap and visible:
 - `docs/architecture/ai-rag-pipeline.md`
 - `docs/architecture/auth-security-rls.md`
 - `docs/architecture/payments-paytr.md`
+- `docs/step-13-billing-usage-implementation-plan.md`
 - `docs/architecture/observability.md`
 - `docs/architecture/deployment-google-cloud.md`

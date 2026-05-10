@@ -5,6 +5,7 @@ import {
   MAX_FILE_SIZE_BYTES,
   ALLOWED_MIME_TYPES,
 } from "@marketplace/contracts";
+import { getEntitlementDenial } from "../billing/useBilling";
 
 type Props = {
   manuscriptId: string;
@@ -49,8 +50,9 @@ export function UploadControl({ manuscriptId, hasExistingDocument }: Props) {
     try {
       await uploadMutation.mutateAsync(file);
       setSuccessMsg(true);
-    } catch {
-      setLocalError(t("manuscripts.upload.errorGeneric"));
+    } catch (error) {
+      const denial = getEntitlementDenial(error);
+      setLocalError(denial?.message ?? t("manuscripts.upload.errorGeneric"));
     }
   }
 

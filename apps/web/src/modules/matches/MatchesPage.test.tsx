@@ -1,7 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MatchesPage } from "./MatchesPage";
+import type { Manuscript } from "@marketplace/contracts";
+import {
+  MatchesPage,
+  isManuscriptMatchReady,
+  resolveSelectedManuscriptId,
+} from "./MatchesPage";
 
 const mockUseMarketplaceProfile = vi.fn();
 const mockUseManuscripts = vi.fn();
@@ -81,6 +86,68 @@ describe("MatchesPage states", () => {
   it("shows an empty state when there are no match runs", () => {
     expect(renderMatchesPage()).toContain("matches.empty");
   });
+
+  it("renders an author manuscript selector before running a match", () => {
+    mockUseMarketplaceProfile.mockReturnValue({
+      data: { profile: { role: "author" } },
+      isError: false,
+      isPending: false,
+    });
+    mockUseManuscripts.mockReturnValue({
+      data: {
+        manuscripts: [
+          createManuscript({
+            id: "10000000-0000-4000-8000-000000000011",
+            title: "First Ready Manuscript",
+          }),
+          createManuscript({
+            id: "10000000-0000-4000-8000-000000000012",
+            title: "Second Ready Manuscript",
+          }),
+        ],
+      },
+      isError: false,
+      isPending: false,
+    });
+
+    const markup = renderMatchesPage();
+
+    expect(markup).toContain("matches.selectManuscript");
+    expect(markup).toContain("First Ready Manuscript");
+    expect(markup).toContain("Second Ready Manuscript");
+  });
+
+  it("respects a manually selected manuscript id when resolving the run target", () => {
+    const manuscripts = [
+      createManuscript({
+        id: "10000000-0000-4000-8000-000000000021",
+        title: "First Ready Manuscript",
+      }),
+      createManuscript({
+        id: "10000000-0000-4000-8000-000000000022",
+        title: "Second Ready Manuscript",
+      }),
+    ];
+
+    expect(
+      resolveSelectedManuscriptId(
+        manuscripts,
+        "10000000-0000-4000-8000-000000000022",
+      ),
+    ).toBe("10000000-0000-4000-8000-000000000022");
+  });
+
+  it("allows matches only for eligible manuscripts with an uploaded sample", () => {
+    expect(isManuscriptMatchReady(createManuscript())).toBe(true);
+    expect(
+      isManuscriptMatchReady(
+        createManuscript({ eligibilityStatus: "limited" }),
+      ),
+    ).toBe(false);
+    expect(
+      isManuscriptMatchReady(createManuscript({ sampleDocumentId: null })),
+    ).toBe(false);
+  });
 });
 
 function renderMatchesPage() {
@@ -89,4 +156,36 @@ function renderMatchesPage() {
       <MatchesPage />
     </MemoryRouter>,
   );
+}
+
+function createManuscript(
+  input: Partial<{
+    id: string;
+    title: string;
+    eligibilityStatus: Manuscript["eligibilityStatus"];
+    sampleDocumentId: string | null;
+  }> = {},
+): Pick<Manuscript, "id" | "title" | "eligibilityStatus" | "sampleDocumentId"> &
+  Record<string, unknown> {
+  return {
+    id: input.id ?? "10000000-0000-4000-8000-000000000001",
+    authorId: "00000000-0000-4000-8000-000000000001",
+    title: input.title ?? "Ready Manuscript",
+    genre: "Roman",
+    language: "tr",
+    wordCount: 42000,
+    synopsis: null,
+    targetAgeMin: null,
+    targetAgeMax: null,
+    status: "draft",
+    adminReviewStatus: "not_submitted",
+    eligibilityStatus: input.eligibilityStatus ?? "eligible",
+    reviewOutcome: "auto_approved",
+    sampleDocumentId:
+      input.sampleDocumentId !== undefined
+        ? input.sampleDocumentId
+        : "20000000-0000-4000-8000-000000000001",
+    createdAt: "2026-05-04T09:00:00.000Z",
+    updatedAt: "2026-05-04T09:00:00.000Z",
+  };
 }

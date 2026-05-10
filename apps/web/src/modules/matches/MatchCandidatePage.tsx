@@ -5,7 +5,11 @@ import { PlatformHeader } from "../layout/PlatformHeader";
 import { WEB_ROUTES } from "../routing/routes";
 import { getApiErrorCode, getApiErrorMessage } from "../api/client";
 import { AxisBands } from "./MatchCandidateSummary";
-import { shouldShowExplanation, visibleList, visibleText } from "./matchDisplay";
+import {
+  shouldShowExplanation,
+  visibleList,
+  visibleText,
+} from "./matchDisplay";
 import { useMatchCandidate } from "./useMatches";
 import { IntroRequestAction } from "../introRequests/IntroRequestAction";
 
@@ -167,7 +171,10 @@ function DetailTabs({ candidate }: { candidate: MatchCandidateDetail }) {
         {detail.comparison.length ? (
           <div className="mt-3 divide-y divide-slate-100">
             {detail.comparison.map((row) => (
-              <div className="grid gap-2 py-3 text-sm sm:grid-cols-4" key={row.key}>
+              <div
+                className="grid gap-2 py-3 text-sm sm:grid-cols-4"
+                key={row.key}
+              >
                 <div>
                   <span className="font-medium text-slate-900">
                     {t(`matches.comparison.${row.key}`)}
@@ -221,12 +228,16 @@ function DetailTabs({ candidate }: { candidate: MatchCandidateDetail }) {
         {snippets.length ? (
           <dl className="mt-4 space-y-3 text-sm">
             {snippets.map((snippet) => (
-              <div key={`${snippet.sourceType}:${snippet.label}:${snippet.text}`}>
+              <div
+                key={`${snippet.sourceType}:${snippet.label}:${snippet.text}`}
+              >
                 <dt className="font-medium text-slate-900">
                   {snippet.label} ·{" "}
                   {t(`matches.sourceType.${snippet.sourceType}`)}
                 </dt>
-                <dd className="mt-1 leading-6 text-slate-700">{snippet.text}</dd>
+                <dd className="mt-1 leading-6 text-slate-700">
+                  {snippet.text}
+                </dd>
               </div>
             ))}
           </dl>
@@ -240,14 +251,22 @@ function DetailTabs({ candidate }: { candidate: MatchCandidateDetail }) {
         <DetailSection title={t("matches.riskReasons")} values={watchOuts} />
         <DetailSection
           title={t("matches.limitations")}
-          values={detail.limitations.map((item) => t(`matches.limitation.${item}`))}
+          values={detail.limitations.map((item) =>
+            t(`matches.limitation.${item}`),
+          )}
         />
       </section>
     </div>
   );
 }
 
-function DetailValue({ label, value }: { label: string; value: string | null }) {
+function DetailValue({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null;
+}) {
   const { t } = useTranslation();
   return (
     <div>

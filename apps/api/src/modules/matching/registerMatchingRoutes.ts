@@ -19,6 +19,10 @@ import {
 import type { ManuscriptTestState } from "../manuscripts/testState.js";
 import type { ProfileTestState } from "../profiles/testState.js";
 import type { IntroRequestTestState } from "../introRequests/testState.js";
+import { assertEntitlementForAction } from "../billing/service.js";
+import { BillingServiceError } from "../billing/errors.js";
+import { sendBillingError } from "../billing/registerBillingRoutes.js";
+import type { BillingTestState } from "../billing/testState.js";
 import { MatchingServiceError } from "./errors.js";
 import {
   getMatchCandidate,
@@ -30,6 +34,7 @@ import type { MatchingTestState } from "./testState.js";
 
 type RegisterMatchingRoutesOptions = {
   auth: AuthDependencies;
+  billingTestState: BillingTestState;
   introTestState: IntroRequestTestState;
   manuscriptTestState: ManuscriptTestState;
   profileTestState: ProfileTestState;
@@ -40,6 +45,7 @@ export function registerMatchingRoutes(
   app: FastifyInstance,
   {
     auth,
+    billingTestState,
     introTestState,
     manuscriptTestState,
     profileTestState,
@@ -60,6 +66,14 @@ export function registerMatchingRoutes(
     }
 
     try {
+      await assertEntitlementForAction({
+        action: "run_match",
+        billingTestState,
+        config: auth.config,
+        manuscriptTestState,
+        profileTestState,
+        user,
+      });
       const response = await runMatch({
         config: auth.config,
         introTestState,
@@ -181,6 +195,9 @@ function sendMatchingError(
     if (error.kind === "rate_limited") {
       return sendTooManyRequests(reply, "match_rate_limited", error.message);
     }
+  }
+  if (error instanceof BillingServiceError) {
+    return sendBillingError(app, reply, error);
   }
 
   app.log.error(error, "Failed to handle match request");

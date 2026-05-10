@@ -1,6 +1,10 @@
 from fastapi.testclient import TestClient
 
-from app.main import create_app, create_default_ingestion_worker
+from app.main import (
+    create_app,
+    create_default_ingestion_worker,
+    create_default_matching_worker,
+)
 from app.modules.config import AiServiceConfig
 from app.modules.matching import MatchingResult
 
@@ -117,6 +121,18 @@ def test_internal_matching_endpoint_rejects_untrusted_payload_fields() -> None:
 
 def test_default_ingestion_worker_uses_local_supabase_settings() -> None:
     worker = create_default_ingestion_worker(
+        AiServiceConfig(
+            provider_mode="local",
+            supabase_url="http://127.0.0.1:54321",
+            supabase_service_role_key="service",
+        )
+    )
+
+    assert worker is not None
+
+
+def test_default_matching_worker_uses_local_supabase_settings() -> None:
+    worker = create_default_matching_worker(
         AiServiceConfig(
             provider_mode="local",
             supabase_url="http://127.0.0.1:54321",

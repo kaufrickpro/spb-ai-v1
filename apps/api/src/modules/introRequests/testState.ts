@@ -13,6 +13,7 @@ export type IntroNotification = {
   targetType: string;
   targetId: string;
   metadata: Record<string, unknown>;
+  readAt: string | null;
   createdAt: string;
 };
 
@@ -32,11 +33,12 @@ export function createIntroRequestTestState(): IntroRequestTestState {
 
 export function pushIntroNotification(
   state: IntroRequestTestState,
-  input: Omit<IntroNotification, "id" | "createdAt">,
+  input: Omit<IntroNotification, "id" | "createdAt" | "readAt">,
 ) {
   state.notifications.unshift({
     ...input,
     id: randomUUID(),
+    readAt: null,
     createdAt: new Date().toISOString(),
   });
 }

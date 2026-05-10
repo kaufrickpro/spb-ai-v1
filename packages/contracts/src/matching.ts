@@ -101,21 +101,22 @@ export const MatchDetailSnippetSchema = MatchSafeSnippetSchema.extend({
 });
 
 export const MatchComparisonRowSchema = z.object({
-  key: z
-    .enum([
-      "genre",
-      "audience",
-      "manuscript_form",
-      "language",
-      "word_count",
-      "themes",
-      "content_warnings",
-    ]),
+  key: z.enum([
+    "genre",
+    "audience",
+    "manuscript_form",
+    "language",
+    "word_count",
+    "themes",
+    "content_warnings",
+  ]),
   status: MatchComparisonStatusSchema,
   manuscriptValues: z.array(z.string().trim().min(1).max(120)).max(12),
   publisherValues: z.array(z.string().trim().min(1).max(120)).max(12),
   noteCode: z.string().trim().min(1).max(100),
-  noteParams: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).default({}),
+  noteParams: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .default({}),
 });
 
 export const MatchAxisEvidenceSchema = z.object({
@@ -141,7 +142,9 @@ export const MatchDetailSnapshotSchema = z.object({
       acceptedAudienceCategories: z
         .array(z.string().trim().min(1).max(120))
         .max(20),
-      acceptedManuscriptForms: z.array(z.string().trim().min(1).max(120)).max(20),
+      acceptedManuscriptForms: z
+        .array(z.string().trim().min(1).max(120))
+        .max(20),
       excludedTopics: z.array(z.string().trim().min(1).max(120)).max(20),
       guidelinesSummary: z.string().trim().max(420).nullable(),
       wishlistSummary: z.string().trim().max(420).nullable(),
@@ -157,7 +160,9 @@ export const MatchDetailSnapshotSchema = z.object({
       language: z.string().trim().max(40).nullable(),
       wordCount: z.number().int().nonnegative().nullable(),
       themes: z.array(z.string().trim().min(1).max(120)).max(20),
-      declaredContentWarnings: z.array(z.string().trim().min(1).max(120)).max(20),
+      declaredContentWarnings: z
+        .array(z.string().trim().min(1).max(120))
+        .max(20),
       logline: z.string().trim().max(360).nullable(),
       teaser: z.string().trim().max(360).nullable(),
     })

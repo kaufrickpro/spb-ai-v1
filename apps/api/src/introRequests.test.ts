@@ -8,6 +8,7 @@ import {
 } from "./modules/manuscripts/testState.js";
 import { createProfileTestState } from "./modules/profiles/testState.js";
 import { createMatchingTestState } from "./modules/matching/testState.js";
+import { createEmailTestState } from "./modules/email/testState.js";
 import { TEST_USER_ID } from "./modules/auth/requestAuth.js";
 
 const testConfig = {
@@ -114,7 +115,8 @@ describe("Step 11 intro requests", () => {
   });
 
   it("lets the recipient accept and then unlocks contact plus publisher sample download", async () => {
-    const { app, documentId, publisherProfileId } = await buildIntroFixture();
+    const { app, documentId, email, publisherProfileId } =
+      await buildIntroFixture();
 
     const created = await app.inject({
       method: "POST",
@@ -133,6 +135,10 @@ describe("Step 11 intro requests", () => {
       headers: { authorization: "Bearer test-publisher" },
     });
     expect(accepted.statusCode).toBe(200);
+    expect(email.outbox[0].templateKey).toBe("intro_request_accepted");
+    expect(email.outbox[0].recipientProfileId).toBe(
+      created.json().request.requesterProfileId,
+    );
 
     const authorList = await app.inject({
       method: "GET",
@@ -160,6 +166,7 @@ async function buildIntroFixture() {
   const profiles = createProfileTestState();
   const matching = createMatchingTestState();
   const introRequests = createIntroRequestTestState();
+  const email = createEmailTestState();
   const document = createTestDocument(
     manuscripts,
     "20000000-0000-4000-8000-000000000011",
@@ -184,7 +191,7 @@ async function buildIntroFixture() {
 
   const app = buildApp({
     config: testConfig,
-    testState: { introRequests, manuscripts, matching, profiles },
+    testState: { email, introRequests, manuscripts, matching, profiles },
   });
 
   await app.inject({
@@ -212,6 +219,11 @@ async function buildIntroFixture() {
   });
   await app.inject({
     method: "POST",
+    url: "/api/v1/billing/trial/start",
+    headers: { authorization: "Bearer test-user" },
+  });
+  await app.inject({
+    method: "POST",
     url: "/api/v1/profiles",
     headers: { authorization: "Bearer test-publisher" },
     payload: {
@@ -236,6 +248,11 @@ async function buildIntroFixture() {
       acceptedManuscriptForms: ["novel"],
       submissionGuidelines: "Send a concise pitch.",
     },
+  });
+  await app.inject({
+    method: "POST",
+    url: "/api/v1/billing/trial/start",
+    headers: { authorization: "Bearer test-publisher" },
   });
   await app.inject({
     method: "PUT",
@@ -268,6 +285,7 @@ async function buildIntroFixture() {
   return {
     app,
     documentId: document.id,
+    email,
     introRequests,
     manuscripts,
     publisherProfileId: match.json().candidates[0].candidateProfileId as string,

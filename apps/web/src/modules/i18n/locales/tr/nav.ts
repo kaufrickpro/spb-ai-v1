@@ -1,0 +1,18 @@
+export const nav = {
+  home: "Ana sayfa",
+  publishers: "Yayınevleri",
+  authors: "Yazarlar",
+  features: "Öne çıkanlar",
+  editorial: "Editöryal",
+  works: "Eserler",
+  pricing: "Fiyatlandırma",
+  login: "Giriş yap",
+  signup: "Kayıt ol",
+  dashboard: "Panel",
+  admin: "Yönetim",
+  search: "Ara",
+  openMenu: "Menüyü aç",
+  closeMenu: "Menüyü kapat",
+  menu: "Menü",
+  platformLabel: "Platform gezintisi",
+};

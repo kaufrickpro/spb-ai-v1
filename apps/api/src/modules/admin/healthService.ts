@@ -118,18 +118,14 @@ export async function getAdminPaymentHealth(db: SupabaseClient): Promise<{
   summary: { recentFailures: number; lastEventAt: string | null };
   events: AdminPaymentEvent[];
 }> {
-  const recentFailures = await countRows(
-    db,
-    "admin_payment_events",
-    (query) => {
-      query.eq("status", "failed");
-    },
-  );
+  const recentFailures = await countRows(db, "payment_events", (query) => {
+    query.eq("processing_status", "failed");
+  });
 
   const { data, error } = await db
-    .from("admin_payment_events")
+    .from("payment_events")
     .select()
-    .order("occurred_at", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(20);
 
   if (error) {

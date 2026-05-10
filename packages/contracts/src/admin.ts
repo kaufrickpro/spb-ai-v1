@@ -236,25 +236,96 @@ export const AdminJobHealthResponseSchema = z.object({
   runs: z.array(AdminJobRunSchema),
 });
 
-export const AdminPaymentProviderSchema = z.enum(["paytr", "manual"]);
+export const AdminPaymentProviderSchema = z.enum(["paytr"]);
 export const AdminPaymentEventStatusSchema = z.enum([
   "processed",
   "failed",
   "pending",
+  "ignored",
 ]);
 
 export const AdminPaymentEventSchema = z.object({
   id: UuidSchema,
   provider: AdminPaymentProviderSchema,
+  providerEventId: z.string().trim().min(1).max(160).optional(),
+  profileId: UuidSchema.nullable().default(null),
+  subscriptionId: UuidSchema.nullable().default(null),
   eventType: z.string().trim().min(1).max(120),
   status: AdminPaymentEventStatusSchema,
   failureReason: z.string().trim().max(1000).nullable(),
+  safePayload: z.record(z.string(), z.unknown()).default({}),
   occurredAt: IsoDateTimeSchema,
 });
 
 export const AdminPaymentHealthResponseSchema = z.object({
   summary: AdminDashboardResponseSchema.shape.summary.shape.paymentHealth,
   events: z.array(AdminPaymentEventSchema),
+});
+
+export const AdminBillingRepairActionSchema = z.enum([
+  "mark_event_processed",
+  "attach_paytr_reference",
+  "reconcile_subscription_status",
+]);
+
+export const AdminBillingRepairRequestSchema = z
+  .object({
+    action: AdminBillingRepairActionSchema,
+    paymentEventId: UuidSchema.optional(),
+    subscriptionId: UuidSchema.optional(),
+    paytrSubscriptionRef: z.string().trim().min(3).max(160).optional(),
+    status: z.enum(["active", "past_due", "cancelled", "expired"]).optional(),
+    internalNote: z.string().trim().min(8).max(1000),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.action === "mark_event_processed" &&
+      value.paymentEventId === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "paymentEventId is required",
+        path: ["paymentEventId"],
+      });
+    }
+    if (
+      ["attach_paytr_reference", "reconcile_subscription_status"].includes(
+        value.action,
+      ) &&
+      value.subscriptionId === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "subscriptionId is required",
+        path: ["subscriptionId"],
+      });
+    }
+    if (
+      value.action === "attach_paytr_reference" &&
+      value.paytrSubscriptionRef === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "paytrSubscriptionRef is required",
+        path: ["paytrSubscriptionRef"],
+      });
+    }
+    if (
+      value.action === "reconcile_subscription_status" &&
+      value.status === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "status is required",
+        path: ["status"],
+      });
+    }
+  });
+
+export const AdminBillingRepairResponseSchema = z.object({
+  repaired: z.boolean(),
+  auditLog: AdminAuditLogSchema.optional(),
+  paymentEvent: AdminPaymentEventSchema.optional(),
 });
 
 export const AdminTrustSignalTypeSchema = z.enum([
@@ -322,6 +393,12 @@ export type AdminJobHealthResponse = z.infer<
 export type AdminPaymentEvent = z.infer<typeof AdminPaymentEventSchema>;
 export type AdminPaymentHealthResponse = z.infer<
   typeof AdminPaymentHealthResponseSchema
+>;
+export type AdminBillingRepairRequest = z.infer<
+  typeof AdminBillingRepairRequestSchema
+>;
+export type AdminBillingRepairResponse = z.infer<
+  typeof AdminBillingRepairResponseSchema
 >;
 export type AdminTrustSignal = z.infer<typeof AdminTrustSignalSchema>;
 export type AdminTrustSafetyResponse = z.infer<

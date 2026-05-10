@@ -75,6 +75,27 @@ class ExplanationSafetyError(Exception):
     """Raised when explanation evidence or provider output is unsafe."""
 
 
+class LocalExplanationProvider:
+    def explain_top_candidates(
+        self, evidence: list[MatchCandidateEvidence]
+    ) -> ExplanationBatchResult:
+        return ExplanationBatchResult(
+            explanations=[
+                MatchExplanation(
+                    candidate_id=item.candidate_id,
+                    paragraph=(
+                        "Local matching found enough safe profile and manuscript "
+                        "metadata overlap to keep this candidate visible for testing."
+                    ),
+                )
+                for item in evidence
+            ],
+            model="local-explanation-reference-v1",
+            prompt_version="local-match-explanation-v1",
+            provider="local",
+        )
+
+
 class VertexGeminiExplanationProvider:
     def __init__(
         self,

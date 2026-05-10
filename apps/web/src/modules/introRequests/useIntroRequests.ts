@@ -7,6 +7,7 @@ import {
 import { webApiClient } from "../api/client";
 import { matchKeys } from "../matches/useMatches";
 import { profileSurfaceKeys } from "../profiles/useProfileSurfaces";
+import { invalidateNotifications } from "../notifications/useNotifications";
 
 export const introRequestKeys = {
   all: ["intro-requests"] as const,
@@ -22,6 +23,7 @@ function invalidateIntroSurfaces(
   void queryClient.invalidateQueries({ queryKey: introRequestKeys.all });
   void queryClient.invalidateQueries({ queryKey: matchKeys.all });
   void queryClient.invalidateQueries({ queryKey: profileSurfaceKeys.all });
+  invalidateNotifications(queryClient);
 }
 
 export function useIntroRequests() {

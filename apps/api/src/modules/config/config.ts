@@ -29,6 +29,15 @@ const ApiConfigSchema = z.object({
   cloudTasksIngestionQueue: optionalNonEmptyString(),
   cloudTasksServiceAccountEmail: optionalNonEmptyString(),
   webAppUrl: z.string().url(),
+  paytrProviderMode: z.enum(["disabled", "sandbox", "production"]),
+  paytrMerchantId: optionalNonEmptyString(),
+  paytrMerchantKey: optionalNonEmptyString(),
+  paytrMerchantSalt: optionalNonEmptyString(),
+  paytrTokenUrl: z.string().url(),
+  emailProviderMode: z.enum(["local_fake", "resend"]),
+  resendApiKey: optionalNonEmptyString(),
+  resendFromAddress: optionalNonEmptyString(),
+  resendWebhookSecret: optionalNonEmptyString(),
   sentryDsn: optionalNonEmptyString(),
   sentryEnvironment: z.string().min(1),
   sentryRelease: optionalNonEmptyString(),
@@ -71,6 +80,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     cloudTasksIngestionQueue: env.CLOUD_TASKS_INGESTION_QUEUE,
     cloudTasksServiceAccountEmail: env.CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL,
     webAppUrl: env.WEB_APP_URL ?? "http://localhost:5173",
+    paytrProviderMode: env.PAYTR_PROVIDER_MODE ?? env.PAYTR_MODE ?? "disabled",
+    paytrMerchantId: env.PAYTR_MERCHANT_ID,
+    paytrMerchantKey: env.PAYTR_MERCHANT_KEY,
+    paytrMerchantSalt: env.PAYTR_MERCHANT_SALT,
+    paytrTokenUrl:
+      env.PAYTR_TOKEN_URL ?? "https://www.paytr.com/odeme/api/get-token",
+    emailProviderMode: env.EMAIL_PROVIDER_MODE ?? "local_fake",
+    resendApiKey: env.RESEND_API_KEY,
+    resendFromAddress: env.RESEND_FROM_ADDRESS,
+    resendWebhookSecret: env.RESEND_WEBHOOK_SECRET,
     sentryDsn: env.SENTRY_DSN,
     sentryEnvironment: env.SENTRY_ENVIRONMENT ?? env.APP_CONFIG_MODE ?? "local",
     sentryRelease: env.SENTRY_RELEASE,
@@ -179,6 +198,31 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
         "Staging/production must use DOCUMENT_PROCESSING_PROVIDER=cloud_tasks",
       );
     }
+  }
+
+  if (parsed.paytrProviderMode !== "disabled") {
+    z.object({
+      paytrMerchantId: z.string().min(1),
+      paytrMerchantKey: z.string().min(1),
+      paytrMerchantSalt: z.string().min(1),
+    }).parse(parsed);
+  }
+
+  if (
+    parsed.paytrProviderMode === "production" &&
+    parsed.appConfigMode !== "production"
+  ) {
+    throw new Error(
+      "PAYTR_PROVIDER_MODE=production is allowed only when APP_CONFIG_MODE=production",
+    );
+  }
+
+  if (parsed.emailProviderMode === "resend") {
+    z.object({
+      resendApiKey: z.string().min(1),
+      resendFromAddress: z.string().email(),
+      resendWebhookSecret: z.string().min(1),
+    }).parse(parsed);
   }
 
   return parsed;

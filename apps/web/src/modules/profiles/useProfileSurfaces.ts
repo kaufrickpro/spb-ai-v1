@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ApiRoutes,
+  type CompleteOnboardingDetailsRequest,
   type MatchVisibleContactSettings,
 } from "@marketplace/contracts";
 import { webApiClient } from "../api/client";
@@ -62,6 +63,19 @@ export function useUpdateMatchVisibleContacts() {
       webApiClient.request(ApiRoutes.profiles.updateMatchVisibleContacts, {
         body,
       }),
+  });
+}
+
+export function useCompleteOnboardingDetails() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CompleteOnboardingDetailsRequest) =>
+      webApiClient.request(ApiRoutes.profiles.completeDetails, {
+        body,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["profiles", "me"] });
+    },
   });
 }
 

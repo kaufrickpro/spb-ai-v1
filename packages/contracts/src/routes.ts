@@ -2,6 +2,8 @@ import { z } from "zod";
 import {
   AdminAccessResponseSchema,
   AdminAuditLogsResponseSchema,
+  AdminBillingRepairRequestSchema,
+  AdminBillingRepairResponseSchema,
   AdminDashboardResponseSchema,
   AdminJobHealthResponseSchema,
   AdminPendingProfilesResponseSchema,
@@ -16,6 +18,13 @@ import {
   AdminTrustSafetyResponseSchema,
 } from "./admin.js";
 import { HealthResponseSchema } from "./common.js";
+import {
+  BillingSubscriptionResponseSchema,
+  BillingUsageResponseSchema,
+  PaytrCheckoutRequestSchema,
+  PaytrCheckoutResponseSchema,
+  StartTrialResponseSchema,
+} from "./billing.js";
 import {
   CompleteOnboardingDetailsRequestSchema,
   CreateProfileRequestSchema,
@@ -51,6 +60,7 @@ import {
   UploadSignedUrlRequestSchema,
   UploadSignedUrlResponseSchema,
 } from "./documents.js";
+import { ResendWebhookResponseSchema } from "./email.js";
 import {
   AdminIntroRequestDetailResponseSchema,
   AdminIntroRequestListQuerySchema,
@@ -61,6 +71,12 @@ import {
   IntroRequestResponseSchema,
   RejectIntroRequestRequestSchema,
 } from "./introRequests.js";
+import {
+  NotificationListQuerySchema,
+  NotificationListResponseSchema,
+  NotificationReadAllResponseSchema,
+  NotificationReadResponseSchema,
+} from "./notifications.js";
 
 export const route = <
   Method extends "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
@@ -86,6 +102,33 @@ export const ApiRoutes = {
       path: "/health",
       response: HealthResponseSchema,
       auth: "public",
+    }),
+  },
+  billing: {
+    subscription: route({
+      method: "GET",
+      path: "/api/v1/billing/subscription",
+      response: BillingSubscriptionResponseSchema,
+      auth: "user",
+    }),
+    usage: route({
+      method: "GET",
+      path: "/api/v1/billing/usage",
+      response: BillingUsageResponseSchema,
+      auth: "user",
+    }),
+    startTrial: route({
+      method: "POST",
+      path: "/api/v1/billing/trial/start",
+      response: StartTrialResponseSchema,
+      auth: "user",
+    }),
+    paytrCheckoutToken: route({
+      method: "POST",
+      path: "/api/v1/billing/paytr/checkout-token",
+      request: PaytrCheckoutRequestSchema,
+      response: PaytrCheckoutResponseSchema,
+      auth: "user",
     }),
   },
   profiles: {
@@ -202,6 +245,13 @@ export const ApiRoutes = {
       method: "GET",
       path: "/api/v1/admin/payments/health",
       response: AdminPaymentHealthResponseSchema,
+      auth: "admin",
+    }),
+    billingRepair: route({
+      method: "POST",
+      path: "/api/v1/admin/billing/repair",
+      request: AdminBillingRepairRequestSchema,
+      response: AdminBillingRepairResponseSchema,
       auth: "admin",
     }),
     trustSafety: route({
@@ -373,6 +423,28 @@ export const ApiRoutes = {
       auth: "user",
     }),
   },
+  notifications: {
+    list: route({
+      method: "GET",
+      path: "/api/v1/notifications",
+      query: NotificationListQuerySchema,
+      response: NotificationListResponseSchema,
+      auth: "user",
+    }),
+    markRead: route({
+      method: "POST",
+      path: "/api/v1/notifications/:notificationId/read",
+      params: z.object({ notificationId: z.string().uuid() }),
+      response: NotificationReadResponseSchema,
+      auth: "user",
+    }),
+    markAllRead: route({
+      method: "POST",
+      path: "/api/v1/notifications/read-all",
+      response: NotificationReadAllResponseSchema,
+      auth: "user",
+    }),
+  },
   uploads: {
     requestSignedUrl: route({
       method: "POST",
@@ -410,6 +482,14 @@ export const ApiRoutes = {
       params: z.object({ id: z.string().uuid() }),
       response: DocumentResponseSchema,
       auth: "user",
+    }),
+  },
+  webhooks: {
+    resend: route({
+      method: "POST",
+      path: "/api/v1/webhooks/resend",
+      response: ResendWebhookResponseSchema,
+      auth: "webhook",
     }),
   },
 } as const;

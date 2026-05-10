@@ -1,0 +1,18 @@
+export const nav = {
+  home: "Home",
+  publishers: "Publishers",
+  authors: "Authors",
+  features: "Main Features",
+  editorial: "Editorial",
+  works: "Works",
+  pricing: "Pricing",
+  login: "Login",
+  signup: "Sign up",
+  dashboard: "Dashboard",
+  admin: "Admin",
+  search: "Search",
+  openMenu: "Open menu",
+  closeMenu: "Close menu",
+  menu: "Menu",
+  platformLabel: "Platform navigation",
+};

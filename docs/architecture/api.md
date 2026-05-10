@@ -225,12 +225,55 @@ Rules:
 
 - `GET /api/v1/billing/subscription`
 - `GET /api/v1/billing/usage`
+- `POST /api/v1/billing/trial/start`
 - `POST /api/v1/billing/paytr/checkout-token`
 - `POST /api/v1/webhooks/paytr`
 - `POST /api/v1/webhooks/resend`
 
 Rules:
 
+- Step 13a adds billing/usage core and explicit trial start before PayTR
+  checkout. This is implemented locally through
+  `GET /api/v1/billing/subscription`, `GET /api/v1/billing/usage`, and
+  `POST /api/v1/billing/trial/start`. Step 13b wires checkout and PayTR
+  webhooks.
+- Trial start requires an authenticated marketplace user, completed
+  role-specific profile details, an eligible profile, and no prior trial for the
+  Supabase Auth user.
+- PayTR checkout token creation requires a role-compatible paid monthly or
+  annual plan, completed eligible marketplace profile, configured PayTR mode and
+  secrets outside test fixtures, and a non-zero internal plan price. The
+  response exposes only browser-safe token/render data.
+- PayTR webhook callbacks verify the provider hash before subscription mutation,
+  persist safe callback metadata in `payment_events`, process replays
+  idempotently, and return PayTR's required plain `OK` response for valid
+  callbacks.
+- Inactive paid states (`past_due`, `cancelled`, `expired`) block new sample
+  uploads, match runs, intro sends, and effective public directory visibility,
+  while existing match history/detail, match-revealed profiles, intro history,
+  and accepted-intro unlock reads remain available subject to ordinary security
+  and eligibility checks.
+- Admin billing repair under `/api/v1/admin/billing/repair` is MFA-admin-only
+  and limited to provider-sync repair of existing payment/subscription records;
+  it cannot create a free/manual comp entitlement.
+- There is no permanent free tier and no admin comp/manual pilot plan in V1.
+- Use a central entitlement service for gated product actions. Do not scatter
+  subscription reads across matching, uploads, intro requests, and profile
+  modules.
+- Active entitlement gates sample upload, match run creation, intro request
+  creation, and effective public directory visibility.
+- Expired trials and inactive subscriptions downgrade gracefully. Existing
+  match history/detail, match-revealed profile access, intro history, and
+  accepted-intro unlocks remain readable when ordinary eligibility/security
+  checks pass.
+- Intro request quota is monthly plan-backed usage in `usage_ledger`; daily or
+  hourly limits are abuse controls, not subscription usage. New intro sends use
+  `usage_type = intro_request_sent` and a unique
+  `source_event_key = intro_request:<intro_request_id>`.
+- Storage quota is computed from current active document state and enforced at
+  signed URL creation and upload completion.
+- Billing state must never be passed to AI-service matching/scoring inputs or
+  used to affect relevance.
 - PayTR callbacks must be hash-verified and idempotent.
 - Payment event payloads are stored for audit.
 - Never store card data.
@@ -239,6 +282,14 @@ Rules:
 ### Notifications
 
 Transactional email is sent through Resend from the API or trusted async workers.
+
+Implemented Step 14 notification routes:
+
+- `GET /api/v1/notifications?filter=all|unread&cursor=&limit=`
+- `POST /api/v1/notifications/:notificationId/read`
+- `POST /api/v1/notifications/read-all`
+- `POST /api/v1/webhooks/resend`
+- worker command: `npm run emails:process --workspace apps/api -- <limit>`
 
 Initial email events:
 
@@ -254,6 +305,7 @@ Rules:
 - Do not include full manuscript text, document chunks, signed URLs, raw PayTR payloads, or unreleased contact details in email bodies.
 - Prefer emails that bring users back into the authenticated app for sensitive details.
 - Email sends tied to product events should be idempotent using event IDs or unique constraints.
+- Resend webhook verification uses the raw JSON body plus Svix headers before any mutation.
 - Store minimal delivery metadata for operations; avoid storing full rendered email bodies when they include user data.
 
 ### Admin

@@ -94,11 +94,22 @@ export function mapDbAdminPaymentEvent(
   return AdminPaymentEventSchema.parse({
     id: row.id,
     provider: row.provider,
+    providerEventId: row.provider_event_id,
+    profileId: row.profile_id ?? null,
+    subscriptionId: row.subscription_id ?? null,
     eventType: row.event_type,
-    status: row.status,
-    failureReason: row.failure_reason,
-    occurredAt: toContractDateTime(row.occurred_at),
+    status: mapPaymentEventStatus(row),
+    failureReason:
+      row.processing_status === "failed" ? "Payment event failed" : null,
+    safePayload: row.safe_payload ?? {},
+    occurredAt: toContractDateTime(row.created_at ?? row.occurred_at),
   });
+}
+
+function mapPaymentEventStatus(row: Record<string, unknown>) {
+  const status = row.processing_status ?? row.status;
+  if (status === "stored") return "pending";
+  return status;
 }
 
 export function mapDbAdminTrustSignal(

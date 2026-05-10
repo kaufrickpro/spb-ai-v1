@@ -169,7 +169,9 @@ describe("getSupabaseMatchCandidate", () => {
   });
 
   it("returns stored detail snapshots only from the candidate detail path", async () => {
-    db.persistAiCandidate(persistedCandidate({ detail_snapshot: detailSnapshot() }));
+    db.persistAiCandidate(
+      persistedCandidate({ detail_snapshot: detailSnapshot() }),
+    );
 
     const response = await getSupabaseMatchCandidate({
       candidateId: CANDIDATE_ID,

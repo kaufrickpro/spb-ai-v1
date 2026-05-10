@@ -23,6 +23,7 @@ import {
 import type { ManuscriptTestState } from "../manuscripts/testState.js";
 import type { IntroRequestTestState } from "../introRequests/testState.js";
 import type { MatchingTestState } from "../matching/testState.js";
+import type { BillingTestState } from "../billing/testState.js";
 import {
   getAuthorProfilePage,
   getPublisherProfilePage,
@@ -41,6 +42,7 @@ import type { ProfileTestState } from "./testState.js";
 export function registerProfileRoutes(
   app: FastifyInstance,
   auth: AuthDependencies,
+  billingTestState: BillingTestState,
   testState: ProfileTestState,
   manuscriptTestState?: ManuscriptTestState,
   introTestState?: IntroRequestTestState,
@@ -49,6 +51,7 @@ export function registerProfileRoutes(
   app.get("/api/v1/public/publishers", async (_request, reply) => {
     try {
       const response = await listPublicPublishers({
+        billingTestState,
         config: auth.config,
         testState,
       });

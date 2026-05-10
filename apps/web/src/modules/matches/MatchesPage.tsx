@@ -1,24 +1,66 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import type { Manuscript } from "@marketplace/contracts";
 import { PlatformHeader } from "../layout/PlatformHeader";
 import { getApiErrorMessage } from "../api/client";
 import { useMarketplaceProfile } from "../profile/useMarketplaceProfile";
 import { useManuscripts } from "../manuscripts/useManuscripts";
 import { useMatchRuns, useRunMatch } from "./useMatches";
 import { CandidateList } from "./MatchCandidateSummary";
+import { getEntitlementDenial } from "../billing/useBilling";
+
+export function isManuscriptMatchReady(
+  manuscript: Pick<Manuscript, "eligibilityStatus" | "sampleDocumentId">,
+) {
+  return (
+    manuscript.eligibilityStatus === "eligible" &&
+    Boolean(manuscript.sampleDocumentId)
+  );
+}
+
+export function resolveSelectedManuscriptId(
+  manuscripts: Pick<
+    Manuscript,
+    "id" | "eligibilityStatus" | "sampleDocumentId"
+  >[],
+  selectedManuscriptId: string,
+) {
+  if (
+    manuscripts.some((manuscript) => manuscript.id === selectedManuscriptId)
+  ) {
+    return selectedManuscriptId;
+  }
+
+  return (
+    manuscripts.find((manuscript) => isManuscriptMatchReady(manuscript))?.id ??
+    manuscripts[0]?.id ??
+    ""
+  );
+}
 
 export function MatchesPage() {
   const { t } = useTranslation();
+  const [selectedManuscriptId, setSelectedManuscriptId] = useState("");
   const profile = useMarketplaceProfile();
   const runs = useMatchRuns();
   const runMatch = useRunMatch();
   const role = profile.data?.profile.role;
   const manuscripts = useManuscripts({ enabled: role === "author" });
-  const firstReadyManuscript = manuscripts.data?.manuscripts.find(
-    (manuscript) =>
-      manuscript.eligibilityStatus === "eligible" &&
-      manuscript.sampleDocumentId,
+  const authorManuscripts = manuscripts.data?.manuscripts ?? [];
+  const activeSelectedManuscriptId = resolveSelectedManuscriptId(
+    authorManuscripts,
+    selectedManuscriptId,
   );
+  const selectedManuscript = authorManuscripts.find(
+    (manuscript) => manuscript.id === activeSelectedManuscriptId,
+  );
+  const selectedManuscriptReady = selectedManuscript
+    ? isManuscriptMatchReady(selectedManuscript)
+    : false;
+  const runDenial = runMatch.isError
+    ? getEntitlementDenial(runMatch.error)
+    : null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
@@ -39,20 +81,64 @@ export function MatchesPage() {
               {getApiErrorMessage(profile.error)}
             </p>
           ) : role === "author" ? (
-            <button
-              className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              disabled={!firstReadyManuscript || runMatch.isPending}
-              onClick={() =>
-                firstReadyManuscript &&
-                runMatch.mutate({
-                  direction: "author_to_publisher",
-                  manuscriptId: firstReadyManuscript.id,
-                })
-              }
-              type="button"
-            >
-              {t("matches.runAuthor")}
-            </button>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1">
+                <label
+                  className="text-sm font-medium text-slate-700"
+                  htmlFor="match-manuscript"
+                >
+                  {t("matches.selectManuscript")}
+                </label>
+                <select
+                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
+                  disabled={
+                    manuscripts.isPending || authorManuscripts.length === 0
+                  }
+                  id="match-manuscript"
+                  onChange={(event) =>
+                    setSelectedManuscriptId(event.target.value)
+                  }
+                  value={activeSelectedManuscriptId}
+                >
+                  {authorManuscripts.length === 0 ? (
+                    <option value="">{t("matches.noManuscripts")}</option>
+                  ) : null}
+                  {authorManuscripts.map((manuscript) => (
+                    <option key={manuscript.id} value={manuscript.id}>
+                      {manuscript.title}
+                    </option>
+                  ))}
+                </select>
+                {manuscripts.isPending ? (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {t("common.loading")}
+                  </p>
+                ) : selectedManuscript && !selectedManuscriptReady ? (
+                  <p className="mt-2 text-xs text-amber-700">
+                    {t("matches.selectedManuscriptNotReady")}
+                  </p>
+                ) : null}
+              </div>
+              <button
+                className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                disabled={
+                  !selectedManuscript ||
+                  !selectedManuscriptReady ||
+                  runMatch.isPending
+                }
+                onClick={() =>
+                  selectedManuscript &&
+                  selectedManuscriptReady &&
+                  runMatch.mutate({
+                    direction: "author_to_publisher",
+                    manuscriptId: selectedManuscript.id,
+                  })
+                }
+                type="button"
+              >
+                {t("matches.runAuthor")}
+              </button>
+            </div>
           ) : role === "publisher" ? (
             <button
               className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
@@ -74,7 +160,7 @@ export function MatchesPage() {
           </p>
           {runMatch.isError ? (
             <p className="mt-3 text-sm text-rose-700">
-              {getApiErrorMessage(runMatch.error)}
+              {runDenial?.message ?? getApiErrorMessage(runMatch.error)}
             </p>
           ) : null}
         </section>

@@ -13,6 +13,7 @@ import {
   AdminTrustSafetyResponseSchema,
   ApiErrorSchema,
   ApiRoutes,
+  BillingSubscriptionResponseSchema,
   buildApiPath,
   buildOpenApiDocument,
   CompleteOnboardingDetailsRequestSchema,
@@ -137,6 +138,58 @@ describe("first-slice API contracts", () => {
     });
 
     expect(response.candidates[0]?.candidateType).toBe("publisher");
+  });
+
+  it("accepts Step 13a billing subscription summaries", () => {
+    const parsed = BillingSubscriptionResponseSchema.parse({
+      subscription: {
+        profileId: id,
+        role: "author",
+        entitlementStatus: "trial_available",
+        active: false,
+        trial: { available: true, used: false, startedAt: null, endsAt: null },
+        currentSubscription: null,
+        activePlan: null,
+        capabilities: {
+          startTrial: { allowed: true, denial: null },
+          uploadSample: {
+            allowed: false,
+            denial: {
+              reason: "trial_not_started",
+              recoveryAction: "start_trial",
+              message: "Start your one-month trial to use this action.",
+            },
+          },
+          runMatch: {
+            allowed: false,
+            denial: {
+              reason: "trial_not_started",
+              recoveryAction: "start_trial",
+              message: "Start your one-month trial to use this action.",
+            },
+          },
+          sendIntroRequest: {
+            allowed: false,
+            denial: {
+              reason: "trial_not_started",
+              recoveryAction: "start_trial",
+              message: "Start your one-month trial to use this action.",
+            },
+          },
+          publicDirectoryVisibility: {
+            allowed: false,
+            denial: {
+              reason: "role_not_allowed",
+              recoveryAction: "subscribe",
+              message: "This plan does not allow this action for your role.",
+            },
+          },
+        },
+        plans: [],
+      },
+    });
+
+    expect(parsed.subscription.capabilities.startTrial.allowed).toBe(true);
   });
 
   it("accepts enriched match candidate detail responses without changing run cards", () => {
@@ -605,6 +658,16 @@ describe("first-slice API contracts", () => {
 
   it("exports routes for onboarding and admin vertical slices", () => {
     expect(ApiRoutes.health.get.path).toBe("/health");
+    expect(ApiRoutes.billing.subscription.path).toBe(
+      "/api/v1/billing/subscription",
+    );
+    expect(ApiRoutes.billing.usage.path).toBe("/api/v1/billing/usage");
+    expect(ApiRoutes.billing.startTrial.path).toBe(
+      "/api/v1/billing/trial/start",
+    );
+    expect(ApiRoutes.billing.paytrCheckoutToken.path).toBe(
+      "/api/v1/billing/paytr/checkout-token",
+    );
     expect(ApiRoutes.profiles.me.path).toBe("/api/v1/profiles/me");
     expect(ApiRoutes.profiles.create.path).toBe("/api/v1/profiles");
     expect(ApiRoutes.admin.access.path).toBe("/api/v1/admin/access");
@@ -626,6 +689,9 @@ describe("first-slice API contracts", () => {
     expect(ApiRoutes.admin.paymentsHealth.path).toBe(
       "/api/v1/admin/payments/health",
     );
+    expect(ApiRoutes.admin.billingRepair.path).toBe(
+      "/api/v1/admin/billing/repair",
+    );
     expect(ApiRoutes.admin.trustSafety.path).toBe("/api/v1/admin/trust-safety");
     expect(ApiRoutes.admin.introRequests.path).toBe(
       "/api/v1/admin/intro-requests",
@@ -643,13 +709,16 @@ describe("first-slice API contracts", () => {
     );
     expect(Object.keys(ApiRoutes)).toEqual([
       "health",
+      "billing",
       "profiles",
       "admin",
       "manuscripts",
       "matches",
       "introRequests",
+      "notifications",
       "uploads",
       "documents",
+      "webhooks",
     ]);
   });
 
@@ -713,6 +782,7 @@ describe("first-slice API contracts", () => {
     expect(Object.keys(document.paths).sort()).toEqual([
       "/api/v1/admin/access",
       "/api/v1/admin/audit-logs",
+      "/api/v1/admin/billing/repair",
       "/api/v1/admin/dashboard",
       "/api/v1/admin/intro-requests",
       "/api/v1/admin/intro-requests/{requestId}",
@@ -725,6 +795,10 @@ describe("first-slice API contracts", () => {
       "/api/v1/admin/reviews/{reviewId}",
       "/api/v1/admin/reviews/{reviewId}/decision",
       "/api/v1/admin/trust-safety",
+      "/api/v1/billing/paytr/checkout-token",
+      "/api/v1/billing/subscription",
+      "/api/v1/billing/trial/start",
+      "/api/v1/billing/usage",
       "/api/v1/documents/{id}",
       "/api/v1/documents/{id}/complete-upload",
       "/api/v1/documents/{id}/download-url",
@@ -742,6 +816,9 @@ describe("first-slice API contracts", () => {
       "/api/v1/matches/run",
       "/api/v1/matches/{matchRunId}",
       "/api/v1/matches/{matchRunId}/candidates/{candidateId}",
+      "/api/v1/notifications",
+      "/api/v1/notifications/read-all",
+      "/api/v1/notifications/{notificationId}/read",
       "/api/v1/profile/history",
       "/api/v1/profiles",
       "/api/v1/profiles/authors/{authorProfileId}",
@@ -753,6 +830,7 @@ describe("first-slice API contracts", () => {
       "/api/v1/public/publishers",
       "/api/v1/uploads/local/{uploadToken}",
       "/api/v1/uploads/signed-url",
+      "/api/v1/webhooks/resend",
       "/health",
     ]);
     expect(document.paths["/api/v1/profiles"]?.post).toMatchObject({

@@ -71,6 +71,15 @@ adds lightweight JSON object/top-level forbidden-key checks. Existing remote
 databases must apply it after the Step 10 matching/access migrations and the
 Step 11 intro-request migration.
 
+Step 13a billing/usage adds `plans`, `subscriptions`,
+`billing_trial_starts`, `payment_events`, and `usage_ledger` in
+`20260509080705_step13a_billing_usage_core.sql`. Step 13b PayTR checkout and
+webhooks add `paytr_checkout_sessions`,
+`payment_events.hash_verification_status`, and service-role RPCs for
+idempotent PayTR callback processing and narrow billing repair in
+`20260509153000_step13b_paytr_checkout_webhooks.sql`. Existing remote databases
+must apply Step 13b after Step 13a.
+
 Do not create the full V1 schema upfront. Matching, intro requests, billing, and the broader discovery/runtime tables should still arrive in later vertical slices. Larger future domains may split schema and RLS into separate migrations when review clarity matters.
 
 Every future schema change must be introduced with a new migration. Never make manual dashboard-only schema edits without backfilling a migration.
@@ -800,10 +809,23 @@ Columns:
 
 Rules:
 
-- Step 11 introduces durable in-app notification records, not product email delivery.
-- Initial Step 11 types are `intro_request_created`, `intro_request_accepted`, `intro_request_rejected`, and `intro_request_cancelled`.
-- Notification payloads may include `intro_request_id`, `manuscript_id`, `manuscript_title`, `counterparty_profile_id`, `counterparty_display_name`, and `status`.
-- Notification payloads must not include intro message text, rejection notes, private contact details, signed URLs, sample metadata, manuscript text, document chunks, or admin notes.
+- Step 14 exposes notification records only through the Fastify notification API. Browser code must not read `public.notifications` directly.
+- App-visible types include intro lifecycle notifications plus profile/manuscript decision notifications.
+- Notification metadata must be a bounded JSON object and must not include intro message text, rejection notes, private contact details, signed URLs, sample metadata, manuscript text, document chunks, provider payloads, secrets, tokens, or admin notes.
+- Unknown notification types are hidden from the user inbox until explicitly allowlisted in shared contracts and frontend i18n.
+- `read_at` is updated by trusted API code after recipient ownership checks; cross-profile read attempts use not-found-style denial.
+
+### `email_outbox` and `email_delivery_events`
+
+Step 14 product email uses an async outbox. Product mutations enqueue idempotent outbox rows transactionally through notification/product-event triggers or trusted service code, and workers send later through the local fake adapter or Resend.
+
+Rules:
+
+- `email_outbox.idempotency_key` is unique and derived from the source product event.
+- Template data is allowlisted, bounded JSON and contains only safe labels plus authenticated app links.
+- `email_delivery_events` stores delivery/failure lifecycle events with unique provider event ids and bounded metadata. It does not store raw webhook payloads.
+- Resend webhooks must be signature-verified before delivery events mutate email state.
+- Email tables are service-role managed. User-facing history stays in source product tables and notifications.
 
 ### `product_audit_events`
 
@@ -828,7 +850,9 @@ Rules:
 
 Indexes:
 
-- `notifications(recipient_id, read_at, created_at desc)`
+- `notifications(recipient_profile_id, read_at, created_at desc, id desc)`
+- `email_outbox(status, next_attempt_at, created_at)`
+- `email_delivery_events(provider, provider_event_id)`
 
 ## Billing And Usage
 
@@ -838,28 +862,41 @@ Columns:
 
 - `id uuid primary key default gen_random_uuid()`
 - `slug text unique not null`
-- `name_tr text not null`
-- `name_en text not null`
-- `price_try_cents integer not null`
-- `billing_period billing_period not null`
+- `role text not null`
+- `plan_kind text not null`
+- `billing_period text not null`
+- `display_name text not null`
+- `price_minor integer not null default 0`
+- `currency text not null default 'TRY'`
 - `limits jsonb not null`
-- `is_active boolean not null default true`
+- `active boolean not null default true`
+- `sort_order integer not null default 0`
 - `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
 
 Seed starter plans:
 
-- `free`
+- `author-trial`
+- `publisher-trial`
 - `author-pro-monthly`
+- `author-pro-annual`
 - `publisher-pro-monthly`
-- `pilot-admin-comp`
+- `publisher-pro-annual`
+
+Do not seed a permanent free plan or admin comp/manual pilot plan in V1.
+Trial plans are internal catalog rows selected from the marketplace profile role
+by the trusted trial-start endpoint. Users do not choose a trial plan directly.
 
 Plan limits JSON should include:
 
-- `intro_requests_per_month`
-- `upload_storage_mb`
-- `directory_visibility`
+- `introRequestsPerPeriod`
+- `storageBytes`
+- `directoryVisibility`
+- `supportLevel`
 
-Match runs are rate-limited but not billed as monthly quota.
+Match runs require active entitlement, are rate-limited by the API, and are not
+billed as monthly quota. Subscription state must not be stored in matching
+evidence or used for relevance scoring.
 
 ### `subscriptions`
 
@@ -867,18 +904,23 @@ Columns:
 
 - `id uuid primary key default gen_random_uuid()`
 - `profile_id uuid not null references profiles(id) on delete cascade`
+- `user_id uuid not null references auth.users(id) on delete cascade`
 - `plan_id uuid not null references plans(id)`
-- `status subscription_status not null`
+- `status text not null`
+- `current_period_start timestamptz not null`
+- `current_period_end timestamptz not null`
+- `trial_started_at timestamptz`
+- `trial_ends_at timestamptz`
 - `paytr_customer_id text`
 - `paytr_subscription_ref text`
-- `current_period_start timestamptz`
-- `current_period_end timestamptz`
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`
 
 Indexes:
 
 - `subscriptions(profile_id, status)`
+- one active-ish subscription per profile for `trialing`, `active`, and `past_due`
+- one trial per Supabase Auth user through `billing_trial_starts(user_id)`
 - `subscriptions(paytr_customer_id)`
 - `subscriptions(paytr_subscription_ref)`
 
@@ -892,10 +934,11 @@ Columns:
 - `provider text not null default 'paytr'`
 - `provider_event_id text unique`
 - `event_type text not null`
-- `payload jsonb not null`
-- `hash_verified boolean not null default false`
-- `processed_at timestamptz`
+- `processing_status text not null`
+- `hash_verification_status text not null default 'verified'`
+- `safe_payload jsonb not null`
 - `created_at timestamptz not null default now()`
+- `processed_at timestamptz`
 
 Rules:
 
@@ -903,6 +946,31 @@ Rules:
 - Verify callback hash before mutating subscription state.
 - Processing must be idempotent by `provider_event_id`.
 - Never store card data.
+
+### `paytr_checkout_sessions`
+
+Stores server-owned checkout session metadata needed to reconcile a PayTR
+callback with a paid plan and marketplace profile.
+
+Columns:
+
+- `merchant_oid text unique`
+- `profile_id uuid references profiles(id)`
+- `user_id uuid references auth.users(id)`
+- `plan_id uuid references plans(id)`
+- `amount_minor integer`
+- `currency text default 'TRY'`
+- `status text`
+- `checkout_token text`
+- timestamps
+
+Rules:
+
+- Only service-role API paths can insert or update checkout sessions.
+- Browser responses may include the PayTR iframe token and URL, but never PayTR
+  merchant keys, salts, raw callback hashes, or card data.
+- PayTR webhooks use `merchant_oid` as the provider event identity and
+  idempotency key.
 
 Indexes:
 
@@ -919,25 +987,24 @@ Columns:
 - `id uuid primary key default gen_random_uuid()`
 - `profile_id uuid not null references profiles(id) on delete cascade`
 - `subscription_id uuid references subscriptions(id)`
-- `usage_type usage_type not null`
+- `usage_type text not null`
 - `quantity integer not null default 1`
-- `period_start date not null`
-- `period_end date not null`
-- `source_id uuid`
-- `source_event_key text`
+- `period_start timestamptz not null`
+- `period_end timestamptz not null`
+- `source_event_key text not null`
+- `metadata jsonb not null default '{}'::jsonb`
 - `created_at timestamptz not null default now()`
 
 Rules:
 
 - Intro requests can add usage when sent.
-- Storage usage can be tracked as bytes.
+- Storage usage is computed from current active document state, not monthly ledger events.
 - Do not update existing usage rows; append corrections if needed.
-- Use `source_event_key` or a scoped unique `source_id` to prevent duplicate quota consumption.
+- Use `source_event_key = intro_request:<intro_request_id>` to prevent duplicate quota consumption.
 
 Indexes:
 
 - `usage_ledger(profile_id, usage_type, period_start, period_end)`
-- `usage_ledger(source_id)`
 - `usage_ledger(source_event_key)`
 
 ## File Lifecycle
@@ -1141,6 +1208,9 @@ Database implementation is not complete until these scenarios pass:
 - Publishers can read eligible publisher data and eligible manuscript metadata according to RLS/API rules.
 - Accepted intro requests unlock contact details and sample-file access.
 - Duplicate pending intro requests for the same manuscript/publisher pair are blocked.
+- One trial per Supabase Auth user is enforced.
+- Intro request quota is consumed through `usage_ledger` transactionally with intro request creation.
+- Storage quota is computed from active document state and enforced before new samples become active.
 - Match runs are rate-limited in the API but do not consume monthly quota.
 - PayTR events are idempotent and stored with hash verification status.
 - Publisher CSV data imports into normalized `profiles` and `publisher_profiles`.

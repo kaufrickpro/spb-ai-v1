@@ -179,6 +179,11 @@ async function buildMatchingApp(input: { processedSample?: boolean } = {}) {
   });
   await app.inject({
     method: "POST",
+    url: "/api/v1/billing/trial/start",
+    headers: { authorization: "Bearer test-user" },
+  });
+  await app.inject({
+    method: "POST",
     url: "/api/v1/profiles",
     headers: { authorization: "Bearer test-publisher" },
     payload: {
@@ -203,6 +208,11 @@ async function buildMatchingApp(input: { processedSample?: boolean } = {}) {
       acceptedManuscriptForms: ["novel"],
       submissionGuidelines: "Send a concise pitch.",
     },
+  });
+  await app.inject({
+    method: "POST",
+    url: "/api/v1/billing/trial/start",
+    headers: { authorization: "Bearer test-publisher" },
   });
 
   return { app, manuscripts, profiles };

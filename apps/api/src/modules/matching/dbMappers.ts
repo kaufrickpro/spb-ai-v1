@@ -102,11 +102,15 @@ function fallbackDetailSnapshot(candidate: MatchCandidate, run: MatchRun) {
   return MatchDetailSnapshotSchema.parse({
     pair: {
       manuscriptId,
-      manuscriptTitle: candidate.candidateType === "manuscript" ? candidate.title : null,
+      manuscriptTitle:
+        candidate.candidateType === "manuscript" ? candidate.title : null,
       publisherProfileId,
-      publisherName: candidate.candidateType === "publisher" ? candidate.title : null,
+      publisherName:
+        candidate.candidateType === "publisher" ? candidate.title : null,
       sourceSide:
-        run.direction === "publisher_to_manuscript" ? "publisher" : "manuscript",
+        run.direction === "publisher_to_manuscript"
+          ? "publisher"
+          : "manuscript",
     },
     publisherContext: null,
     manuscriptContext: null,

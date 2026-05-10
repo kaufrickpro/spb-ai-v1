@@ -131,7 +131,9 @@ Responsive behavior:
 
 ### Dashboard
 
-Show profile eligibility state, manuscript eligibility/processing state, active subscription, intro request usage, upload storage usage, pending intro requests, and recent matches.
+Show profile eligibility state, manuscript eligibility/processing state, active subscription/trial state, compact intro request usage, compact upload storage usage for authors, pending intro requests, and recent matches. Link detailed entitlement and usage management to `/app/billing`.
+
+Limited author profiles should show a clear prompt to complete author details on `/app/profile`. The profile page should be view-first: show saved details by default, then reveal editable controls only after an explicit edit action. The author detail edit flow submits biography, primary genre, and writing languages through the shared `profiles.completeDetails` contract so the API-owned eligibility evaluator can promote the profile when required details are complete.
 
 ### Onboarding
 
@@ -165,6 +167,8 @@ For Google social auth, keep the distinction clear:
 ### Manuscripts
 
 Authors create and manage manuscripts, upload sample files, and view eligibility/processing status.
+
+The manuscript workspace is role-gated in the frontend, not eligibility-gated. Limited, blocked, or quarantined authors may still reach safe workspace pages; API eligibility checks remain responsible for blocking marketplace exposure, matching, intro actions, sample downloads, and other sensitive operations.
 
 ### Public Publisher Directory
 
@@ -208,6 +212,22 @@ Show sent and received intro requests plus manuscript access requests. Manuscrip
 
 The Step 11 requests workspace now shows intro requests beside manuscript access requests, renders API-owned status badges, supports accept/reject for `pending_received`, cancel for `pending_sent`, and shows accepted contact separately. Accept uses a confirmation dialog because it unlocks private contact and sample access. Publisher sample download remains an explicit click on the accepted manuscript profile surface.
 
+### Billing
+
+`/app/billing` is the authenticated billing and usage management surface. Step
+13a now shows the current entitlement state, whether the one-month trial is
+available/active/expired/already used, the current period, plan limits, intro
+usage, author storage usage, publisher directory visibility entitlement, and
+clear recovery actions for gated workflows.
+
+Trial start is explicit and calls the API. It requires a completed eligible
+role-specific profile. Paid checkout remains disabled until Step 13b wires
+PayTR.
+
+Public `/pricing` shows the one-month trial and author/publisher monthly
+and annual plan categories. Do not show placeholder internal prices as final
+public prices before PayTR production pricing is chosen.
+
 ### Admin
 
 Support exception review, quarantine, reports, system failures, jobs, payment events, and audit logs.
@@ -224,6 +244,8 @@ Step 11 adds a read-only intro request investigation surface for admins. It show
 - Use dialogs for approval, rejection, quarantine, restore, and confirmation flows.
 - Avoid decorative layouts that reduce scannability.
 - Do not expose private account contact details until an intro request is accepted. Match-revealed profiles may show only explicit owner-approved match-visible contact fields.
+- Marketplace notifications live in the authenticated header bell and `/app/notifications`. The browser renders notification copy from i18n keys and safe API read models only; it must not receive raw notification metadata.
+- Notification CTAs use API-owned `ctaPath` values. The frontend marks a notification read before navigating and uses polling/refetch-on-focus rather than realtime or browser push in Step 14.
 - Do not put Resend API keys or server email logic in the frontend.
 - Configure Sentry with environment and release tags, and scrub sensitive user/document fields from captured events.
 - Keep loading, empty, error, and permission-denied states explicit.

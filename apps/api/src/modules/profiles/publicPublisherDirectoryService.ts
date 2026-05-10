@@ -2,16 +2,19 @@ import {
   PublicDirectoryDecisionResponseSchema,
   PublicPublisherDirectoryResponseSchema,
 } from "@marketplace/contracts";
+import { billingPlanCatalog } from "@marketplace/contracts";
 import type { ApiConfig } from "../config/config.js";
 import type { AuthenticatedUser } from "../auth/verifyJwt.js";
 import { createServiceRoleSupabaseClient } from "../supabase/client.js";
 import { findTestProfileById, type ProfileTestState } from "./testState.js";
+import type { BillingTestState } from "../billing/testState.js";
 import { emptyContactSettings } from "./matchContactSettings.js";
 import { MatchProfileServiceError } from "./matchProfileErrors.js";
 
 type DirectoryStatus = "approved" | "hidden" | "rejected";
 
 export async function listPublicPublishers(input: {
+  billingTestState: BillingTestState;
   config: ApiConfig;
   testState: ProfileTestState;
 }) {
@@ -25,6 +28,10 @@ export async function listPublicPublishers(input: {
         return (
           profile.role === "publisher" &&
           profile.eligibilityStatus === "eligible" &&
+          hasEffectiveDirectoryEntitlement(
+            input.billingTestState,
+            profile.id,
+          ) &&
           input.testState.publicDirectoryStatusByProfileId.get(profile.id) ===
             "approved" &&
           Boolean(profile.profilePhotoUrl) &&
@@ -84,7 +91,10 @@ export async function listPublicPublishers(input: {
         profileError,
       );
     }
-    if (profile) {
+    if (
+      profile &&
+      (await dbPublisherHasDirectoryEntitlement(db, item.profile_id))
+    ) {
       publishers.push({
         id: item.profile_id,
         name: item.publisher_name,
@@ -95,6 +105,44 @@ export async function listPublicPublishers(input: {
   }
 
   return PublicPublisherDirectoryResponseSchema.parse({ publishers });
+}
+
+function hasEffectiveDirectoryEntitlement(
+  billingTestState: BillingTestState,
+  profileId: string,
+): boolean {
+  const active = billingTestState.subscriptions.find(
+    (subscription) =>
+      subscription.profileId === profileId &&
+      ["trialing", "active"].includes(subscription.status) &&
+      new Date(subscription.currentPeriodEnd).getTime() > Date.now(),
+  );
+  if (!active) return false;
+  return Boolean(
+    billingPlanCatalog.find((plan) => plan.slug === active.planSlug)?.limits
+      .directoryVisibility,
+  );
+}
+
+async function dbPublisherHasDirectoryEntitlement(
+  db: ReturnType<typeof createServiceRoleSupabaseClient>,
+  profileId: string,
+): Promise<boolean> {
+  const { data, error } = await db
+    .from("subscriptions")
+    .select("id,plans(limits)")
+    .eq("profile_id", profileId)
+    .in("status", ["trialing", "active"])
+    .gt("current_period_end", new Date().toISOString())
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return false;
+  const planRow = Array.isArray(data.plans) ? data.plans[0] : data.plans;
+  return Boolean(
+    (planRow as { limits?: Record<string, unknown> } | null)?.limits?.[
+      "directoryVisibility"
+    ],
+  );
 }
 
 export async function applyPublicDirectoryDecision(input: {

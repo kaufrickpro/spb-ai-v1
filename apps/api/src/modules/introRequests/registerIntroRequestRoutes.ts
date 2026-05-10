@@ -24,6 +24,12 @@ import {
 import type { ProfileTestState } from "../profiles/testState.js";
 import type { ManuscriptTestState } from "../manuscripts/testState.js";
 import type { MatchingTestState } from "../matching/testState.js";
+import { assertEntitlementForAction } from "../billing/service.js";
+import { BillingServiceError } from "../billing/errors.js";
+import { sendBillingError } from "../billing/registerBillingRoutes.js";
+import type { BillingTestState } from "../billing/testState.js";
+import type { EmailTestState } from "../email/testState.js";
+import { enqueueProductEmail } from "../email/outboxService.js";
 import type { IntroRequestTestState } from "./testState.js";
 import { IntroRequestServiceError } from "./errors.js";
 import {
@@ -36,6 +42,8 @@ import {
 
 type RegisterIntroRequestRoutesOptions = {
   auth: AuthDependencies;
+  billingTestState: BillingTestState;
+  emailTestState: EmailTestState;
   introTestState: IntroRequestTestState;
   manuscriptTestState: ManuscriptTestState;
   matchingTestState: MatchingTestState;
@@ -60,12 +68,21 @@ export function registerIntroRequestRoutes(
     }
 
     try {
+      await assertEntitlementForAction({
+        action: "send_intro_request",
+        billingTestState: options.billingTestState,
+        config: options.auth.config,
+        manuscriptTestState: options.manuscriptTestState,
+        profileTestState: options.profileTestState,
+        user,
+      });
       const response = await createIntroRequest({
         ...options,
         config: options.auth.config,
         body: parsed.data,
         user,
       });
+      await enqueueIntroEmailSafely(app, options, response.request, "created");
       return reply.code(201).send(IntroRequestResponseSchema.parse(response));
     } catch (error) {
       return sendIntroError(app, reply, error);
@@ -172,9 +189,61 @@ async function handleTransition(
       requestId,
       user,
     });
+    await enqueueIntroEmailSafely(app, options, response.request, action);
     return reply.send(IntroRequestResponseSchema.parse(response));
   } catch (error) {
     return sendIntroError(app, reply, error);
+  }
+}
+
+async function enqueueIntroEmailSafely(
+  app: FastifyInstance,
+  options: RegisterIntroRequestRoutesOptions,
+  request: {
+    id: string;
+    manuscriptTitle: string;
+    requesterProfileId: string;
+    requesterName: string;
+    recipientProfileId: string;
+    recipientName: string;
+  },
+  action: "created" | "accept" | "reject" | "cancel",
+) {
+  if (options.auth.config.authMode !== "test") return;
+  const targetProfileId =
+    action === "accept" || action === "reject"
+      ? request.requesterProfileId
+      : request.recipientProfileId;
+  const actorLabel =
+    action === "accept" || action === "reject"
+      ? request.recipientName
+      : request.requesterName;
+  const templateKey =
+    action === "created"
+      ? "intro_request_created"
+      : action === "accept"
+        ? "intro_request_accepted"
+        : action === "reject"
+          ? "intro_request_rejected"
+          : "intro_request_cancelled";
+  try {
+    await enqueueProductEmail({
+      config: options.auth.config,
+      email: {
+        actorLabel,
+        ctaPath:
+          action === "created"
+            ? "/app/requests?box=received"
+            : "/app/requests?box=all",
+        idempotencyKey: `intro_request:${request.id}:${templateKey}:${targetProfileId}`,
+        recipientProfileId: targetProfileId,
+        targetLabel: request.manuscriptTitle,
+        templateKey,
+      },
+      emailTestState: options.emailTestState,
+    });
+  } catch (error) {
+    app.log.warn(error, "Failed to enqueue intro request product email");
   }
 }
 
@@ -195,6 +264,9 @@ function sendIntroError(
     if (error.kind === "not_eligible") {
       return sendValidationError(reply, error.message, [], "not_eligible");
     }
+  }
+  if (error instanceof BillingServiceError) {
+    return sendBillingError(app, reply, error);
   }
   app.log.error(error, "Failed to handle intro request");
   return sendInternalServerError(reply);

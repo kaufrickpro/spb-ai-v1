@@ -318,17 +318,97 @@ async function getDbIntroState(
       });
     }
   }
-  const { count } = await db
-    .from("intro_request_usage_events")
-    .select("id", { count: "exact", head: true })
-    .eq("profile_id", pair.viewerProfileId)
-    .eq("usage_date", new Date().toISOString().slice(0, 10));
-  const remaining = Math.max(0, 10 - (count ?? 0));
+  const quota = await getDbIntroQuota(db, pair.viewerProfileId);
+  if (quota.status !== "can_request") {
+    return IntroStateSchema.parse({
+      status: quota.status,
+      requestId: null,
+      quotaRemaining: quota.remaining,
+    });
+  }
+  const remaining = quota.remaining ?? 0;
   return IntroStateSchema.parse({
     status: remaining === 0 ? "quota_exhausted" : "can_request",
     requestId: null,
     quotaRemaining: remaining,
   });
+}
+
+async function getDbIntroQuota(
+  db: ServiceRoleDb,
+  viewerProfileId: string,
+): Promise<{
+  remaining: number | null;
+  status:
+    | "can_request"
+    | "quota_exhausted"
+    | "trial_required"
+    | "entitlement_expired"
+    | "not_eligible";
+}> {
+  const subscription =
+    (await getDbIntroQuotaSubscription(db, viewerProfileId, "trialing")) ??
+    (await getDbIntroQuotaSubscription(db, viewerProfileId, "active"));
+  if (!subscription) {
+    const { data: profile } = await db
+      .from("profiles")
+      .select("user_id")
+      .eq("id", viewerProfileId)
+      .maybeSingle();
+    if (!profile) return { remaining: null, status: "not_eligible" };
+    const { data: trial } = await db
+      .from("billing_trial_starts")
+      .select("user_id")
+      .eq("user_id", profile.user_id)
+      .maybeSingle();
+    return {
+      remaining: null,
+      status: trial ? "entitlement_expired" : "trial_required",
+    };
+  }
+  const planRow = Array.isArray(subscription.plans)
+    ? subscription.plans[0]
+    : subscription.plans;
+  const limit = Number(
+    ((planRow as { limits?: Record<string, unknown> } | null)?.limits?.[
+      "introRequestsPerPeriod"
+    ] as number | undefined) ?? 0,
+  );
+  const { data: usage } = await db
+    .from("usage_ledger")
+    .select("quantity")
+    .eq("profile_id", viewerProfileId)
+    .eq("usage_type", "intro_request_sent")
+    .eq("period_start", subscription.current_period_start)
+    .eq("period_end", subscription.current_period_end);
+  const used = (usage ?? []).reduce(
+    (sum: number, row: { quantity?: number }) =>
+      sum + Number(row.quantity ?? 0),
+    0,
+  );
+  return {
+    remaining: Math.max(0, limit - used),
+    status: used >= limit ? "quota_exhausted" : "can_request",
+  };
+}
+
+async function getDbIntroQuotaSubscription(
+  db: ServiceRoleDb,
+  viewerProfileId: string,
+  status: "trialing" | "active",
+) {
+  const { data } = await db
+    .from("subscriptions")
+    .select("id,current_period_start,current_period_end,plans(limits)")
+    .eq("profile_id", viewerProfileId)
+    .eq("status", status)
+    .order("current_period_end", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data || new Date(data.current_period_end).getTime() <= Date.now()) {
+    return null;
+  }
+  return data;
 }
 
 async function buildDbRunInput(

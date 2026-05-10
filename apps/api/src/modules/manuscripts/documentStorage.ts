@@ -10,6 +10,7 @@ export type StoredDocumentRecord = {
   authorId: string;
   fileSizeBytes: number;
   id: string;
+  manuscriptId: string;
   mimeType: string;
   originalFileName: string;
   storageStatus: string;
@@ -28,6 +29,7 @@ export async function getStoredDocumentRecord(
           id: document.id,
           authorId: document.authorId,
           fileSizeBytes: document.fileSizeBytes,
+          manuscriptId: document.manuscriptId,
           mimeType: document.mimeType,
           originalFileName: document.originalFileName,
           storageStatus: document.storageStatus,
@@ -43,7 +45,7 @@ export async function getStoredDocumentRecord(
   const { data, error } = await db
     .from("documents")
     .select(
-      "id, author_id, file_size_bytes, mime_type, original_file_name, storage_status, upload_id",
+      "id, manuscript_id, author_id, file_size_bytes, mime_type, original_file_name, storage_status, upload_id",
     )
     .eq("id", documentId)
     .maybeSingle();
@@ -56,6 +58,7 @@ export async function getStoredDocumentRecord(
     id: data.id,
     authorId: data.author_id,
     fileSizeBytes: Number(data.file_size_bytes),
+    manuscriptId: data.manuscript_id,
     mimeType: data.mime_type,
     originalFileName: data.original_file_name,
     storageStatus: data.storage_status,

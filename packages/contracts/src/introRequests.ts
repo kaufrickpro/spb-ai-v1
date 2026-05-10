@@ -16,6 +16,9 @@ export const IntroStateStatusSchema = z.enum([
   "rejected_cooldown",
   "cancelled_cooldown",
   "not_eligible",
+  "trial_required",
+  "entitlement_expired",
+  "subscription_required",
   "quota_exhausted",
 ]);
 

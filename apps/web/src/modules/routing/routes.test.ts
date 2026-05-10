@@ -41,6 +41,7 @@ describe("web route map", () => {
       "/app/discover/authors",
       "/app/discover/publishers",
       "/app/requests",
+      "/app/notifications",
       "/app/profile",
       "/app/profile/history",
       "/app/profiles/publishers/:publisherProfileId",

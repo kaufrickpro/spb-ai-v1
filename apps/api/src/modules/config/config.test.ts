@@ -116,6 +116,40 @@ describe("loadConfig", () => {
     expect(config.sentryTracesSampleRate).toBe(0.1);
   });
 
+  it("requires PayTR secrets when checkout is enabled", () => {
+    expect(() =>
+      loadConfig({
+        API_AUTH_MODE: "test",
+        APP_CONFIG_MODE: "local",
+        NODE_ENV: "development",
+        PAYTR_PROVIDER_MODE: "sandbox",
+      }),
+    ).toThrow();
+
+    const config = loadConfig({
+      API_AUTH_MODE: "test",
+      APP_CONFIG_MODE: "local",
+      NODE_ENV: "development",
+      PAYTR_PROVIDER_MODE: "sandbox",
+      PAYTR_MERCHANT_ID: "merchant",
+      PAYTR_MERCHANT_KEY: "key",
+      PAYTR_MERCHANT_SALT: "salt",
+    });
+    expect(config.paytrProviderMode).toBe("sandbox");
+  });
+
+  it("rejects PayTR production mode outside production app config", () => {
+    expect(() =>
+      loadConfig({
+        ...deployedConfigEnv(),
+        PAYTR_PROVIDER_MODE: "production",
+        PAYTR_MERCHANT_ID: "merchant",
+        PAYTR_MERCHANT_KEY: "key",
+        PAYTR_MERCHANT_SALT: "salt",
+      }),
+    ).toThrow(/PAYTR_PROVIDER_MODE=production/);
+  });
+
   it("accepts explicit Sentry release metadata and sampling", () => {
     const config = loadConfig({
       API_AUTH_MODE: "test",

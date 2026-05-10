@@ -54,6 +54,29 @@ class SignalRetrievalProvider(Protocol):
 
 
 @dataclass(frozen=True)
+class LocalSignalRetrievalProvider:
+    repository: MatchingRepository
+
+    def find_neighbors(
+        self,
+        *,
+        signal: MatchSignalSourceWrite,
+        candidate_type: Literal["publisher", "manuscript"],
+        limit: int,
+    ) -> list[RetrievedNeighbor]:
+        del signal
+        candidates = (
+            self.repository.list_eligible_publishers(limit)
+            if candidate_type == "publisher"
+            else self.repository.list_eligible_manuscripts(limit)
+        )
+        return [
+            RetrievedNeighbor(candidate_id=required_text(candidate, "id"), distance=0.25)
+            for candidate in candidates[:limit]
+        ]
+
+
+@dataclass(frozen=True)
 class VertexSignalRetrievalProvider:
     embedding_adapter: VertexTextEmbeddingAdapter
     vector_search_adapter: VertexVectorSearchAdapter

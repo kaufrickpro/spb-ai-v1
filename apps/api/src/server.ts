@@ -22,6 +22,13 @@ import type { MatchingTestState } from "./modules/matching/testState.js";
 import { registerIntroRequestRoutes } from "./modules/introRequests/registerIntroRequestRoutes.js";
 import { createIntroRequestTestState } from "./modules/introRequests/testState.js";
 import type { IntroRequestTestState } from "./modules/introRequests/testState.js";
+import { registerNotificationRoutes } from "./modules/notifications/registerNotificationRoutes.js";
+import { registerBillingRoutes } from "./modules/billing/registerBillingRoutes.js";
+import { createBillingTestState } from "./modules/billing/testState.js";
+import type { BillingTestState } from "./modules/billing/testState.js";
+import { registerEmailWebhookRoutes } from "./modules/email/registerEmailWebhookRoutes.js";
+import { createEmailTestState } from "./modules/email/testState.js";
+import type { EmailTestState } from "./modules/email/testState.js";
 import { initializeSentry } from "./lib/sentry/index.js";
 
 type BuildAppOptions = {
@@ -30,6 +37,8 @@ type BuildAppOptions = {
   jwtVerify?: JwtVerifyFn;
   testState?: {
     admin?: AdminTestState;
+    billing?: BillingTestState;
+    email?: EmailTestState;
     introRequests?: IntroRequestTestState;
     manuscripts?: ManuscriptTestState;
     matching?: MatchingTestState;
@@ -80,6 +89,22 @@ export function buildApp({
     },
   });
 
+  app.addContentTypeParser(
+    "application/x-www-form-urlencoded",
+    { parseAs: "string" },
+    (_request, body, done) => {
+      const params = new URLSearchParams(
+        typeof body === "string" ? body : body.toString("utf8"),
+      );
+      done(
+        null,
+        Object.fromEntries(
+          Array.from(params.entries()).map(([key, value]) => [key, value]),
+        ),
+      );
+    },
+  );
+
   // Resolve the JWT verifier once at startup.
   const verifyJwt: JwtVerifyFn | null =
     config.authMode === "supabase"
@@ -96,6 +121,9 @@ export function buildApp({
     injectedTestState?.matching ?? createMatchingTestState();
   const introRequestTestState =
     injectedTestState?.introRequests ?? createIntroRequestTestState();
+  const billingTestState =
+    injectedTestState?.billing ?? createBillingTestState();
+  const emailTestState = injectedTestState?.email ?? createEmailTestState();
 
   app.addHook("onRequest", async (request, reply) => {
     const requestOrigin = request.headers.origin;
@@ -124,6 +152,7 @@ export function buildApp({
   registerProfileRoutes(
     app,
     auth,
+    billingTestState,
     profileTestState,
     manuscriptTestState,
     introRequestTestState,
@@ -131,6 +160,9 @@ export function buildApp({
   );
   registerAdminRoutes(app, {
     auth,
+    billingTestState,
+    emailTestState,
+    introTestState: introRequestTestState,
     manuscriptTestState,
     profileTestState,
     testState,
@@ -138,6 +170,7 @@ export function buildApp({
   registerManuscriptRoutes(app, {
     auth,
     adminTestState: testState,
+    billingTestState,
     introTestState: introRequestTestState,
     matchingTestState,
     profileTestState,
@@ -145,6 +178,7 @@ export function buildApp({
   });
   registerMatchingRoutes(app, {
     auth,
+    billingTestState,
     introTestState: introRequestTestState,
     manuscriptTestState,
     profileTestState,
@@ -152,10 +186,28 @@ export function buildApp({
   });
   registerIntroRequestRoutes(app, {
     auth,
+    billingTestState,
+    emailTestState,
     introTestState: introRequestTestState,
     manuscriptTestState,
     matchingTestState,
     profileTestState,
+  });
+  registerNotificationRoutes(app, {
+    auth,
+    introTestState: introRequestTestState,
+    profileTestState,
+  });
+  registerBillingRoutes(app, {
+    auth,
+    billingTestState,
+    emailTestState,
+    manuscriptTestState,
+    profileTestState,
+  });
+  registerEmailWebhookRoutes(app, {
+    config,
+    emailTestState,
   });
   registerErrorHandler(app);
 
